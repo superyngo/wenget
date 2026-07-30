@@ -105,7 +105,7 @@ The binary will be at `target/release/wenget` (or `wenget.exe` on Windows).
 wenget init
 
 # Add the official Wenget bucket (if not added during init)
-wenget bucket add wenget https://raw.githubusercontent.com/superyngo/wenget-bucket/main/manifest.json
+wenget bucket add wenget https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json
 
 # Search for packages
 wenget search ripgrep
@@ -290,12 +290,12 @@ Buckets are collections of package and script manifests hosted online. The offic
 ### Official Bucket
 
 ```bash
-wenget bucket add wenget https://raw.githubusercontent.com/superyngo/wenget-bucket/main/manifest.json
+wenget bucket add wenget https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json
 ```
 
 ### Creating Your Own Bucket
 
-You can create custom buckets to distribute your own package and script collections. See the [official Wenget bucket repository](https://github.com/superyngo/wenget-bucket) for a complete example.
+You can create custom buckets to distribute your own package and script collections. See the [official Wenget bucket](https://github.com/superyngo/Wenget/tree/main/bucket) for a complete example.
 
 #### Bucket Structure
 
@@ -376,7 +376,7 @@ wenget bucket add my-bucket https://raw.githubusercontent.com/username/my-bucket
 
 #### Example: Official Wenget Bucket
 
-The official bucket is maintained at: https://github.com/superyngo/wenget-bucket
+The official bucket is maintained at: https://github.com/superyngo/Wenget/tree/main/bucket
 
 It includes curated packages with:
 - Verified working binaries across platforms
@@ -387,11 +387,10 @@ It includes curated packages with:
 You can use it as a template for creating your own bucket:
 
 ```bash
-# Clone the official bucket as a template
-git clone https://github.com/superyngo/wenget-bucket my-bucket
-cd my-bucket
-# Edit manifest.json with your packages
-# Commit and push to your repository
+# Clone the Wenget repo and use its bucket directory as a template
+git clone https://github.com/superyngo/Wenget my-bucket-template
+cd my-bucket-template/bucket
+# Copy manifest.json into your own repository and edit it with your packages
 ```
 
 #### Testing Your Bucket
@@ -650,7 +649,7 @@ Inspired by:
 - **GitHub**: https://github.com/superyngo/Wenget
 - **Releases**: https://github.com/superyngo/Wenget/releases
 - **Issues**: https://github.com/superyngo/Wenget/issues
-- **Official Bucket**: https://github.com/superyngo/wenget-bucket
+- **Official Bucket**: https://github.com/superyngo/Wenget/tree/main/bucket
 
 ## Changelog
 
