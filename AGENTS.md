@@ -124,9 +124,9 @@ pub fn load_config(path: &Path) -> Result<Config> {
 - Document non-obvious behavior and edge cases
 
 ```rust
-//! Bucket management for WenPM
+//! Bucket management for wenget
 //!
-//! Buckets are remote manifest sources that can be added to WenPM.
+//! Buckets are remote manifest sources that can be added to wenget.
 
 /// A bucket configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-//! Source providers for WenPM
+//! Source providers for wenget
 
 pub mod base;
 pub mod github;

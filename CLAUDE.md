@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Wenget is a cross-platform package manager for GitHub binaries, written in Rust. It simplifies installation and management of command-line tools distributed through GitHub Releases by automatically detecting platforms, downloading appropriate binaries, and managing them in `~/.wenget/`.
+wenget is a cross-platform package manager for GitHub binaries, written in Rust. It simplifies installation and management of command-line tools distributed through GitHub Releases by automatically detecting platforms, downloading appropriate binaries, and managing them in `~/.wenget/`.
 
 ## Build and Development Commands
 
@@ -153,13 +153,13 @@ The `WenPaths` struct in `src/core/paths.rs` auto-detects privilege level via `i
 ## Important Implementation Details
 
 ### Package Variant Handling
-When a package has multiple release binaries (e.g., `bun`, `bun-baseline`, `bun-profile`), Wenget treats them as variants:
+When a package has multiple release binaries (e.g., `bun`, `bun-baseline`, `bun-profile`), wenget treats them as variants:
 - **Installed key format**: `{repo_name}` for default, `{repo_name}::{variant}` for variants
   - Example: `bun`, `bun::baseline`, `bun::profile`
 - **InstalledPackage fields**:
   - `repo_name`: Canonical repository name (e.g., "bun")
   - `variant`: Optional variant identifier (e.g., "baseline")
-- **Command name conflict resolution**: If a command name is already taken, Wenget automatically appends the variant suffix or numeric suffix
+- **Command name conflict resolution**: If a command name is already taken, wenget automatically appends the variant suffix or numeric suffix
 - **`--no-suffix` flag**: `wenget add --no-suffix` skips appending variant suffix to command name, using the base name directly (falls back to numeric suffix on conflict)
 - **Grouped display**: `wenget ls` groups variants under their repo name
 - **Bulk operations**: `wenget update bun` updates all variants; `wenget del bun` deletes all variants
@@ -188,7 +188,7 @@ Packages can come from three sources (see `PackageSource` enum in `src/core/mani
 - `wenget update` checks each installed package for updates
 
 ### Self-Update
-- `wenget update self` updates Wenget itself
+- `wenget update self` updates wenget itself
 - Windows: Uses background cleanup script to handle locked executable
 - Unix: Atomic rename with fallback
 
@@ -222,14 +222,14 @@ The `Cargo.toml` has aggressive optimization for small binary size:
   - Create a GitHub Release automatically
   - Upload all platform binaries as release assets
 - **Do NOT manually create GitHub Releases** - the workflow handles this automatically
-- Track build progress at: https://github.com/superyngo/Wenget/actions
-- View releases at: https://github.com/superyngo/Wenget/releases
+- Track build progress at: https://github.com/superyngo/wenget/actions
+- View releases at: https://github.com/superyngo/wenget/releases
 
 **Workflow Trigger**: Pushing any tag matching `v*.*.*` pattern
 
 ## Supported Build Targets
 
-The CI/CD workflow (`.github/workflows/release.yml`) builds Wenget for the following platforms:
+The CI/CD workflow (`.github/workflows/release.yml`) builds wenget for the following platforms:
 
 **Linux (GNU):**
 - `x86_64-unknown-linux-gnu` - 64-bit Intel/AMD

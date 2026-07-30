@@ -1,12 +1,12 @@
-# Wenget - Wen Package Manager
+# wenget - Wen Package Manager
 
-[![Version](https://img.shields.io/badge/version-3.8.4-blue.svg)](https://github.com/superyngo/Wenget/releases)
+[![Version](https://img.shields.io/badge/version-3.8.4-blue.svg)](https://github.com/superyngo/wenget/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/superyngo/Wenget)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/superyngo/wenget)
 
 A cross-platform package manager for GitHub binaries, written in Rust.
 
-Wenget simplifies the installation and management of command-line tools and applications distributed through GitHub Releases. It automatically detects your platform, downloads the appropriate binaries, and manages them in an organized directory structure.
+wenget simplifies the installation and management of command-line tools and applications distributed through GitHub Releases. It automatically detects your platform, downloads the appropriate binaries, and manages them in an organized directory structure.
 
 ## Features
 
@@ -38,12 +38,12 @@ wenget init
 
 #### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/superyngo/Wenget/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/superyngo/wenget/main/install.ps1 | iex
 ```
 
 #### Linux/macOS (Bash)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/superyngo/Wenget/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/superyngo/wenget/main/install.sh | bash
 ```
 
 ### System-Level Installation
@@ -63,13 +63,13 @@ The install scripts automatically detect elevated privileges and switch to syste
 
 **Linux/macOS (as root):**
 ```bash
-sudo curl -fsSL https://raw.githubusercontent.com/superyngo/Wenget/main/install.sh | sudo bash
+sudo curl -fsSL https://raw.githubusercontent.com/superyngo/wenget/main/install.sh | sudo bash
 ```
 
 **Windows (as Administrator):**
 ```powershell
 # Run PowerShell as Administrator, then:
-irm https://raw.githubusercontent.com/superyngo/Wenget/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/superyngo/wenget/main/install.ps1 | iex
 ```
 
 > **⚠️ Important Notice for Existing Users (v0.2.x → v0.3.0)**
@@ -88,11 +88,11 @@ irm https://raw.githubusercontent.com/superyngo/Wenget/main/install.ps1 | iex
 
 ### Method 3: Manual Installation
 
-Download the latest release from [GitHub Releases](https://github.com/superyngo/Wenget/releases) and place it in your PATH, or build from source:
+Download the latest release from [GitHub Releases](https://github.com/superyngo/wenget/releases) and place it in your PATH, or build from source:
 
 ```bash
-git clone https://github.com/superyngo/Wenget.git
-cd Wenget
+git clone https://github.com/superyngo/wenget.git
+cd wenget
 cargo build --release
 ```
 
@@ -101,11 +101,11 @@ The binary will be at `target/release/wenget` (or `wenget.exe` on Windows).
 ## Quick Start
 
 ```bash
-# Initialize Wenget (done automatically with install scripts)
+# Initialize wenget (done automatically with install scripts)
 wenget init
 
-# Add the official Wenget bucket (if not added during init)
-wenget bucket add wenget https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json
+# Add the official wenget bucket (if not added during init)
+wenget bucket add wenget https://raw.githubusercontent.com/superyngo/wenget/refs/heads/main/bucket/manifest.json
 
 # Search for packages
 wenget search ripgrep
@@ -119,7 +119,7 @@ wenget list
 # Update installed packages
 wenget update
 
-# Upgrade Wenget itself
+# Upgrade wenget itself
 wenget update self
 
 # Delete a package
@@ -135,12 +135,12 @@ wenget delete ripgrep
   - `--no-suffix` - Don't append variant suffix to command name
 - `wenget info <name|url>` - Show package information
 - `wenget delete <name>...` - Uninstall packages
-  - `wenget del self` - Uninstall Wenget itself
+  - `wenget del self` - Uninstall wenget itself
 - `wenget list` - List installed packages (with source and description)
   - `wenget list --all` - Show all available packages from buckets
 - `wenget search <keyword>` - Search available packages
 - `wenget update [name]` - Update installed packages
-  - `wenget update self` - Upgrade Wenget itself to the latest version
+  - `wenget update self` - Upgrade wenget itself to the latest version
   - `wenget update [name] -p <target>` - Update for a specific platform (overrides `preferred_platform`)
 
 ### Bucket Management
@@ -184,7 +184,7 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 
 ### System
 
-- `wenget init` - Initialize Wenget directories and configuration
+- `wenget init` - Initialize wenget directories and configuration
 - `wenget config` - Edit user preferences (config.toml) with default editor
 - `wenget rename <old> [new]` - Rename an installed command
 - `wenget repair` - Repair corrupted configuration files
@@ -202,11 +202,11 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 ```
 ~/.wenget/
 ├── apps/                  # Installed applications
-│   ├── wenget/            # Wenget itself
+│   ├── wenget/            # wenget itself
 │   └── <package>/        # Each installed package
 ├── bin/                   # Symlinks/shims (added to PATH)
-│   ├── wenget.cmd         # Wenget shim (Windows)
-│   ├── wenget             # Wenget symlink (Unix)
+│   ├── wenget.cmd         # wenget shim (Windows)
+│   ├── wenget             # wenget symlink (Unix)
 │   └── <package>.cmd     # Package shims
 ├── cache/                 # Download and package cache
 │   ├── manifest-cache.json  # Cached package list
@@ -249,7 +249,7 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 
 ## Configuration
 
-Wenget supports user preferences via `~/.wenget/config.toml`. Edit with:
+wenget supports user preferences via `~/.wenget/config.toml`. Edit with:
 
 ```bash
 wenget config
@@ -285,17 +285,17 @@ Useful for custom PATH setups or when `~/.local/bin` cannot be added to PATH.
 
 ## Bucket System
 
-Buckets are collections of package and script manifests hosted online. The official Wenget bucket provides curated open-source tools.
+Buckets are collections of package and script manifests hosted online. The official wenget bucket provides curated open-source tools.
 
 ### Official Bucket
 
 ```bash
-wenget bucket add wenget https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json
+wenget bucket add wenget https://raw.githubusercontent.com/superyngo/wenget/refs/heads/main/bucket/manifest.json
 ```
 
 ### Creating Your Own Bucket
 
-You can create custom buckets to distribute your own package and script collections. See the [official Wenget bucket](https://github.com/superyngo/Wenget/tree/main/bucket) for a complete example.
+You can create custom buckets to distribute your own package and script collections. See the [official wenget bucket](https://github.com/superyngo/wenget/tree/main/bucket) for a complete example.
 
 #### Bucket Structure
 
@@ -374,9 +374,9 @@ wenget bucket add my-bucket https://raw.githubusercontent.com/username/my-bucket
 - GitHub Gists
 - CDN services
 
-#### Example: Official Wenget Bucket
+#### Example: Official wenget Bucket
 
-The official bucket is maintained at: https://github.com/superyngo/Wenget/tree/main/bucket
+The official bucket is maintained at: https://github.com/superyngo/wenget/tree/main/bucket
 
 It includes curated packages with:
 - Verified working binaries across platforms
@@ -387,8 +387,8 @@ It includes curated packages with:
 You can use it as a template for creating your own bucket:
 
 ```bash
-# Clone the Wenget repo and use its bucket directory as a template
-git clone https://github.com/superyngo/Wenget my-bucket-template
+# Clone the wenget repo and use its bucket directory as a template
+git clone https://github.com/superyngo/wenget my-bucket-template
 cd my-bucket-template/bucket
 # Copy manifest.json into your own repository and edit it with your packages
 ```
@@ -408,7 +408,7 @@ wenget add <package-name>
 
 ## Platform Support
 
-Wenget supports the following platforms:
+wenget supports the following platforms:
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
@@ -423,7 +423,7 @@ Wenget supports the following platforms:
 
 ## How It Works
 
-1. **Platform Detection**: Wenget automatically detects your OS and architecture
+1. **Platform Detection**: wenget automatically detects your OS and architecture
 2. **Package Resolution**: Searches buckets for the requested package
 3. **Binary Selection**: Identifies the appropriate binary from GitHub Releases
 4. **Download**: Downloads and caches the binary
@@ -432,7 +432,7 @@ Wenget supports the following platforms:
 
 ## GitHub API Rate Limits
 
-Wenget uses the GitHub API to fetch package information and download binaries. Be aware of GitHub's API rate limits:
+wenget uses the GitHub API to fetch package information and download binaries. Be aware of GitHub's API rate limits:
 
 ### Rate Limit Overview
 
@@ -441,7 +441,7 @@ Wenget uses the GitHub API to fetch package information and download binaries. B
 | Unauthenticated | 60 requests/hour | Limited package searches and updates |
 | Authenticated | 5,000 requests/hour | Sufficient for normal usage |
 
-### Impact on Wenget Operations
+### Impact on wenget Operations
 
 **Operations that consume API calls:**
 - `wenget add <url>` - 2 calls per URL (when installing from GitHub URL)
@@ -463,7 +463,7 @@ Wenget uses the GitHub API to fetch package information and download binaries. B
 3. **For heavy usage**: Consider authenticating with GitHub (future feature)
 4. **Rate limit exceeded?** Wait an hour or use buckets for cached package data
 
-The official Wenget bucket is updated regularly, so most users won't need to worry about rate limits when using bucket-based package management.
+The official wenget bucket is updated regularly, so most users won't need to worry about rate limits when using bucket-based package management.
 
 ## Examples
 
@@ -507,7 +507,7 @@ wenget delete tokei
 
 **⚠️ NO WARRANTIES OR GUARANTEES**
 
-Wenget is a package manager that facilitates downloading and installing applications from GitHub Releases. **Wenget DOES NOT:**
+wenget is a package manager that facilitates downloading and installing applications from GitHub Releases. **wenget DOES NOT:**
 
 - ❌ Verify the authenticity or safety of packages
 - ❌ Maintain or update the applications themselves
@@ -521,21 +521,21 @@ Wenget is a package manager that facilitates downloading and installing applicat
 - ✅ Reviewing the source repositories and releases
 - ✅ Accepting all risks associated with installing third-party software
 
-**By using Wenget, you acknowledge that you install packages at your own risk.**
+**By using wenget, you acknowledge that you install packages at your own risk.**
 
-Wenget acts only as a convenience tool for downloading and organizing binaries. The responsibility for verifying, securing, and using applications rests entirely with the user.
+wenget acts only as a convenience tool for downloading and organizing binaries. The responsibility for verifying, securing, and using applications rests entirely with the user.
 
 ## Uninstallation
 
-### Using Wenget
+### Using wenget
 ```bash
 wenget del self
 ```
 
 This will:
-1. Remove Wenget from PATH
-2. Delete all Wenget directories and installed packages
-3. Remove the Wenget executable itself
+1. Remove wenget from PATH
+2. Delete all wenget directories and installed packages
+3. Remove the wenget executable itself
 
 ### Manual Uninstallation
 
@@ -556,8 +556,8 @@ rm -rf ~/.wenget
 ### Building from Source
 
 ```bash
-git clone https://github.com/superyngo/Wenget.git
-cd Wenget
+git clone https://github.com/superyngo/wenget.git
+cd wenget
 cargo build --release
 ```
 
@@ -646,10 +646,10 @@ Inspired by:
 
 ## Links
 
-- **GitHub**: https://github.com/superyngo/Wenget
-- **Releases**: https://github.com/superyngo/Wenget/releases
-- **Issues**: https://github.com/superyngo/Wenget/issues
-- **Official Bucket**: https://github.com/superyngo/Wenget/tree/main/bucket
+- **GitHub**: https://github.com/superyngo/wenget
+- **Releases**: https://github.com/superyngo/wenget/releases
+- **Issues**: https://github.com/superyngo/wenget/issues
+- **Official Bucket**: https://github.com/superyngo/wenget/tree/main/bucket
 
 ## Changelog
 

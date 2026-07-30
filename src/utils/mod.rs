@@ -1,4 +1,4 @@
-//! Utility modules for WenPM
+//! Utility modules for wenget
 
 pub mod http;
 pub mod prompt;

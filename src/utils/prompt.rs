@@ -1,4 +1,4 @@
-//! User interaction utilities for Wenget
+//! User interaction utilities for wenget
 //!
 //! This module provides common prompts for user confirmation and input.
 

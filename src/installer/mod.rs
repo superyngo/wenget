@@ -1,4 +1,4 @@
-//! Installer module for WenPM
+//! Installer module for wenget
 
 pub mod extractor;
 pub mod input_detector;

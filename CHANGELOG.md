@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Wenget will be documented in this file.
+All notable changes to wenget will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - 2026-07-23: docs: add `docs/RESOURCE_FILTERING_RULES.md` — single source of truth cataloguing all package-analysis filtering rules (asset→platform bucketing gates and scoring, platform selection/fallback ordering, executable-candidate gates and scoring, variant extraction, command-name normalization, glob matching), each cited to its implementing `file:function`.
+
+### Changed
+
+- 2026-07-30: chore: renamed GitHub repo and project branding from `Wenget`/`WenPM` to lowercase `wenget` across README, CLAUDE.md, AGENTS.md, `.serena/project.yml`, Rust source doc comments, CLI output strings, and the HTTP `User-Agent` header (previously stale `WenPM/{version}`). Also fixed a pre-existing `wenpm` typo in `bucket del`/`bucket list` usage strings. GitHub repo moved from `superyngo/Wenget` to `superyngo/wenget` (case-insensitive redirects apply; existing binaries' hardcoded URLs keep working — verified `raw.githubusercontent.com` resolves case-insensitively). Historical CHANGELOG version entries are left unchanged.
 
 ## [3.8.4] - 2026-07-08
 

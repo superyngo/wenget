@@ -1,4 +1,4 @@
-//! Platform detection and binary matching for WenPM
+//! Platform detection and binary matching for wenget
 //!
 //! This module handles:
 //! - Current platform detection (OS + Architecture)

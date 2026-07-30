@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wenget Remote Installation Script for Linux/macOS
-# Usage: curl -fsSL https://raw.githubusercontent.com/superyngo/Wenget/main/install.sh | bash
+# wenget Remote Installation Script for Linux/macOS
+# Usage: curl -fsSL https://raw.githubusercontent.com/superyngo/wenget/main/install.sh | bash
 
 set -e
 
@@ -18,7 +18,7 @@ print_warning() { echo -e "${YELLOW}$1${NC}"; }
 
 # Configuration
 APP_NAME="wenget"
-REPO="superyngo/Wenget"
+REPO="superyngo/wenget"
 
 # Detect if running as root for system-level installation
 detect_install_mode() {
@@ -212,7 +212,7 @@ run_init() {
 
 # Installation function
 install_wenget() {
-    print_info "=== Wenget Installation Script ==="
+    print_info "=== wenget Installation Script ==="
     echo ""
 
     detect_install_mode
@@ -233,18 +233,18 @@ install_wenget() {
 
 # Uninstallation function
 uninstall_wenget() {
-    print_info "=== Wenget Uninstallation Script ==="
+    print_info "=== wenget Uninstallation Script ==="
     echo ""
 
     detect_install_mode
 
     # Check if wenget is available and run self-deletion
     if [ -x "$BIN_PATH" ]; then
-        print_info "Running Wenget self-deletion..."
+        print_info "Running wenget self-deletion..."
         if "$BIN_PATH" del self --yes; then
-            print_success "Wenget uninstalled successfully!"
+            print_success "wenget uninstalled successfully!"
         else
-            print_warning "Wenget self-deletion failed. Performing manual cleanup..."
+            print_warning "wenget self-deletion failed. Performing manual cleanup..."
 
             # Remove symlink
             if [ -L "$BIN_DIR/$APP_NAME" ]; then

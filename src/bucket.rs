@@ -1,6 +1,6 @@
-//! Bucket management for WenPM
+//! Bucket management for wenget
 //!
-//! Buckets are remote manifest sources that can be added to WenPM.
+//! Buckets are remote manifest sources that can be added to wenget.
 //! They use the same manifest format as local sources.
 
 use anyhow::{Context, Result};

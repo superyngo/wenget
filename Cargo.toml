@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["wen"]
 description = "A cross-platform package manager for GitHub binaries"
 license = "MIT"
-repository = "https://github.com/superyngo/Wenget"
+repository = "https://github.com/superyngo/wenget"
 keywords = ["package-manager", "github", "binary", "portable"]
 categories = ["command-line-utilities"]
 

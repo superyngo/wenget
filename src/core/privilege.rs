@@ -1,4 +1,4 @@
-//! Privilege detection module for Wenget
+//! Privilege detection module for wenget
 //!
 //! This module provides utilities to detect whether the current process
 //! is running with elevated privileges (root on Unix, Administrator on Windows).

@@ -1,4 +1,4 @@
-//! Configuration management for WenPM
+//! Configuration management for wenget
 //!
 //! This module handles:
 //! - Loading and saving installed.json
@@ -55,7 +55,7 @@ impl Config {
         &self.preferences
     }
 
-    /// Initialize WenPM (create directories if needed)
+    /// Initialize wenget (create directories if needed)
     pub fn init(&self) -> Result<()> {
         self.paths.init_dirs()?;
 
@@ -67,7 +67,7 @@ impl Config {
         Ok(())
     }
 
-    /// Check if WenPM is initialized
+    /// Check if wenget is initialized
     pub fn is_initialized(&self) -> bool {
         self.paths.is_initialized() && self.paths.installed_json().exists()
     }
@@ -121,7 +121,7 @@ impl Config {
                     "installed.json",
                     &action,
                     RepairSeverity::Critical,
-                    Some("Your installed package records were corrupted. Wenget cannot track previously installed packages. You may need to reinstall them."),
+                    Some("Your installed package records were corrupted. wenget cannot track previously installed packages. You may need to reinstall them."),
                 );
 
                 Ok(new_manifest)

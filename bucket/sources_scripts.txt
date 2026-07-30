@@ -1,4 +1,4 @@
-# Wenget Bucket - Script Sources
+# wenget Bucket - Script Sources
 #
 # Supports both Gist URLs and raw script URLs (one per line)
 # Comments start with #

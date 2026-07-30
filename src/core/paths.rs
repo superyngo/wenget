@@ -1,6 +1,6 @@
-//! Path management for Wenget
+//! Path management for wenget
 //!
-//! This module provides utilities for managing all Wenget-related paths:
+//! This module provides utilities for managing all wenget-related paths:
 //!
 //! ## User-level installation (~/.wenget/):
 //! - Root directory: ~/.wenget/
@@ -33,7 +33,7 @@ pub fn sanitize_path_component(name: &str) -> String {
     name.replace("::", "-")
 }
 
-/// Wenget paths manager
+/// wenget paths manager
 #[derive(Debug, Clone)]
 pub struct WenPaths {
     /// Root directory
@@ -226,7 +226,7 @@ impl WenPaths {
     /// - ~/.local/bin/ (or /usr/local/bin for system installs on Linux)
     /// - {root}/cache/downloads/
     pub fn init_dirs(&self) -> Result<()> {
-        std::fs::create_dir_all(&self.root).context("Failed to create Wenget root directory")?;
+        std::fs::create_dir_all(&self.root).context("Failed to create wenget root directory")?;
 
         std::fs::create_dir_all(self.apps_dir()).context("Failed to create apps directory")?;
 
@@ -253,7 +253,7 @@ impl WenPaths {
         Ok(())
     }
 
-    /// Check if Wenget is initialized (root directory exists)
+    /// Check if wenget is initialized (root directory exists)
     pub fn is_initialized(&self) -> bool {
         self.root.exists()
     }

@@ -327,7 +327,7 @@ fn show_removal_menu() -> Result<RemovalOptions> {
     let items = vec![
         "Apps & data (~/.wenget/)",
         "PATH configuration",
-        "Wenget binary",
+        "wenget binary",
     ];
 
     let defaults = vec![true, true, true];
@@ -346,9 +346,9 @@ fn show_removal_menu() -> Result<RemovalOptions> {
     })
 }
 
-/// Delete Wenget itself (complete uninstallation)
+/// Delete wenget itself (complete uninstallation)
 fn delete_self(yes: bool) -> Result<()> {
-    println!("{}", "Wenget Self-Deletion".bold().red());
+    println!("{}", "wenget Self-Deletion".bold().red());
     println!("{}", "═".repeat(60));
     println!();
 
@@ -382,7 +382,7 @@ fn delete_self(yes: bool) -> Result<()> {
 
     if options.remove_data {
         println!(
-            "  {} All Wenget directories and files:",
+            "  {} All wenget directories and files:",
             format!("{}.", step_num).bold()
         );
         println!("     {}", paths.root().display());
@@ -392,7 +392,7 @@ fn delete_self(yes: bool) -> Result<()> {
 
     if options.remove_path {
         println!(
-            "  {} Wenget from PATH environment variable",
+            "  {} wenget from PATH environment variable",
             format!("{}.", step_num).bold()
         );
         println!();
@@ -439,10 +439,10 @@ fn delete_self(yes: bool) -> Result<()> {
         step_num += 1;
     }
 
-    // Step: Delete Wenget directories (if selected)
+    // Step: Delete wenget directories (if selected)
     if options.remove_data {
         println!(
-            "{} Deleting Wenget directories...",
+            "{} Deleting wenget directories...",
             format!("{}.", step_num).bold()
         );
         if exe_in_wenget && options.remove_binary {
@@ -475,15 +475,15 @@ fn delete_self(yes: bool) -> Result<()> {
     println!();
     println!("{}", "═".repeat(60));
     println!();
-    println!("{}", "Wenget uninstallation completed.".green().bold());
+    println!("{}", "wenget uninstallation completed.".green().bold());
     println!();
-    println!("{}", "Thank you for using Wenget!".cyan());
+    println!("{}", "Thank you for using wenget!".cyan());
     println!();
 
     Ok(())
 }
 
-/// Remove Wenget bin directory from PATH
+/// Remove wenget bin directory from PATH
 fn remove_from_path(bin_dir: &Path) -> Result<()> {
     let bin_dir_str = bin_dir.to_string_lossy();
 
@@ -556,18 +556,18 @@ fn remove_from_path_unix(bin_dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Remove Wenget PATH entry from a shell configuration file
+/// Remove wenget PATH entry from a shell configuration file
 #[cfg(not(windows))]
 fn remove_from_shell_config(config_path: &Path, bin_dir: &str) -> Result<()> {
     let content = fs::read_to_string(config_path)
         .with_context(|| format!("Failed to read {}", config_path.display()))?;
 
-    // Remove lines containing the Wenget PATH entry
+    // Remove lines containing the wenget PATH entry
     let new_content: String = content
         .lines()
         .filter(|line| {
-            // Skip lines that contain the Wenget bin directory or Wenget comment
-            !line.contains(bin_dir) && !line.contains("# Wenget")
+            // Skip lines that contain the wenget bin directory or wenget comment
+            !line.contains(bin_dir) && !line.contains("# wenget")
         })
         .collect::<Vec<_>>()
         .join("\n");

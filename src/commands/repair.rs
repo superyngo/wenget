@@ -1,4 +1,4 @@
-//! Repair command for Wenget
+//! Repair command for wenget
 //!
 //! Checks and repairs corrupted configuration files.
 
@@ -12,7 +12,7 @@ use colored::Colorize;
 
 /// Run the repair command
 pub fn run(force: bool) -> Result<()> {
-    println!("{}", "Checking Wenget configuration files...".cyan());
+    println!("{}", "Checking wenget configuration files...".cyan());
     println!();
 
     let config = Config::new()?;

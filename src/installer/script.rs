@@ -1,4 +1,4 @@
-//! Script installation module for Wenget
+//! Script installation module for wenget
 //!
 //! This module handles:
 //! - Script type detection (by extension and shebang)

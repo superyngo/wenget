@@ -1,4 +1,4 @@
-//! Downloader module for WenPM
+//! Downloader module for wenget
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -11,7 +11,7 @@ fn shared_client() -> &'static reqwest::blocking::Client {
     static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::blocking::Client::builder()
-            .user_agent(format!("WenPM/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("Failed to create HTTP client")
     })

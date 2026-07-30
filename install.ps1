@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
-# Wenget Remote Installation Script for Windows
-# Usage: irm https://raw.githubusercontent.com/superyngo/Wenget/main/install.ps1 | iex
+# wenget Remote Installation Script for Windows
+# Usage: irm https://raw.githubusercontent.com/superyngo/wenget/main/install.ps1 | iex
 
 param(
     [switch]$Uninstall
@@ -16,7 +16,7 @@ function Write-Warning { Write-Host $args -ForegroundColor Yellow }
 
 # Configuration
 $APP_NAME = "wenget"
-$REPO = "superyngo/Wenget"
+$REPO = "superyngo/wenget"
 
 # Detect if running as Administrator for system-level installation
 function Get-InstallMode {
@@ -93,8 +93,8 @@ function New-Shim {
     Write-Success "Shim created: $shimPath -> $BIN_PATH"
 }
 
-function Install-Wenget {
-    Write-Info "=== Wenget Installation Script ==="
+function Install-wenget {
+    Write-Info "=== wenget Installation Script ==="
     Write-Info ""
 
     # Detect install mode first
@@ -173,8 +173,8 @@ function Install-Wenget {
     Write-Warning "Note: You may need to restart your terminal for PATH changes to take effect."
 }
 
-function Uninstall-Wenget {
-    Write-Info "=== Wenget Uninstallation Script ==="
+function Uninstall-wenget {
+    Write-Info "=== wenget Uninstallation Script ==="
     Write-Info ""
 
     # Detect install mode first
@@ -182,12 +182,12 @@ function Uninstall-Wenget {
 
     # Check if wenget is available and run self-deletion
     if (Test-Path $BIN_PATH) {
-        Write-Info "Running Wenget self-deletion..."
+        Write-Info "Running wenget self-deletion..."
         try {
             & $BIN_PATH del self --yes
-            Write-Success "Wenget uninstalled successfully!"
+            Write-Success "wenget uninstalled successfully!"
         } catch {
-            Write-Warning "Wenget self-deletion failed. Performing manual cleanup..."
+            Write-Warning "wenget self-deletion failed. Performing manual cleanup..."
 
             # Remove shim
             $shimPath = "$BIN_DIR\$APP_NAME.cmd"
@@ -229,7 +229,7 @@ function Uninstall-Wenget {
 
 # Main
 if ($Uninstall) {
-    Uninstall-Wenget
+    Uninstall-wenget
 } else {
-    Install-Wenget
+    Install-wenget
 }

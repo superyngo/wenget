@@ -1,4 +1,4 @@
-//! Manifest cache management for WenPM
+//! Manifest cache management for wenget
 //!
 //! The cache fetches and merges bucket sources into a unified view.
 //! This reduces GitHub API calls and improves performance.

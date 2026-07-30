@@ -58,7 +58,7 @@ pub fn run(cmd: BucketCommand) -> Result<()> {
 fn run_add(name: String, url: String) -> Result<()> {
     let config = Config::new()?;
 
-    // Ensure WenPM is initialized
+    // Ensure wenget is initialized
     if !config.is_initialized() {
         config.init()?;
     }
@@ -111,7 +111,7 @@ fn run_del(names: Vec<String>) -> Result<()> {
 
     if names.is_empty() {
         println!("{}", "No bucket names provided".yellow());
-        println!("Usage: wenpm bucket del <name>...");
+        println!("Usage: wenget bucket del <name>...");
         return Ok(());
     }
 
@@ -166,7 +166,7 @@ fn run_list() -> Result<()> {
     if bucket_config.buckets.is_empty() {
         println!("{}", "No buckets configured".yellow());
         println!();
-        println!("Add a bucket with: wenpm bucket add <name> <url>");
+        println!("Add a bucket with: wenget bucket add <name> <url>");
         return Ok(());
     }
 
@@ -775,7 +775,7 @@ fn run_create(
     );
     println!(
         "{}",
-        "║           Wenget Bucket Manifest Generator                 ║"
+        "║           wenget Bucket Manifest Generator                 ║"
             .bold()
             .cyan()
     );

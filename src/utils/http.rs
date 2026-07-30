@@ -1,4 +1,4 @@
-//! HTTP client utilities for WenPM
+//! HTTP client utilities for wenget
 
 use anyhow::{Context, Result};
 use reqwest::blocking::Client;
@@ -31,7 +31,7 @@ impl HttpClient {
     /// Create a new HTTP client with optional token and custom timeout
     pub fn with_options(token: Option<String>, timeout: Duration) -> Result<Self> {
         let client = Client::builder()
-            .user_agent(format!("WenPM/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
             .timeout(timeout)
             .build()
             .context("Failed to create HTTP client")?;

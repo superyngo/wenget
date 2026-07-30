@@ -68,14 +68,14 @@ impl Preferences {
             })?;
         }
 
-        let template = r#"# Wenget Configuration File
+        let template = r#"# wenget Configuration File
 # Edit with: wenget config
 #
-# This file allows you to customize Wenget's behavior with persistent preferences.
+# This file allows you to customize wenget's behavior with persistent preferences.
 
 # Preferred platform (overrides automatic detection)
 #
-# When set, Wenget will prefer binaries for this platform instead of auto-detecting.
+# When set, wenget will prefer binaries for this platform instead of auto-detecting.
 # Useful for:
 # - Forcing musl builds on glibc systems (smaller, statically linked)
 # - Testing cross-platform compatibility
@@ -185,7 +185,7 @@ mod tests {
         assert!(config_path.exists());
 
         let content = fs::read_to_string(&config_path).unwrap();
-        assert!(content.contains("Wenget Configuration File"));
+        assert!(content.contains("wenget Configuration File"));
         assert!(content.contains("preferred_platform"));
         assert!(content.contains("custom_bin_path"));
     }

@@ -1,4 +1,4 @@
-//! Windows Registry operations for Wenget
+//! Windows Registry operations for wenget
 //!
 //! This module provides utilities for modifying the Windows system PATH
 //! when running with Administrator privileges.

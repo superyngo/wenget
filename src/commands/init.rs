@@ -1,4 +1,4 @@
-//! Initialize Wenget
+//! Initialize wenget
 
 use crate::bucket::Bucket;
 use crate::core::is_elevated;
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// Default wenget bucket name and URL
 const WENGET_BUCKET_NAME: &str = "wenget";
 const WENGET_BUCKET_URL: &str =
-    "https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json";
+    "https://raw.githubusercontent.com/superyngo/wenget/refs/heads/main/bucket/manifest.json";
 
 #[cfg(windows)]
 use std::path::Path;
@@ -40,7 +40,7 @@ impl PlannedChanges {
     }
 
     fn display(&self) {
-        println!("{}", "Wenget will make the following changes:".bold());
+        println!("{}", "wenget will make the following changes:".bold());
         println!();
 
         for dir in &self.create_dirs {
@@ -209,13 +209,13 @@ fn prompt_confirm_changes(changes: &PlannedChanges) -> Result<bool> {
     crate::utils::confirm("Proceed?")
 }
 
-/// Initialize Wenget (create directories and manifests)
+/// Initialize wenget (create directories and manifests)
 pub fn run(yes: bool) -> Result<()> {
     // Show installation mode
     if is_elevated() {
         println!(
             "{}",
-            "Initializing Wenget (system-level installation)...".cyan()
+            "Initializing wenget (system-level installation)...".cyan()
         );
         #[cfg(unix)]
         {
@@ -232,7 +232,7 @@ pub fn run(yes: bool) -> Result<()> {
             );
         }
     } else {
-        println!("{}", "Initializing Wenget...".cyan());
+        println!("{}", "Initializing wenget...".cyan());
         let config = Config::new()?;
         println!("  Apps: {}", config.paths().apps_dir().display());
         println!(
@@ -245,7 +245,7 @@ pub fn run(yes: bool) -> Result<()> {
     let config = Config::new()?;
 
     if config.is_initialized() {
-        println!("{}", "✓ Wenget is already initialized".green());
+        println!("{}", "✓ wenget is already initialized".green());
         println!("  Root: {}", config.paths().root().display());
         println!();
 
@@ -254,12 +254,12 @@ pub fn run(yes: bool) -> Result<()> {
 
         if changes.is_empty() {
             // Everything is already set up
-            println!("{}", "✓ Wenget shim is in bin directory".green());
+            println!("{}", "✓ wenget shim is in bin directory".green());
             if is_in_path(config.paths().bin_dir())? {
-                println!("{}", "✓ Wenget bin directory is in PATH".green());
+                println!("{}", "✓ wenget bin directory is in PATH".green());
             }
             if has_wenget_bucket(&config)? {
-                println!("{}", "✓ Wenget bucket is configured".green());
+                println!("{}", "✓ wenget bucket is configured".green());
             }
             return Ok(());
         }
@@ -306,7 +306,7 @@ pub fn run(yes: bool) -> Result<()> {
     // Perform initialization
     config.init()?;
 
-    println!("{}", "✓ Wenget initialized successfully!".green());
+    println!("{}", "✓ wenget initialized successfully!".green());
     println!();
     println!("Created directories:");
     println!("  Root:      {}", config.paths().root().display());
@@ -434,7 +434,7 @@ fn setup_wenget_executable(config: &Config) -> Result<()> {
     Ok(())
 }
 
-/// Set up PATH for Wenget bin directory
+/// Set up PATH for wenget bin directory
 fn setup_path(config: &Config) -> Result<()> {
     let bin_dir = config.paths().bin_dir();
 
@@ -482,7 +482,7 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
         // For system installs, use registry to modify system PATH
         match add_to_system_path(Path::new(bin_dir)) {
             Ok(true) => {
-                println!("{}", "✓ Added Wenget bin directory to system PATH".green());
+                println!("{}", "✓ Added wenget bin directory to system PATH".green());
                 println!();
                 println!("{}", "IMPORTANT:".yellow().bold());
                 println!("  Please restart your terminal or command prompt");
@@ -491,7 +491,7 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
             Ok(false) => {
                 println!(
                     "{}",
-                    "✓ Wenget bin directory is already in system PATH".green()
+                    "✓ wenget bin directory is already in system PATH".green()
                 );
             }
             Err(e) => {
@@ -527,13 +527,13 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
     let result = String::from_utf8_lossy(&output.stdout);
 
     if result.contains("Added") {
-        println!("{}", "✓ Added Wenget bin directory to user PATH".green());
+        println!("{}", "✓ Added wenget bin directory to user PATH".green());
         println!();
         println!("{}", "IMPORTANT:".yellow().bold());
         println!("  Please restart your terminal or command prompt");
         println!("  for the PATH changes to take effect.");
     } else if result.contains("Already exists") {
-        println!("{}", "✓ Wenget bin directory is already in PATH".green());
+        println!("{}", "✓ wenget bin directory is already in PATH".green());
     } else if !output.status.success() {
         println!("{}", "⚠ Failed to automatically update PATH".yellow());
         println!();
@@ -560,7 +560,7 @@ fn setup_path_unix(bin_dir: &str) -> Result<()> {
         return Ok(());
     }
 
-    let export_line = format!("\n# Wenget\nexport PATH=\"{}:$PATH\"\n", bin_dir);
+    let export_line = format!("\n# wenget\nexport PATH=\"{}:$PATH\"\n", bin_dir);
 
     let mut updated_files = Vec::new();
     let mut skipped_files = Vec::new();
@@ -601,7 +601,7 @@ fn setup_path_unix(bin_dir: &str) -> Result<()> {
     }
 
     if !skipped_files.is_empty() {
-        println!("{}", "✓ Wenget is already configured in:".green());
+        println!("{}", "✓ wenget is already configured in:".green());
         for path in &skipped_files {
             println!("  • {}", path.display());
         }

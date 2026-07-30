@@ -1,4 +1,4 @@
-//! Command implementations for WenPM
+//! Command implementations for wenget
 
 pub mod add;
 pub mod bucket;

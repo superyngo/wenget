@@ -1,4 +1,4 @@
-//! Configuration file repair utilities for WenPM
+//! Configuration file repair utilities for wenget
 //!
 //! This module handles intelligent repair/rebuild of corrupted config files:
 //! - installed.json: Critical file, backup before repair

@@ -1,4 +1,4 @@
-//! Manifest data structures for Wenget
+//! Manifest data structures for wenget
 //!
 //! This module defines the core data structures for package metadata:
 //! - `Package`: Individual package information

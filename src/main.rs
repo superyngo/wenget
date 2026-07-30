@@ -1,4 +1,4 @@
-//! Wenget - A cross-platform package manager for GitHub binaries
+//! wenget - A cross-platform package manager for GitHub binaries
 
 mod bucket;
 mod cache;

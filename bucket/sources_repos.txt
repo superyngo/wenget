@@ -1,4 +1,4 @@
-# Wenget Bucket - Package Sources
+# wenget Bucket - Package Sources
 #
 # List GitHub repository URLs (one per line)
 # Comments start with #

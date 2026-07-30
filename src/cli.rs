@@ -1,4 +1,4 @@
-//! CLI argument parsing for Wenget
+//! CLI argument parsing for wenget
 
 use clap::{Parser, Subcommand};
 
@@ -124,7 +124,7 @@ pub enum Commands {
         variant: Option<String>,
     },
 
-    /// Initialize Wenget (create directories and set up PATH)
+    /// Initialize wenget (create directories and set up PATH)
     Init {
         /// Skip confirmation prompts
         #[arg(short = 'y', long)]

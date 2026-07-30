@@ -1,4 +1,4 @@
-//! Core modules for WenPM
+//! Core modules for wenget
 
 pub mod config;
 pub mod manifest;

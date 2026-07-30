@@ -1,6 +1,6 @@
-# Wenget Bucket
+# wenget Bucket
 
-This directory contains the bucket configuration and manifest for the default Wenget package repository.
+This directory contains the bucket configuration and manifest for the default wenget package repository.
 
 ## Files
 
@@ -21,7 +21,7 @@ The manifest is automatically generated and updated by GitHub Actions:
 ## Bucket URL
 
 ```
-https://raw.githubusercontent.com/superyngo/Wenget/refs/heads/main/bucket/manifest.json
+https://raw.githubusercontent.com/superyngo/wenget/refs/heads/main/bucket/manifest.json
 ```
 
 ## Adding Packages
