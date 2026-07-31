@@ -509,15 +509,44 @@ impl ParsedAsset {
         })
     }
 
+    /// Check whether `keyword` occurs in `filename` at a word boundary.
+    ///
+    /// A plain substring check (`str::contains`) lets short, generic OS
+    /// keywords like "mac" match inside an unrelated package name — e.g.
+    /// "komac-...-pc-windows-msvc.exe" contains "mac" inside "ko`mac`", which
+    /// used to misclassify Windows/Linux Komac builds as macOS before any
+    /// Windows/Linux keyword was ever checked. Requiring non-alphanumeric
+    /// (or string-boundary) characters on both sides of the match avoids
+    /// that false positive while still matching real tokens like
+    /// "pc-windows" or "unknown-linux-gnu".
+    fn contains_keyword(filename: &str, keyword: &str) -> bool {
+        if keyword.is_empty() {
+            return false;
+        }
+        let bytes = filename.as_bytes();
+        let mut search_from = 0;
+        while let Some(rel_pos) = filename[search_from..].find(keyword) {
+            let pos = search_from + rel_pos;
+            let end = pos + keyword.len();
+            let before_ok = pos == 0 || !bytes[pos - 1].is_ascii_alphanumeric();
+            let after_ok = end >= bytes.len() || !bytes[end].is_ascii_alphanumeric();
+            if before_ok && after_ok {
+                return true;
+            }
+            search_from = pos + 1;
+        }
+        false
+    }
+
     /// Detect OS from filename
     fn detect_os(filename: &str, ext: FileExtension) -> (Option<Os>, bool) {
-        // Check explicit OS keywords
-        // Note: Order matters! MacOS must be checked before Windows
-        // because "darwin" contains "win" as substring
+        // Check explicit OS keywords using word-boundary matching (see
+        // `contains_keyword`) so generic keywords such as "mac" don't match
+        // inside the package's own name (e.g. "komac").
         let all_os = [Os::MacOS, Os::FreeBSD, Os::Linux, Os::Windows];
         for os in all_os {
             for keyword in os.keywords() {
-                if filename.contains(keyword) {
+                if Self::contains_keyword(filename, keyword) {
                     return (Some(os), false);
                 }
             }
@@ -2052,6 +2081,105 @@ mod tests {
         assert!(
             selected.is_some(),
             "bare binary with x86_64 should match Linux x86_64"
+        );
+    }
+
+    #[test]
+    fn test_package_name_substring_does_not_force_os() {
+        // Regression test: "komac" contains the generic macOS keyword "mac".
+        // A plain substring check used to match "mac" before any Windows or
+        // Linux keyword was ever inspected, misclassifying every Komac
+        // Windows/Linux asset as macOS. See:
+        // https://github.com/russellbanks/Komac
+        let windows_exe = ParsedAsset::from_filename("komac-2.16.0-x86_64-pc-windows-msvc.exe");
+        assert_eq!(
+            windows_exe.os,
+            Some(Os::Windows),
+            "komac windows msvc .exe must not be classified as macOS"
+        );
+        assert_eq!(windows_exe.compiler, Some(Compiler::Msvc));
+
+        let linux_tar = ParsedAsset::from_filename("komac-2.16.0-aarch64-unknown-linux-gnu.tar.gz");
+        assert_eq!(
+            linux_tar.os,
+            Some(Os::Linux),
+            "komac linux gnu tarball must not be classified as macOS"
+        );
+        assert_eq!(linux_tar.compiler, Some(Compiler::Gnu));
+
+        // Genuine macOS builds must still be detected correctly.
+        let macos_tar = ParsedAsset::from_filename("komac-2.16.0-aarch64-apple-darwin.tar.gz");
+        assert_eq!(macos_tar.os, Some(Os::MacOS));
+    }
+
+    #[test]
+    fn test_komac_release_assets_group_by_real_platform() {
+        // End-to-end regression using the actual Komac v2.16.0 asset names
+        // that were previously all bucketed under "macos-*".
+        let assets = vec![
+            BinaryAsset {
+                name: "komac-2.16.0-aarch64-apple-darwin.tar.gz".to_string(),
+                url: "https://example.com/komac-aarch64-apple-darwin.tar.gz".to_string(),
+                size: 4_120_000,
+            },
+            BinaryAsset {
+                name: "komac-2.16.0-x86_64-apple-darwin.tar.gz".to_string(),
+                url: "https://example.com/komac-x86_64-apple-darwin.tar.gz".to_string(),
+                size: 4_390_000,
+            },
+            BinaryAsset {
+                name: "komac-2.16.0-aarch64-unknown-linux-gnu.tar.gz".to_string(),
+                url: "https://example.com/komac-aarch64-unknown-linux-gnu.tar.gz".to_string(),
+                size: 6_690_000,
+            },
+            BinaryAsset {
+                name: "komac-2.16.0-x86_64-unknown-linux-gnu.tar.gz".to_string(),
+                url: "https://example.com/komac-x86_64-unknown-linux-gnu.tar.gz".to_string(),
+                size: 6_730_000,
+            },
+            BinaryAsset {
+                name: "komac-2.16.0-aarch64-pc-windows-msvc.exe".to_string(),
+                url: "https://example.com/komac-aarch64-pc-windows-msvc.exe".to_string(),
+                size: 10_920_000,
+            },
+            BinaryAsset {
+                name: "komac-2.16.0-x86_64-pc-windows-msvc.exe".to_string(),
+                url: "https://example.com/komac-x86_64-pc-windows-msvc.exe".to_string(),
+                size: 12_750_000,
+            },
+        ];
+
+        let platforms = BinarySelector::extract_platforms(&assets);
+        let keys: Vec<_> = platforms.keys().cloned().collect();
+
+        assert!(
+            !keys
+                .iter()
+                .any(|k| k.starts_with("macos") && k.contains("gnu")),
+            "Linux gnu builds must not be grouped under macos-*, got: {:?}",
+            keys
+        );
+        assert!(
+            !keys
+                .iter()
+                .any(|k| k.starts_with("macos") && k.contains("msvc")),
+            "Windows msvc builds must not be grouped under macos-*, got: {:?}",
+            keys
+        );
+        assert!(
+            keys.iter().any(|k| k.starts_with("linux")),
+            "Should have a linux-* platform group, got: {:?}",
+            keys
+        );
+        assert!(
+            keys.iter().any(|k| k.starts_with("windows")),
+            "Should have a windows-* platform group, got: {:?}",
+            keys
+        );
+        assert!(
+            keys.iter().any(|k| k.starts_with("macos")),
+            "Genuine apple-darwin builds should still group under macos-*, got: {:?}",
+            keys
         );
     }
 }

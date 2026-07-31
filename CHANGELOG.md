@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [3.8.5] - 2026-07-31
+
+### Fixed
+
+- fix(platform): `contains_keyword` now requires a word boundary when matching OS keywords in a release asset filename, instead of a plain substring check. Previously any short generic keyword (e.g. "mac" for macOS) could match inside an unrelated token — most visibly `komac-*-pc-windows-msvc.exe` / `komac-*-unknown-linux-gnu.tar.gz`, whose name contains "mac" inside "ko`mac`", causing every Windows/Linux Komac release asset to be misclassified as macOS. Genuine `-apple-darwin` assets are unaffected. Added regression tests covering both the unit-level keyword match and the end-to-end platform grouping for Komac's real v2.16.0 asset names.
+
 ### Added
 
 - 2026-07-23: docs: add `docs/RESOURCE_FILTERING_RULES.md` — single source of truth cataloguing all package-analysis filtering rules (asset→platform bucketing gates and scoring, platform selection/fallback ordering, executable-candidate gates and scoring, variant extraction, command-name normalization, glob matching), each cited to its implementing `file:function`.
@@ -1172,3 +1178,4 @@ Wenget is now production-ready for managing GitHub binaries across platforms.
 [3.8.2]: https://github.com/superyngo/wenget/compare/v3.8.1...v3.8.2
 [3.8.3]: https://github.com/superyngo/wenget/compare/v3.8.2...v3.8.3
 [3.8.4]: https://github.com/superyngo/wenget/compare/v3.8.3...v3.8.4
+[3.8.5]: https://github.com/superyngo/wenget/compare/v3.8.4...v3.8.5
