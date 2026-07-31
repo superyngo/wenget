@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- ci: `.github/workflows/publish-gate.yml` + `.github/workflows/publish-winget.yml` — decoupled, manually-approved CI publish to winget (`WenanLin.wenget`) via `vedantmgoyal9/winget-releaser@v2`, replacing the previously deleted/never-working `winget.yml.disabled` step and the dead commented-out dispatch block in `release.yml`. Gated behind a `publish-gate-winget` GitHub Environment (required reviewer) so a rejected/misconfigured winget submission can't block or fail the tagged build. Requires PR #410386 (`New package: WenanLin.wenget`) to merge in `microsoft/winget-pkgs` first — `winget-releaser` only updates existing packages, never creates new ones.
+
 ## [3.8.5] - 2026-07-31
 
 ### Fixed

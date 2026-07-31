@@ -1,0 +1,31 @@
+name: Publish Gate
+
+# Fires once per tagged release build, fans out to each store's publish-<store>.yml behind a
+# per-store manual approval. See publishing-platform-stores skill's Core Pattern / ADR-0002.
+on:
+  workflow_run:
+    workflows: ["Release Build"]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  gate-winget:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: publish-gate-winget
+    steps:
+      - name: Resolve release tag
+        id: tag
+        run: echo "tag=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch winget publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run publish-winget.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f tag="${{ steps.tag.outputs.tag }}" \
+            -f run_id="${{ github.event.workflow_run.id }}"

@@ -1,0 +1,31 @@
+name: Publish to winget
+
+# Dispatched by publish-gate.yml after manual approval, or run directly for a retry.
+# Requires the WenanLin.wenget package to already exist in microsoft/winget-pkgs —
+# winget-releaser only submits version updates, never the initial listing.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v3.8.6)"
+        required: true
+        type: string
+      run_id:
+        description: "Run ID of the Release Build workflow (unused — winget-releaser reads the public GitHub Release directly)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: WenanLin.wenget
+          token: ${{ secrets.WINGET_TOKEN }}
+          installers-regex: 'wenget-windows-.*\.exe$'
+          release-tag: ${{ inputs.tag }}
+          max-versions-to-keep: 5

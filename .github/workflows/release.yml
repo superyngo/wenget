@@ -374,18 +374,3 @@ jobs:
             git commit -m "chore: Update bucket binary to $VERSION"
             git push origin main
           fi
-
-      # - name: Trigger WinGet workflow
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       const tagName = '${{ github.ref_name }}';
-      #       await github.rest.actions.createWorkflowDispatch({
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         workflow_id: "winget.yml",
-      #         ref: context.ref,
-      #         inputs: {
-      #           tag_name: tagName
-      #         }
-      #       })
