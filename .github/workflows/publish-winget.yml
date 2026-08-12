@@ -22,6 +22,15 @@ jobs:
   publish:
     runs-on: windows-latest
     steps:
+      - name: Sync winget-pkgs fork with upstream
+        # Stale forks make winget-releaser (komac) fail branch creation with a
+        # misleading "does not have the correct permissions to execute CreateRef"
+        # error — see https://github.com/vedantmgoyal9/winget-releaser/issues/319.
+        # Fast-forwarding here keeps the fork's master in sync before every publish.
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: gh api -X POST /repos/superyngo/winget-pkgs/merge-upstream -f branch=master
+
       - uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: WenanLin.wenget

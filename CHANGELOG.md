@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- ci(winget): `publish-winget.yml` now syncs the `superyngo/winget-pkgs` fork with upstream (`gh api merge-upstream`) before invoking `winget-releaser`. A stale fork made `winget-releaser` (komac) fail branch creation with a misleading `does not have the correct permissions to execute CreateRef` error on the v3.8.6 publish run; syncing the fork and re-dispatching resolved it (see https://github.com/vedantmgoyal9/winget-releaser/issues/319).
+
 ## [3.8.6] - 2026-08-12
 
 ### Added
