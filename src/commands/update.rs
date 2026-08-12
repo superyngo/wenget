@@ -621,7 +621,7 @@ fn check_and_upgrade_self(yes: bool) -> Result<bool> {
                 .yellow()
                 .bold()
         );
-        return Ok(true); // Signal caller to exit
+        Ok(true) // Signal caller to exit
     }
 
     #[cfg(not(windows))]
