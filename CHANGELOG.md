@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [3.8.6] - 2026-08-12
+
 ### Added
 
 - ci: `.github/workflows/publish-gate.yml` + `.github/workflows/publish-winget.yml` — decoupled, manually-approved CI publish to winget (`WenanLin.wenget`) via `vedantmgoyal9/winget-releaser@v2`, replacing the previously deleted/never-working `winget.yml.disabled` step and the dead commented-out dispatch block in `release.yml`. Gated behind a `publish-gate-winget` GitHub Environment (required reviewer) so a rejected/misconfigured winget submission can't block or fail the tagged build. Requires PR #410386 (`New package: WenanLin.wenget`) to merge in `microsoft/winget-pkgs` first — `winget-releaser` only updates existing packages, never creates new ones.
@@ -15,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix(rename): Windows `rename` command's `read_shim_target` required each shim line to start with `@`, but generated shims (`installer::shim::create_shim`, `installer::init`) always split `@echo off` and the quoted target path across two separate lines — so the check never matched and every Windows rename of a real shim failed with `Failed to parse shim target from: ...`. The parser now skips the `@echo off` line and reads the quoted path from the following line regardless of leading `@`.
 - fix(rename): `wenget rename <repo>` silently picked a single arbitrary variant package when a repo (e.g. `confy`) was installed as multiple separately-tracked variant packages, each contributing one command — the interactive "select a command" prompt never appeared, and direct-mode `wenget rename <repo> <new>` could rename the wrong command without warning. `find_command_candidates` now aggregates commands across every variant package sharing the repo name: a single match resolves directly, multiple matches trigger the interactive selector (unless a new name was already given, in which case it errors and lists the ambiguous candidates instead of guessing).
+- fix: removed a `clippy::needless_return` in `check_and_upgrade_self`'s Windows branch, unblocking the `cargo clippy -- -D warnings` release gate.
 
 ## [3.8.5] - 2026-07-31
 
@@ -1188,3 +1191,4 @@ Wenget is now production-ready for managing GitHub binaries across platforms.
 [3.8.3]: https://github.com/superyngo/wenget/compare/v3.8.2...v3.8.3
 [3.8.4]: https://github.com/superyngo/wenget/compare/v3.8.3...v3.8.4
 [3.8.5]: https://github.com/superyngo/wenget/compare/v3.8.4...v3.8.5
+[3.8.6]: https://github.com/superyngo/wenget/compare/v3.8.5...v3.8.6
