@@ -18,21 +18,32 @@ pub fn run(old_name: String, new_name: Option<String>, config: &Config) -> Resul
     let paths = config.paths();
     let mut installed = config.load_installed()?;
 
-    // Find the package by command name or package key
-    let (pkg_key, old_cmd_name, package) = find_package_and_command(&installed, &old_name)?;
+    // Find every command that could match `old_name`, across all installed
+    // variants of a package (a repo name can resolve to several separately
+    // installed variant packages, each contributing its own command(s)).
+    let candidates = find_command_candidates(&installed, &old_name)?;
 
-    // If multiple commands exist and no new_name provided, enter interactive mode
-    let final_old_cmd = if package.get_command_names().len() > 1 && new_name.is_none() {
-        select_command_interactive(&package)?
+    let (pkg_key, old_cmd_name, _package) = if candidates.len() == 1 {
+        let c = candidates.into_iter().next().unwrap();
+        (c.pkg_key, c.cmd_name, c.package)
+    } else if new_name.is_some() {
+        // Direct mode requires an unambiguous target; a new name was given
+        // but `old_name` still resolves to several commands.
+        let names: Vec<String> = candidates.iter().map(|c| c.cmd_name.clone()).collect();
+        anyhow::bail!(
+            "'{}' matches multiple commands ({}); specify the exact command name to rename",
+            old_name,
+            names.join(", ")
+        );
     } else {
-        old_cmd_name
+        select_command_interactive(&candidates)?
     };
 
     // Get or prompt for new name
     let final_new_name = if let Some(new_name) = new_name {
         new_name
     } else {
-        prompt_for_new_name(&final_old_cmd)?
+        prompt_for_new_name(&old_cmd_name)?
     };
 
     // Validate new name doesn't conflict
@@ -41,7 +52,7 @@ pub fn run(old_name: String, new_name: Option<String>, config: &Config) -> Resul
     println!(
         "{} Renaming command: {} → {}",
         "ℹ".cyan(),
-        final_old_cmd.yellow(),
+        old_cmd_name.yellow(),
         final_new_name.green()
     );
 
@@ -50,7 +61,7 @@ pub fn run(old_name: String, new_name: Option<String>, config: &Config) -> Resul
         paths,
         &mut installed,
         &pkg_key,
-        &final_old_cmd,
+        &old_cmd_name,
         &final_new_name,
     )?;
 
@@ -67,37 +78,72 @@ pub fn run(old_name: String, new_name: Option<String>, config: &Config) -> Resul
     Ok(())
 }
 
-/// Find package by command name or package key
+/// A command that could be the rename target, together with the installed
+/// package (variant) it belongs to.
+struct CommandCandidate {
+    pkg_key: String,
+    cmd_name: String,
+    package: InstalledPackage,
+}
+
+/// Find every command matching `name`.
 ///
-/// Returns (package_key, command_name, package_ref)
-fn find_package_and_command(
+/// Resolution order:
+/// 1. Exact package key (e.g. `confy-desktop-64`): every command of that package.
+/// 2. Repo name (e.g. `confy`): every command of every installed variant
+///    sharing that repo name.
+/// 3. Exact command name (e.g. `confyd`): that single command.
+fn find_command_candidates(
     installed: &InstalledManifest,
     name: &str,
-) -> Result<(String, String, InstalledPackage)> {
-    // First, try direct package key lookup
+) -> Result<Vec<CommandCandidate>> {
+    // 1. Direct package key lookup
     if let Some(package) = installed.packages.get(name) {
-        if package.get_command_names().is_empty() {
+        let cmds = package.get_command_names();
+        if cmds.is_empty() {
             anyhow::bail!("Package '{}' has no commands", name);
         }
-        let cmd_name = package.get_command_names()[0].to_string();
-        return Ok((name.to_string(), cmd_name, package.clone()));
+        return Ok(cmds
+            .into_iter()
+            .map(|c| CommandCandidate {
+                pkg_key: name.to_string(),
+                cmd_name: c.to_string(),
+                package: package.clone(),
+            })
+            .collect());
     }
 
-    // Search by repo_name (to support matching variants by repo name)
-    for (key, package) in &installed.packages {
-        if package.repo_name == name {
-            if package.get_command_names().is_empty() {
-                anyhow::bail!("Package '{}' has no commands", name);
-            }
-            let cmd_name = package.get_command_names()[0].to_string();
-            return Ok((key.clone(), cmd_name, package.clone()));
+    // 2. Match by repo_name across all installed variants
+    let variants = installed.find_by_repo(name);
+    if !variants.is_empty() {
+        let candidates: Vec<CommandCandidate> = variants
+            .into_iter()
+            .flat_map(|(key, package)| {
+                package
+                    .get_command_names()
+                    .into_iter()
+                    .map(|c| CommandCandidate {
+                        pkg_key: key.clone(),
+                        cmd_name: c.to_string(),
+                        package: package.clone(),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if candidates.is_empty() {
+            anyhow::bail!("Package '{}' has no commands", name);
         }
+        return Ok(candidates);
     }
 
-    // Search by command name
+    // 3. Match by exact command name
     for (key, package) in &installed.packages {
         if package.get_command_names().contains(&name) {
-            return Ok((key.clone(), name.to_string(), package.clone()));
+            return Ok(vec![CommandCandidate {
+                pkg_key: key.clone(),
+                cmd_name: name.to_string(),
+                package: package.clone(),
+            }]);
         }
     }
 
@@ -107,23 +153,33 @@ fn find_package_and_command(
     )
 }
 
-/// Interactively select a command when package has multiple
-fn select_command_interactive(package: &InstalledPackage) -> Result<String> {
-    println!("{} Package has multiple commands:", "ℹ".cyan());
+/// Interactively select a command when multiple candidates match
+fn select_command_interactive(
+    candidates: &[CommandCandidate],
+) -> Result<(String, String, InstalledPackage)> {
+    println!("{} Multiple commands found:", "ℹ".cyan());
 
-    let cmd_names: Vec<String> = package
-        .get_command_names()
+    let items: Vec<String> = candidates
         .iter()
-        .map(|s| s.to_string())
+        .map(|c| match &c.package.variant {
+            Some(variant) => format!("{} (variant: {})", c.cmd_name, variant),
+            None => c.cmd_name.clone(),
+        })
         .collect();
+
     let selection = Select::new()
         .with_prompt("Select command to rename")
-        .items(&cmd_names)
+        .items(&items)
         .default(0)
         .interact()
         .context("Failed to get user selection")?;
 
-    Ok(cmd_names[selection].clone())
+    let chosen = &candidates[selection];
+    Ok((
+        chosen.pkg_key.clone(),
+        chosen.cmd_name.clone(),
+        chosen.package.clone(),
+    ))
 }
 
 /// Prompt user for new command name
@@ -272,25 +328,29 @@ fn read_shim_target(shim_path: &Path) -> Result<std::path::PathBuf> {
     let content = fs::read_to_string(shim_path)
         .with_context(|| format!("Failed to read shim file: {}", shim_path.display()))?;
 
-    // Parse the shim to extract the target binary path
-    // Shim format: @"%~dp0\..\path\to\binary" %*
+    // Parse the shim to extract the target binary path.
+    // Shims are generated (see installer::shim / installer::init) as two lines:
+    //   @echo off
+    //   "%~dp0relative\path\to\binary.exe" %*
+    // (or an absolute path instead of %~dp0). The quoted path is not on the
+    // same line as "@echo off", so skip that line rather than requiring '@'.
     for line in content.lines() {
-        if line.starts_with('@') && line.contains('"') {
-            // Extract path between quotes
-            if let Some(start) = line.find('"') {
-                if let Some(end) = line[start + 1..].find('"') {
-                    let path_str = &line[start + 1..start + 1 + end];
-                    // Resolve %~dp0 (directory of the shim)
-                    let resolved = if path_str.contains("%~dp0") {
-                        let shim_dir =
-                            shim_path.parent().context("Shim has no parent directory")?;
-                        let relative = path_str.replace("%~dp0", "");
-                        shim_dir.join(relative)
-                    } else {
-                        std::path::PathBuf::from(path_str)
-                    };
-                    return Ok(resolved);
-                }
+        let trimmed = line.trim();
+        if trimmed.eq_ignore_ascii_case("@echo off") {
+            continue;
+        }
+        if let Some(start) = trimmed.find('"') {
+            if let Some(end) = trimmed[start + 1..].find('"') {
+                let path_str = &trimmed[start + 1..start + 1 + end];
+                // Resolve %~dp0 (directory of the shim)
+                let resolved = if path_str.contains("%~dp0") {
+                    let shim_dir = shim_path.parent().context("Shim has no parent directory")?;
+                    let relative = path_str.replace("%~dp0", "");
+                    shim_dir.join(relative)
+                } else {
+                    std::path::PathBuf::from(path_str)
+                };
+                return Ok(resolved);
             }
         }
     }
@@ -386,5 +446,122 @@ mod tests {
 
         // Try to rename pkg1's cmd to "cmd2" which is already used
         assert!(validate_new_name(&manifest, "pkg1", "cmd2").is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_read_shim_target_relative() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let bin_dir = temp_dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+
+        // Matches the format produced by installer::shim::create_shim
+        let shim_path = bin_dir.join("confy-desktop-64.cmd");
+        std::fs::write(
+            &shim_path,
+            "@echo off\r\n\"%~dp0..\\apps\\confy\\confy-desktop.exe\" %*\r\n",
+        )
+        .unwrap();
+
+        let target = read_shim_target(&shim_path).unwrap();
+        assert_eq!(target, bin_dir.join("..\\apps\\confy\\confy-desktop.exe"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_read_shim_target_absolute() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let bin_dir = temp_dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+
+        // Matches the format produced by installer::init
+        let shim_path = bin_dir.join("foo.cmd");
+        std::fs::write(
+            &shim_path,
+            "@echo off\r\n\"C:\\Program Files\\wenget\\apps\\foo\\foo.exe\" %*\r\n",
+        )
+        .unwrap();
+
+        let target = read_shim_target(&shim_path).unwrap();
+        assert_eq!(
+            target,
+            std::path::PathBuf::from("C:\\Program Files\\wenget\\apps\\foo\\foo.exe")
+        );
+    }
+
+    #[test]
+    fn test_find_command_candidates_multiple_variants() {
+        // Reproduces `wenget rn confy` when confy is installed as two
+        // separate variant packages (confy-64 -> confy-64, confy-desktop-64
+        // -> confyd), each contributing exactly one command of its own.
+        let mut manifest = InstalledManifest::new();
+
+        let mut exe_cli = HashMap::new();
+        exe_cli.insert("bin/confy-64".to_string(), "confy-64".to_string());
+        let pkg_cli = InstalledPackage {
+            repo_name: "confy".to_string(),
+            variant: Some("64".to_string()),
+            version: "0.19.1".to_string(),
+            platform: "windows-x86_64".to_string(),
+            installed_at: chrono::Utc::now(),
+            install_path: "C:\\apps\\confy-64".to_string(),
+            executables: exe_cli,
+            source: crate::core::manifest::PackageSource::Bucket {
+                name: "wenget".to_string(),
+            },
+            description: String::new(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: "confy-windows-x86_64.exe".to_string(),
+            parent_package: None,
+            download_url: None,
+        };
+        manifest.packages.insert("confy-64".to_string(), pkg_cli);
+
+        let mut exe_desktop = HashMap::new();
+        exe_desktop.insert("bin/confyd".to_string(), "confyd".to_string());
+        let pkg_desktop = InstalledPackage {
+            repo_name: "confy".to_string(),
+            variant: Some("desktop-64".to_string()),
+            version: "0.19.1".to_string(),
+            platform: "windows-x86_64".to_string(),
+            installed_at: chrono::Utc::now(),
+            install_path: "C:\\apps\\confy-desktop-64".to_string(),
+            executables: exe_desktop,
+            source: crate::core::manifest::PackageSource::Bucket {
+                name: "wenget".to_string(),
+            },
+            description: String::new(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: "confy-desktop-windows-x86_64.exe".to_string(),
+            parent_package: None,
+            download_url: None,
+        };
+        manifest
+            .packages
+            .insert("confy-desktop-64".to_string(), pkg_desktop);
+
+        // Repo-name lookup must surface commands from BOTH variant packages.
+        let candidates = find_command_candidates(&manifest, "confy").unwrap();
+        let mut cmd_names: Vec<&str> = candidates.iter().map(|c| c.cmd_name.as_str()).collect();
+        cmd_names.sort();
+        assert_eq!(cmd_names, vec!["confy-64", "confyd"]);
+
+        // Exact package key still resolves to just that variant's command(s).
+        let single = find_command_candidates(&manifest, "confy-desktop-64").unwrap();
+        assert_eq!(single.len(), 1);
+        assert_eq!(single[0].cmd_name, "confyd");
+
+        // Exact command name still resolves unambiguously.
+        let by_cmd = find_command_candidates(&manifest, "confy-64").unwrap();
+        // "confy-64" is both a package key and a command name here; package
+        // key match takes precedence and still yields exactly one command.
+        assert_eq!(by_cmd.len(), 1);
+        assert_eq!(by_cmd[0].cmd_name, "confy-64");
     }
 }
