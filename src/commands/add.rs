@@ -603,39 +603,52 @@ fn install_from_urls(
         match downloader::download_file(url, &download_path) {
             Ok(_) => {
                 println!("  {} Downloaded", "✓".green());
-                println!("{} {}...", "Installing".cyan(), filename);
 
-                match install_local_file(paths, &download_path, custom_name, Some(url.to_string()))
+                if let Err(e) =
+                    crate::core::checksum::verify_download(url, filename, &download_path)
                 {
-                    Ok(inst_pkg) => {
-                        // Use first command name as package name
-                        let command_names = inst_pkg.get_command_names();
-                        let name = match command_names.first() {
-                            Some(n) => n.to_string(),
-                            None => {
-                                println!(
-                                    "  {} No command names found in installed package",
-                                    "✗".red()
-                                );
-                                fail_count += 1;
-                                failed_urls.push(filename.to_string());
-                                continue;
-                            }
-                        };
-                        let display_names = inst_pkg.get_command_names().join(", ");
-                        installed.upsert_package(name.clone(), inst_pkg);
-                        println!(
-                            "  {} Installed successfully as {}",
-                            "✓".green(),
-                            display_names
-                        );
-                        success_count += 1;
-                        successful_urls.push(name);
-                    }
-                    Err(e) => {
-                        println!("  {} Failed to install {}: {}", "✗".red(), filename, e);
-                        fail_count += 1;
-                        failed_urls.push(filename.to_string());
+                    println!("  {} {}", "✗".red(), e);
+                    fail_count += 1;
+                    failed_urls.push(url.to_string());
+                } else {
+                    println!("{} {}...", "Installing".cyan(), filename);
+
+                    match install_local_file(
+                        paths,
+                        &download_path,
+                        custom_name,
+                        Some(url.to_string()),
+                    ) {
+                        Ok(inst_pkg) => {
+                            // Use first command name as package name
+                            let command_names = inst_pkg.get_command_names();
+                            let name = match command_names.first() {
+                                Some(n) => n.to_string(),
+                                None => {
+                                    println!(
+                                        "  {} No command names found in installed package",
+                                        "✗".red()
+                                    );
+                                    fail_count += 1;
+                                    failed_urls.push(filename.to_string());
+                                    continue;
+                                }
+                            };
+                            let display_names = inst_pkg.get_command_names().join(", ");
+                            installed.upsert_package(name.clone(), inst_pkg);
+                            println!(
+                                "  {} Installed successfully as {}",
+                                "✓".green(),
+                                display_names
+                            );
+                            success_count += 1;
+                            successful_urls.push(name);
+                        }
+                        Err(e) => {
+                            println!("  {} Failed to install {}: {}", "✗".red(), filename, e);
+                            fail_count += 1;
+                            failed_urls.push(filename.to_string());
+                        }
                     }
                 }
             }
@@ -1718,6 +1731,13 @@ fn install_package(
     let download_path = download_dir.join(filename);
 
     downloader::download_file(&binary.url, &download_path)?;
+
+    if let Err(e) =
+        crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)
+    {
+        fs::remove_file(&download_path).ok();
+        return Err(e);
+    }
 
     // Extract to app directory (use installed_key for directory name)
     let app_dir = paths.app_dir(installed_key);

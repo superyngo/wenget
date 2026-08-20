@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- feat(update): On Windows, `wenget update` now detects when wenget itself was installed via `winget` (executable path under `...\Microsoft\WinGet\Packages\...`) and skips the self-update replace step, instead printing `Run 'winget upgrade WenanLin.wenget' to update.` so winget's own version tracking doesn't get desynced by wenget silently swapping its binary.
+
 ### Fixed
 
 - ci(winget): `publish-winget.yml` now syncs the `superyngo/winget-pkgs` fork with upstream (`gh api merge-upstream`) before invoking `winget-releaser`. A stale fork made `winget-releaser` (komac) fail branch creation with a misleading `does not have the correct permissions to execute CreateRef` error on the v3.8.6 publish run; syncing the fork and re-dispatching resolved it (see https://github.com/vedantmgoyal9/winget-releaser/issues/319).
@@ -16,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - ci: `.github/workflows/publish-gate.yml` + `.github/workflows/publish-winget.yml` — decoupled, manually-approved CI publish to winget (`WenanLin.wenget`) via `vedantmgoyal9/winget-releaser@v2`, replacing the previously deleted/never-working `winget.yml.disabled` step and the dead commented-out dispatch block in `release.yml`. Gated behind a `publish-gate-winget` GitHub Environment (required reviewer) so a rejected/misconfigured winget submission can't block or fail the tagged build. Requires PR #410386 (`New package: WenanLin.wenget`) to merge in `microsoft/winget-pkgs` first — `winget-releaser` only updates existing packages, never creates new ones.
+- feat(core): SHA-256 checksum verification for downloaded release assets. Before extracting a freshly downloaded binary (in `add`, `add <url>`, and self-`update`), wenget probes up to three conventional checksum filenames next to the asset on GitHub Releases — `<asset>.sha256`, `checksums.txt`, `SHA256SUMS` — each with a 3s timeout. If one lists a hash for the asset, the download is verified against it: a mismatch deletes the downloaded file and aborts the install with no override (not even `--yes`). If nothing is published, or the probe fails at the network layer, the install proceeds unverified with a low-key status line distinguishing the two cases (`ℹ No checksum published` vs `⚠ Checksum lookup failed (network error)`). New `src/core/checksum.rs` module (`sha2` dependency added); `PlatformBinary.checksum` and manifest caching are untouched — lookups happen live, only for the exact binary chosen for install.
 
 ### Fixed
 

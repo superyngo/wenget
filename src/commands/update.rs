@@ -597,6 +597,22 @@ fn check_and_upgrade_self(yes: bool) -> Result<bool> {
         latest_version.green()
     );
 
+    #[cfg(windows)]
+    {
+        if let Ok(current_exe) = std::env::current_exe() {
+            if is_installed_via_winget(&current_exe) {
+                println!(
+                    "{}",
+                    "⚠  wenget was installed via winget. Run 'winget upgrade WenanLin.wenget' to update."
+                        .yellow()
+                        .bold()
+                );
+                println!();
+                return Ok(false);
+            }
+        }
+    }
+
     let should_update = if yes {
         true
     } else {
@@ -629,6 +645,20 @@ fn check_and_upgrade_self(yes: bool) -> Result<bool> {
         println!();
         Ok(false) // Continue with package updates on Unix
     }
+}
+
+/// Whether the running executable lives under WinGet's portable-package
+/// install directory (`...\Microsoft\WinGet\Packages\...`).
+///
+/// WinGet-managed installs should be updated via `winget upgrade`, not by
+/// wenget replacing its own binary — winget tracks its own installed-version
+/// state and a silent self-replace would desync it.
+#[cfg(windows)]
+fn is_installed_via_winget(exe_path: &std::path::Path) -> bool {
+    exe_path
+        .to_string_lossy()
+        .to_lowercase()
+        .contains(r"microsoft\winget\packages")
 }
 
 /// Whether a `preferred_platform` override targets the same OS and architecture
@@ -742,6 +772,13 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
 
     let download_path = temp_dir.join(filename);
     download_file(&binary.url, &download_path)?;
+
+    if let Err(e) =
+        crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)
+    {
+        fs::remove_file(&download_path).ok();
+        return Err(e);
+    }
 
     // Extract archive
     let extract_dir = temp_dir.join("extracted");
@@ -938,6 +975,24 @@ mod tests {
         assert!(!override_matches_host("x86_64-pc-windows-msvc", host));
         // Unparseable → unsafe.
         assert!(!override_matches_host("not-a-platform", host));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_is_installed_via_winget() {
+        assert!(is_installed_via_winget(std::path::Path::new(
+            r"C:\Users\wen\AppData\Local\Microsoft\WinGet\Packages\WenanLin.wenget_Microsoft.Winget.Source_8wekyb3d8bbwe\wenget.exe"
+        )));
+        // Case-insensitive
+        assert!(is_installed_via_winget(std::path::Path::new(
+            r"C:\Users\wen\AppData\Local\microsoft\winget\packages\foo\wenget.exe"
+        )));
+        assert!(!is_installed_via_winget(std::path::Path::new(
+            r"C:\Users\wen\.wenget\bin\wenget.exe"
+        )));
+        assert!(!is_installed_via_winget(std::path::Path::new(
+            r"C:\Program Files\wenget\wenget.exe"
+        )));
     }
 
     #[test]
