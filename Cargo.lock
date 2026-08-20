@@ -2297,7 +2297,7 @@ dependencies = [
 
 [[package]]
 name = "wenget"
-version = "3.8.6"
+version = "3.8.7"
 dependencies = [
  "anyhow",
  "bzip2 0.5.2",

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [3.8.7] - 2026-08-20
+
 ### Added
 
 - feat(update): On Windows, `wenget update` now detects when wenget itself was installed via `winget` (executable path under `...\Microsoft\WinGet\Packages\...`) and skips the self-update replace step, instead printing `Run 'winget upgrade WenanLin.wenget' to update.` so winget's own version tracking doesn't get desynced by wenget silently swapping its binary.
@@ -1201,3 +1203,4 @@ Wenget is now production-ready for managing GitHub binaries across platforms.
 [3.8.4]: https://github.com/superyngo/wenget/compare/v3.8.3...v3.8.4
 [3.8.5]: https://github.com/superyngo/wenget/compare/v3.8.4...v3.8.5
 [3.8.6]: https://github.com/superyngo/wenget/compare/v3.8.5...v3.8.6
+[3.8.7]: https://github.com/superyngo/wenget/compare/v3.8.6...v3.8.7
