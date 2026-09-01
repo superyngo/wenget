@@ -44,6 +44,7 @@ https://github.com/hadolint/hadolint
 https://github.com/stackrox/kube-linter
 https://github.com/regclient/regclient
 https://github.com/russellbanks/Komac
+https://github.com/microsoft/msstore-cli
 
 # === Remote ===
 https://github.com/Genymobile/scrcpy
