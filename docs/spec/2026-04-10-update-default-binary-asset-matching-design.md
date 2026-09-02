@@ -1,4 +1,5 @@
 # Update Default Binary: Asset-Name Template Matching
+Status: Shipped (2026-04-10)
 
 ## Problem
 

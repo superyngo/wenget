@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- docs: restructure `docs/` per wens-dev-principles (docs domain) — added `CONTEXT.md` root
+  index; split `docs/` into `reference/`, `adr/`, `spec/`, `plan/`, `debug/`, `audit/`; moved
+  `docs/RESOURCE_FILTERING_RULES.md` to `docs/reference/`; moved `docs/superpowers/specs|plans/*`
+  to `docs/spec/`/`docs/plan/` with `Status: Shipped (...)` lines added; added
+  `docs/reference/glossary.md`; each folder gained an indexing `README.md`; `AGENTS.md` now
+  points at `CONTEXT.md` (2026-09-02).
+
 ## [3.8.7] - 2026-08-20
 
 ### Added

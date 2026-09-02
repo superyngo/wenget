@@ -1,4 +1,5 @@
 # Update Command Behavior Redesign
+Status: Shipped (2026-04-10)
 
 ## Problem Statement
 

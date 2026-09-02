@@ -1,6 +1,7 @@
 # AGENTS.md
 
-Guidelines for AI coding agents working on this Rust codebase.
+Guidelines for AI coding agents working on this Rust codebase. See [`CONTEXT.md`](CONTEXT.md)
+for the documentation index (reference, ADRs, specs, plans).
 
 ## Build & Test Commands
 

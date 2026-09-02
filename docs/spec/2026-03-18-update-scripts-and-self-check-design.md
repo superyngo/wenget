@@ -1,4 +1,5 @@
 # Design: Update Scripts & Self-Check Integration
+Status: Shipped (2026-03-18)
 
 ## Problem
 

@@ -1,4 +1,5 @@
 # Delete Fix & installed.json Redesign
+Status: Shipped (2026-03-20)
 
 ## Problem Statement
 
