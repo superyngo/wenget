@@ -44,6 +44,19 @@ impl Config {
         Ok(Self { paths, preferences })
     }
 
+    /// Create a Config instance backed by an explicit paths manager
+    ///
+    /// Intended for tests: `Config::new()` resolves the real `~/.wenget/`, so
+    /// tests that call `init`/`save_installed` would otherwise overwrite the
+    /// developer's actual installed-package records.
+    #[cfg(test)]
+    pub fn with_paths(paths: WenPaths) -> Self {
+        Self {
+            paths,
+            preferences: Preferences::default(),
+        }
+    }
+
     /// Get the paths manager
     pub fn paths(&self) -> &WenPaths {
         &self.paths
@@ -293,34 +306,32 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[allow(dead_code)]
+    /// Build a Config rooted in a fresh temporary directory.
+    ///
+    /// The returned TempDir must stay alive for the duration of the test.
     fn create_test_config() -> (Config, TempDir) {
         let temp_dir = TempDir::new().unwrap();
-        let _paths = WenPaths::new().unwrap();
-
-        // For testing, we would need to override the paths
-        // This is a simplified version
-        let config = Config::new().unwrap();
+        let config = Config::with_paths(WenPaths::with_root(temp_dir.path().to_path_buf()));
         (config, temp_dir)
     }
 
     #[test]
     fn test_config_creation() {
-        let config = Config::new();
-        assert!(config.is_ok());
-    }
-
-    #[test]
-    fn test_init() {
-        let config = Config::new().unwrap();
-        let result = config.init();
-        assert!(result.is_ok());
+        let (config, _tmp) = create_test_config();
         assert!(config.paths().root().exists());
     }
 
     #[test]
+    fn test_init() {
+        let (config, _tmp) = create_test_config();
+        config.init().unwrap();
+        assert!(config.paths().root().exists());
+        assert!(config.paths().apps_dir().exists());
+    }
+
+    #[test]
     fn test_manifest_round_trip() {
-        let config = Config::new().unwrap();
+        let (config, tmp) = create_test_config();
         config.init().unwrap();
 
         let manifest = InstalledManifest::new();
@@ -328,5 +339,9 @@ mod tests {
 
         let loaded = config.load_installed().unwrap();
         assert_eq!(loaded.packages.len(), manifest.packages.len());
+
+        // The round trip must stay inside the temp root and never touch the
+        // developer's real ~/.wenget/installed.json.
+        assert!(config.paths().installed_json().starts_with(tmp.path()));
     }
 }

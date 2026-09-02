@@ -47,30 +47,46 @@ src/
 ├── main.rs              # Entry point, command dispatch
 ├── cli.rs               # clap argument definitions
 ├── bucket.rs            # Bucket config management
-├── cache.rs             # Manifest cache management
+├── cache.rs             # Manifest cache management (24h TTL)
 ├── package_resolver.rs  # Package name/URL resolution
 ├── commands/            # CLI command implementations
 │   ├── mod.rs
-│   ├── add.rs, delete.rs, update.rs, list.rs, ...
+│   ├── add.rs           # Install packages/scripts/local files/URLs
+│   ├── bucket.rs        # Bucket subcommands (add/remove/create)
+│   ├── config.rs        # Edit config.toml
+│   ├── delete.rs        # Uninstall + PATH/shim cleanup
+│   ├── info.rs          # Show package details
+│   ├── init.rs          # First-run setup, PATH configuration
+│   ├── list.rs          # List installed/available packages
+│   ├── rename.rs        # Rename installed commands
+│   ├── repair.rs        # Repair corrupted JSON state
+│   ├── search.rs        # Search buckets
+│   └── update.rs        # Update packages + self-update
 ├── core/                # Core data structures & utilities
+│   ├── checksum.rs      # SHA-256 asset verification
 │   ├── config.rs        # Config file management
 │   ├── manifest.rs      # Package/script manifest structs
-│   ├── platform.rs      # OS/arch detection & matching
 │   ├── paths.rs         # Directory path management
+│   ├── platform.rs      # OS/arch detection & matching
+│   ├── preferences.rs   # config.toml user preferences
 │   ├── privilege.rs     # Root/admin detection
-│   ├── repair.rs        # JSON file repair utilities
-│   └── registry.rs      # Windows registry PATH ops
+│   ├── registry.rs      # Windows registry PATH ops
+│   └── repair.rs        # JSON file repair utilities
 ├── providers/           # External data sources
-│   ├── github.rs        # GitHub API integration
-│   └── base.rs          # Provider trait
+│   ├── base.rs          # Provider trait
+│   └── github.rs        # GitHub API integration
 ├── installer/           # Binary/script installation
 │   ├── extractor.rs     # Archive extraction
+│   ├── input_detector.rs # Classify input (script vs binary vs URL)
+│   ├── local.rs         # Local file installation
+│   ├── script.rs        # Script installation
 │   ├── shim.rs          # Windows shim creation
-│   ├── symlink.rs       # Unix symlink creation
-│   └── script.rs        # Script installation
+│   └── symlink.rs       # Unix symlink creation
 ├── downloader/          # File download with progress
 └── utils/               # HTTP client, prompts
 ```
+
+Note `src/bucket.rs` (config) and `src/commands/bucket.rs` (CLI) are distinct modules.
 
 ## Code Style Guidelines
 

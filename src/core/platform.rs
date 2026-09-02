@@ -494,18 +494,22 @@ impl ParsedAsset {
         ];
 
         arch_patterns.iter().any(|p| {
-            // Check for word boundaries (not part of a larger word)
-            if let Some(pos) = lower.find(p) {
-                let before = pos == 0 || !lower.chars().nth(pos - 1).unwrap().is_alphanumeric();
-                let after_pos = pos + p.len();
-                let after = after_pos >= lower.len()
-                    || !lower.chars().nth(after_pos).unwrap().is_alphanumeric()
-                    || lower[after_pos..].starts_with("64")
-                    || lower[after_pos..].starts_with("le");
-                before && after
-            } else {
-                false
-            }
+            // Check for word boundaries (not part of a larger word).
+            // `find` returns a BYTE offset, so all boundary checks below must
+            // work on bytes too — indexing `chars()` with a byte offset panics
+            // on any non-ASCII filename (and slicing can hit a char boundary).
+            let Some(pos) = lower.find(p) else {
+                return false;
+            };
+            let bytes = lower.as_bytes();
+            let before = pos == 0 || !bytes[pos - 1].is_ascii_alphanumeric();
+            let after_pos = pos + p.len();
+            let rest = &bytes[after_pos.min(bytes.len())..];
+            let after = rest.is_empty()
+                || !rest[0].is_ascii_alphanumeric()
+                || rest.starts_with(b"64")
+                || rest.starts_with(b"le");
+            before && after
         })
     }
 
@@ -1287,6 +1291,25 @@ impl BinarySelector {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_non_ascii_asset_name_does_not_panic() {
+        // `contains_unknown_arch_pattern` used to feed the BYTE offset from
+        // `str::find` into `chars().nth(..).unwrap()`, so any multi-byte
+        // filename pushed the offset past the char count and aborted the
+        // process (release builds use panic = "abort").
+        for name in [
+            "工工工工-ppc",
+            "工具-arm.tar.gz",
+            "🚀-riscv-bin",
+            "réléase-mips64.tar.gz",
+            "ppc",
+            "tool-ppc.tar.gz",
+        ] {
+            // Must not panic; the boolean result itself is not the contract here.
+            let _ = ParsedAsset::from_filename(name);
+        }
+    }
 
     #[test]
     fn test_current_platform() {

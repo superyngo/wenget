@@ -21,16 +21,38 @@ use std::path::{Path, PathBuf};
 
 /// Sanitize a path component by replacing invalid filesystem characters
 ///
-/// Specifically converts `::` (used in variant keys) to `-` for filesystem compatibility.
-/// This allows internal keys like "bun::baseline" to become safe paths like "bun-baseline".
+/// Converts `::` (used in variant keys) to `-` for filesystem compatibility, so
+/// internal keys like "bun::baseline" become safe paths like "bun-baseline".
+///
+/// Also neutralizes path traversal: separators become `-`, `..` is collapsed, and
+/// an all-dots component is replaced. Names reach here from remote manifests and
+/// the GitHub API, and the resulting path is what `delete` removes, so it must
+/// never be able to point outside its intended parent directory.
 ///
 /// # Examples
 /// ```
 /// assert_eq!(sanitize_path_component("bun::baseline"), "bun-baseline");
 /// assert_eq!(sanitize_path_component("ripgrep"), "ripgrep");
+/// assert_eq!(sanitize_path_component("../../etc/passwd"), ".-.-etc-passwd");
 /// ```
 pub fn sanitize_path_component(name: &str) -> String {
-    name.replace("::", "-")
+    let mut out = name.replace("::", "-");
+
+    // Package and command names arrive from remote bucket manifests and the
+    // GitHub API, and are joined onto the apps/bin directories. Neutralize
+    // anything that could escape that parent, since the resulting path is also
+    // what `wenget delete` passes to `remove_dir_all`/`remove_file`.
+    out = out.replace(['/', '\\'], "-");
+    while out.contains("..") {
+        out = out.replace("..", ".");
+    }
+
+    // A component of only dots resolves to the parent directory itself.
+    if out.is_empty() || out.chars().all(|c| c == '.') {
+        return "_".to_string();
+    }
+
+    out
 }
 
 /// wenget paths manager
@@ -86,6 +108,20 @@ impl WenPaths {
             is_system_install: false,
             custom_bin_dir: None,
         })
+    }
+
+    /// Create a WenPaths instance rooted at an arbitrary directory
+    ///
+    /// Intended for tests, so they operate on a temporary directory instead of
+    /// the real `~/.wenget/`. `bin_dir` also resolves under `root`, keeping the
+    /// whole layout self-contained.
+    #[cfg(test)]
+    pub fn with_root(root: PathBuf) -> Self {
+        Self {
+            custom_bin_dir: Some(root.join("bin")),
+            root,
+            is_system_install: false,
+        }
     }
 
     /// Create a WenPaths instance explicitly for system-level installation
@@ -295,6 +331,35 @@ impl WenPaths {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_sanitize_path_component_neutralizes_traversal() {
+        // Normal names and variant keys are untouched / mapped as before.
+        assert_eq!(sanitize_path_component("ripgrep"), "ripgrep");
+        assert_eq!(sanitize_path_component("bun::baseline"), "bun-baseline");
+
+        // A hostile manifest name must not be able to escape its parent dir.
+        for hostile in [
+            "../../etc/passwd",
+            "..\\..\\Windows\\System32",
+            "/etc/passwd",
+            "foo/../../bar",
+            "..",
+            "...",
+            "",
+        ] {
+            let safe = sanitize_path_component(hostile);
+            let path = std::path::Path::new(&safe);
+            assert!(
+                !safe.contains("..")
+                    && !safe.contains('/')
+                    && !safe.contains('\\')
+                    && !path.is_absolute()
+                    && path.components().count() == 1,
+                "{hostile:?} sanitized to {safe:?}, which is still not a single safe component"
+            );
+        }
+    }
 
     #[test]
     fn test_paths_creation() {

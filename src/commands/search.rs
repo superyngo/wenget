@@ -95,14 +95,14 @@ pub fn run(patterns: Vec<String>) -> Result<()> {
 
         for cached_pkg in &matching_packages {
             let pkg = &cached_pkg.package;
-            // Find the first matching platform and its first binary
-            let platform_binaries = platform_ids
+            // Find the first matching platform and its first binary. Both come
+            // from a remote bucket manifest, so an entry with a missing or empty
+            // binary list must not abort the whole search.
+            let first_binary = platform_ids
                 .iter()
                 .find_map(|id| pkg.platforms.get(id))
-                .unwrap();
-
-            let first_binary = platform_binaries.first().unwrap();
-            let size_mb = first_binary.size as f64 / 1_000_000.0;
+                .and_then(|binaries| binaries.first());
+            let size_mb = first_binary.map_or(0.0, |b| b.size as f64 / 1_000_000.0);
 
             println!(
                 "{:<20} {:>8.1} MB  {}",

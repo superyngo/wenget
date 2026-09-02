@@ -20,9 +20,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing before handing the destination to `sevenz_rust::decompress_file`; entry names are now
   checked up front. `.zip` was already correctly defended via `ZipFile::enclosed_name()` and is
   unchanged. Regression tests cover both the relative and absolute vectors (2026-09-03).
+- fix(paths): `sanitize_path_component` now neutralizes path traversal, not just `::`. Package
+  and command names arrive from remote bucket manifests and the GitHub API and are joined onto
+  the apps/bin directories; the resulting path is also what `delete` hands to `remove_dir_all`,
+  so a name containing `/`, `\`, or `..` could place an install outside `~/.wenget/apps/` and
+  have it recursively deleted later. Separators are replaced, `..` is collapsed, and an all-dots
+  or empty component becomes `_` (2026-09-03).
+
+### Fixed
+
+- fix(platform): `contains_unknown_arch_pattern` fed the byte offset from `str::find` into
+  `chars().nth(..).unwrap()`, so any release asset whose name contained multi-byte characters
+  pushed the offset past the character count and panicked — an immediate abort in release builds
+  (`panic = "abort"`), reachable from `add`, `update`, `search`, and `bucket create`. Boundary
+  checks now operate on bytes throughout, removing both the panic and the adjacent
+  non-char-boundary slicing hazard (2026-09-03).
+- fix(search): `wenget search` unwrapped the platform lookup and the first binary of each result,
+  both of which come from a remote bucket manifest, so an entry with a missing or empty binary
+  list aborted the whole search. Such entries now render as `0.0 MB` instead (2026-09-03).
+- fix(core): `cargo test` no longer overwrites the developer's real `~/.wenget/installed.json`.
+  Three tests in `core/config.rs` constructed `Config::new()`, which resolves the live home
+  directory, and `test_manifest_round_trip` then wrote an empty manifest over it, silently
+  destroying the local package registry on any contributor's machine. Adds test-only
+  `WenPaths::with_root` / `Config::with_paths` seams and points those tests at a `TempDir`
+  (2026-09-03).
 
 ### Changed
 
+- ci: add `.github/workflows/ci.yml` — quality gate running `cargo fmt --check`,
+  `cargo clippy --all-targets -- -D warnings`, and `cargo test --all-targets` on
+  ubuntu/windows/macos for every `pull_request` and push to `main`. No workflow previously ran
+  tests, clippy, or fmt: the existing workflows are tag-triggered release builds, a publish
+  gate, and a scheduled manifest update, so the clean lint/test state was unenforced and
+  platform-gated `#[cfg(windows)]`/`#[cfg(unix)]` code was never exercised in CI (2026-09-03).
+- chore(deps): drop the `tokio` dependency. It was declared with `features = ["full"]` but the
+  codebase contains no `tokio::`, `async fn`, `.await`, or `block_on` — all networking is
+  `reqwest::blocking` and concurrency is `std::thread::scope`. It now appears only as a
+  transitive dependency of `reqwest`, with just the features reqwest needs, which suits a
+  release profile deliberately tuned for size (`opt-level = "z"`, `lto`, `strip`) (2026-09-03).
 - docs: restructure `docs/` per wens-dev-principles (docs domain) — added `CONTEXT.md` root
   index; split `docs/` into `reference/`, `adr/`, `spec/`, `plan/`, `debug/`, `audit/`; moved
   `docs/RESOURCE_FILTERING_RULES.md` to `docs/reference/`; moved `docs/superpowers/specs|plans/*`
