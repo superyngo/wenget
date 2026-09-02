@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to `docs/spec/`/`docs/plan/` with `Status: Shipped (...)` lines added; added
   `docs/reference/glossary.md`; each folder gained an indexing `README.md`; `AGENTS.md` now
   points at `CONTEXT.md` (2026-09-02).
+- docs: add `docs/audit/2026-09-03-full-codebase-audit.md` — point-in-time six-dimension audit of
+  v3.8.7 (architecture, code quality, security, performance, testing, maintainability) covering
+  16,957 LOC across 41 files; 2 Critical / 8 High / 11 Medium / 9 Low findings with `path:line`
+  evidence, effort estimates, and a prioritized action plan. Four findings were verified by
+  execution rather than inspection: tar (`extractor.rs:218-254`) and 7z (`:140-146`) archive path
+  traversal allowing arbitrary file write; a byte-offset/char-index `unwrap` panic on non-ASCII
+  asset names (`platform.rs:498-504`); `cargo test` overwriting the real
+  `~/.wenget/installed.json` via non-injectable paths in `core/config.rs:307-331`; and the
+  absence of any CI workflow running `cargo test`/`clippy`/`fmt`. Indexed in
+  `docs/audit/README.md` (2026-09-03).
 
 ## [3.8.7] - 2026-08-20
 
