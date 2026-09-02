@@ -138,10 +138,28 @@ fn extract_tar_bz2(archive_path: &Path, dest_dir: &Path) -> Result<Vec<String>> 
 
 /// Extract a .7z file
 fn extract_7z(archive_path: &Path, dest_dir: &Path) -> Result<Vec<String>> {
-    use sevenz_rust::decompress_file;
+    // `sevenz_rust::decompress_file` joins `entry.name()` onto the destination
+    // with no sanitization, so a crafted archive can escape `dest_dir`.
+    // Validate every entry name before letting the default extractor write it.
+    let mut reader = File::open(archive_path)
+        .with_context(|| format!("Failed to open archive: {}", archive_path.display()))?;
+    let archive = sevenz_rust::Archive::read(&mut reader, archive_path.metadata()?.len(), &[])
+        .map_err(|e| anyhow::anyhow!("Failed to read 7z archive: {e}"))?;
+
+    for entry in &archive.files {
+        let name = entry.name();
+        let path = Path::new(name);
+        if path.is_absolute()
+            || path
+                .components()
+                .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
+            anyhow::bail!("Refusing to extract unsafe 7z entry: {name}");
+        }
+    }
 
     // Extract the 7z archive
-    decompress_file(archive_path, dest_dir)
+    sevenz_rust::decompress_file(archive_path, dest_dir)
         .with_context(|| format!("Failed to extract 7z archive: {}", archive_path.display()))?;
 
     // Collect all extracted files
@@ -233,13 +251,22 @@ fn extract_tar_archive<R: std::io::Read>(
             continue;
         }
 
-        // Extract file
-        let dest_path = dest_dir.join(&path);
-
-        // Create parent directory
-        if let Some(parent) = dest_path.parent() {
-            fs::create_dir_all(parent)?;
+        // Reject entries that would escape `dest_dir`. Absolute paths would
+        // replace `dest_dir` entirely in `Path::join`, and `..` components
+        // walk out of it (Zip Slip). `unpack_in` below also enforces this,
+        // but failing loudly here gives the user an actionable error instead
+        // of a silently skipped entry.
+        if path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
+            anyhow::bail!("Refusing to extract entry with '..' in its path: {path_str}");
         }
+        if path.is_absolute() {
+            anyhow::bail!("Refusing to extract entry with an absolute path: {path_str}");
+        }
+
+        let dest_path = dest_dir.join(&path);
 
         // Log entry type for debugging
         log::debug!(
@@ -249,9 +276,16 @@ fn extract_tar_archive<R: std::io::Read>(
             dest_path.display()
         );
 
-        entry
-            .unpack(&dest_path)
-            .with_context(|| format!("Failed to extract: {}", path_str))?;
+        // `unpack_in` (not `unpack`) is what performs containment checking:
+        // it strips root prefixes, refuses `..`, and validates that symlink
+        // and hardlink targets stay inside `dest_dir`. It also creates any
+        // missing parent directories itself.
+        if !entry
+            .unpack_in(dest_dir)
+            .with_context(|| format!("Failed to extract: {path_str}"))?
+        {
+            anyhow::bail!("Refusing to extract unsafe archive entry: {path_str}");
+        }
 
         // Set executable permission on Unix
         // Skip for symlinks (they inherit permissions from their target)
@@ -812,6 +846,77 @@ mod tests {
         );
         assert!(dest.join("agd").is_file());
         assert!(dest.join("Resources/cli-templates.toml").is_file());
+    }
+
+    /// Build a .tar.gz containing a single entry with `name` written straight
+    /// into the header. `Builder::append_data` rejects traversal names, so the
+    /// GNU name field is filled in by hand to mimic a hostile archive.
+    #[cfg(test)]
+    fn build_tar_gz_with_raw_entry_name(archive_path: &Path, name: &[u8]) {
+        use std::io::Write;
+
+        let file = File::create(archive_path).unwrap();
+        let enc = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+        let mut builder = tar::Builder::new(enc);
+
+        let data = b"payload";
+        let mut header = tar::Header::new_gnu();
+        header.set_size(data.len() as u64);
+        header.set_mode(0o755);
+        header.set_entry_type(tar::EntryType::Regular);
+        {
+            let gnu = header.as_gnu_mut().unwrap();
+            gnu.name[..name.len()].copy_from_slice(name);
+        }
+        header.set_cksum();
+        builder.append(&header, &data[..]).unwrap();
+        builder.into_inner().unwrap().finish().unwrap().flush().ok();
+    }
+
+    #[test]
+    fn test_extract_tar_rejects_parent_dir_traversal() {
+        use tempfile::TempDir;
+
+        let dir = TempDir::new().unwrap();
+        let archive_path = dir.path().join("evil.tar.gz");
+        build_tar_gz_with_raw_entry_name(&archive_path, b"../../escaped.txt");
+
+        let dest = dir.path().join("apps").join("victim");
+        let err = extract_archive(&archive_path, &dest)
+            .expect_err("a '..' entry must be rejected, not extracted");
+        assert!(
+            err.to_string().contains("'..'"),
+            "unexpected error: {err:#}"
+        );
+
+        // Nothing may be written outside the destination directory.
+        assert!(
+            !dir.path().join("escaped.txt").exists(),
+            "entry escaped to {}",
+            dir.path().join("escaped.txt").display()
+        );
+    }
+
+    #[test]
+    fn test_extract_tar_rejects_absolute_entry_path() {
+        use tempfile::TempDir;
+
+        let dir = TempDir::new().unwrap();
+        let outside = dir.path().join("absolute.txt");
+        let archive_path = dir.path().join("evil-abs.tar.gz");
+        // An absolute entry path would replace the destination in Path::join.
+        let mut name = outside.to_string_lossy().into_owned().into_bytes();
+        name.truncate(99);
+        build_tar_gz_with_raw_entry_name(&archive_path, &name);
+
+        let dest = dir.path().join("apps").join("victim");
+        let err = extract_archive(&archive_path, &dest)
+            .expect_err("an absolute entry must be rejected, not extracted");
+        assert!(
+            err.to_string().contains("absolute path"),
+            "unexpected error: {err:#}"
+        );
+        assert!(!outside.exists(), "entry escaped to {}", outside.display());
     }
 
     #[test]

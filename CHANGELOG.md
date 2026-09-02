@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Security
+
+- fix(installer): reject archive entries that escape the destination directory (Zip Slip).
+  `extract_tar_archive` normalized only `Component::CurDir`, then joined the raw entry path onto
+  `dest_dir` and called `Entry::unpack`, which performs no containment checking — so a `.tar.gz`
+  /`.tar.xz`/`.tar.bz2` entry named `../../x` or `/etc/x` wrote outside the target directory (and
+  was chmod'd `0o755`), giving arbitrary file write from a malicious release asset, or arbitrary
+  root file write during a system install. Entries with `..` or an absolute path are now rejected
+  with an explicit error, and the write goes through `Entry::unpack_in`, which strips root
+  prefixes, refuses `..`, and validates symlink/hardlink targets. `extract_7z` likewise validated
+  nothing before handing the destination to `sevenz_rust::decompress_file`; entry names are now
+  checked up front. `.zip` was already correctly defended via `ZipFile::enclosed_name()` and is
+  unchanged. Regression tests cover both the relative and absolute vectors (2026-09-03).
+
 ### Changed
 
 - docs: restructure `docs/` per wens-dev-principles (docs domain) — added `CONTEXT.md` root
