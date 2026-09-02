@@ -6,7 +6,9 @@ once approved, dated by when it was written, never rewritten. Current behavior l
 
 ## In progress
 
-None.
+| Date | Document | Status |
+|---|---|---|
+| 2026-09-03 | [2026-09-03-per-package-meta-design.md](2026-09-03-per-package-meta-design.md) | Draft (2026-09-03) |
 
 ## Landed
 

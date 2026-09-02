@@ -74,6 +74,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/.wenget/installed.json` via non-injectable paths in `core/config.rs:307-331`; and the
   absence of any CI workflow running `cargo test`/`clippy`/`fmt`. Indexed in
   `docs/audit/README.md` (2026-09-03).
+- docs: add `docs/spec/2026-09-03-per-package-meta-design.md` (Draft) — design record for removing
+  `installed.json` and storing each package's record in `{install_path}/.wenget/package.json`.
+  Motivated by audit findings A-1 (non-atomic whole-registry writes from seven call sites) and
+  T-1 (a test wiping the real registry): both have a blast radius of every installed package
+  because one file describes all of them. Covers the `InstalledStore` load/save API, per-package
+  atomic writes, corrupt-meta quarantine, the new orphaned-shim check in `repair`, the
+  sanitized-directory collision guard, and one-time migration off `installed.json`. Not
+  implemented (2026-09-03).
 
 ## [3.8.7] - 2026-08-20
 
