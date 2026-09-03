@@ -786,4 +786,39 @@ mod tests {
         std::fs::create_dir_all(tmp.path().join("apps").join("untracked")).unwrap();
         s.ensure_dir_available("untracked").unwrap();
     }
+
+    #[test]
+    fn test_removing_the_app_directory_removes_the_record() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.save_package("doomed", &pkg("doomed", None)).unwrap();
+        assert_eq!(s.load().unwrap().packages.len(), 1);
+
+        std::fs::remove_dir_all(s.paths().app_dir("doomed")).unwrap();
+
+        assert!(s.load().unwrap().packages.is_empty());
+        assert!(s.duplicate_keys().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_failed_swap_leaves_the_previous_record_intact() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        let mut first = pkg("tool", None);
+        first.version = "1.0.0".to_string();
+        s.save_package("tool", &first).unwrap();
+
+        {
+            let staged = crate::installer::StagedInstall::begin(s.paths(), "tool").unwrap();
+            let mut second = pkg("tool", None);
+            second.version = "2.0.0".to_string();
+            let dir = staged.path().join(".wenget");
+            std::fs::create_dir_all(&dir).unwrap();
+            write_record_atomically(&dir.join("package.json"), &second).unwrap();
+            // Dropped without commit: the install failed after writing its record.
+        }
+
+        let set = s.load().unwrap();
+        assert_eq!(set.get_package("tool").unwrap().version, "1.0.0");
+    }
 }
