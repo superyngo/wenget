@@ -3,7 +3,6 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 
 #[cfg(unix)]
@@ -36,7 +35,8 @@ pub fn install_local_file(
         normalize_command_name(filename)
     };
 
-    let app_dir = paths.app_dir(&name);
+    let staged = crate::installer::StagedInstall::begin(paths, &name)?;
+    let app_dir = staged.target().to_path_buf();
 
     log::info!(
         "Installing local file {} to {}",
@@ -44,22 +44,12 @@ pub fn install_local_file(
         app_dir.display()
     );
 
-    // Clean up existing installation
-    if app_dir.exists() {
-        fs::remove_dir_all(&app_dir).with_context(|| {
-            format!(
-                "Failed to remove existing app directory: {}",
-                app_dir.display()
-            )
-        })?;
-    }
-
-    // Extract or copy file to app directory
+    // Extract or copy file into the staging directory, then swap it into place.
     // extract_archive handles both archives and standalone executables
-    let extracted_files = extract_archive(file_path, &app_dir)?;
+    let extracted_files = extract_archive(file_path, staged.path())?;
 
     // Find executable candidates
-    let candidates = find_executable_candidates(&extracted_files, &name, Some(&app_dir));
+    let candidates = find_executable_candidates(&extracted_files, &name, Some(staged.path()));
 
     if candidates.is_empty() {
         anyhow::bail!(
@@ -77,6 +67,10 @@ pub fn install_local_file(
         selected.path,
         selected.reason
     );
+
+    // Swap into place before resolving the executable path: everything below
+    // (launcher target, recorded path) must refer to the app directory.
+    let app_dir = staged.commit()?;
 
     let exe_relative = &selected.path;
     let exe_path = app_dir.join(exe_relative);

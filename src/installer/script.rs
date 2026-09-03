@@ -199,19 +199,20 @@ pub fn install_script(
     content: &str,
     script_type: &ScriptType,
 ) -> Result<Vec<String>> {
-    let app_dir = paths.app_dir(name);
-
-    // Create app directory
-    fs::create_dir_all(&app_dir)
-        .with_context(|| format!("Failed to create app directory: {}", app_dir.display()))?;
+    // Stage, then swap: an interrupted write cannot leave a half-written script
+    // in place of a working one.
+    let staged = crate::installer::StagedInstall::begin(paths, name)?;
 
     // Determine script filename
     let script_filename = format!("{}.{}", name, script_type.extension());
-    let script_path = app_dir.join(&script_filename);
+    let staged_script = staged.path().join(&script_filename);
 
     // Write script content
-    fs::write(&script_path, content)
-        .with_context(|| format!("Failed to write script: {}", script_path.display()))?;
+    fs::write(&staged_script, content)
+        .with_context(|| format!("Failed to write script: {}", staged_script.display()))?;
+
+    let app_dir = staged.commit()?;
+    let script_path = app_dir.join(&script_filename);
 
     // Make script executable on Unix
     #[cfg(unix)]

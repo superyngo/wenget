@@ -1740,20 +1740,17 @@ fn install_package(
         return Err(e);
     }
 
-    // Extract to app directory (use installed_key for directory name)
-    let app_dir = paths.app_dir(installed_key);
+    // Stage the extraction beside the app directory and swap it in on success, so
+    // a failed install leaves the previous install and its record untouched.
+    let staged = crate::installer::StagedInstall::begin(paths, installed_key)?;
+    let app_dir = staged.target().to_path_buf();
 
     println!("  Extracting to {}...", app_dir.display());
 
-    // Remove existing installation
-    if app_dir.exists() {
-        fs::remove_dir_all(&app_dir)?;
-    }
+    let extracted_files = extract_archive(&download_path, staged.path())?;
 
-    let extracted_files = extract_archive(&download_path, &app_dir)?;
-
-    // Find executable candidates (pass app_dir for Unix permission checks)
-    let candidates = find_executable_candidates(&extracted_files, &pkg.name, Some(&app_dir));
+    // Find executable candidates (pass the staging dir for Unix permission checks)
+    let candidates = find_executable_candidates(&extracted_files, &pkg.name, Some(staged.path()));
 
     if candidates.is_empty() {
         anyhow::bail!(
@@ -1949,6 +1946,10 @@ fn install_package(
                 .collect()
         }
     };
+
+    // Every remaining step reads from the final location: swap now, so the
+    // launchers point at the app directory rather than the staging path.
+    let app_dir = staged.commit()?;
 
     // Install all selected executables
     let mut executables: HashMap<String, String> = HashMap::new();
