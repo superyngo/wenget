@@ -47,6 +47,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- docs(spec): settle the design for removing `installed.json` in favor of per-package **package
+  records** at `{app_dir}/.wenget/package.json`, and record the decision as
+  `docs/adr/0001-no-global-installed-index.md`. The spec now covers what the draft left implicit:
+  install/update must stage-and-swap because every install path wipes the app directory before
+  writing (so a colocated record would be destroyed at the start of each update); `install_path`
+  becomes `#[serde(skip)]` rather than a written-then-ignored field; a record with a
+  `meta_version` above the known maximum is skipped, never quarantined, so a downgrade cannot
+  damage future data; read-path writes (migration, quarantine) are best-effort and never fail a
+  read command; orphaned-shim detection must prove wenget provenance because `bin_dir` is
+  `~/.local/bin`, shared with unrelated software; the single-writer assumption and its new
+  "two packages claim one command name" race are stated in Out of Scope; and a `WENGET_ROOT`
+  override is added so the behavior can be verified on the release binary instead of against the
+  maintainer's real `~/.wenget`. Also corrects the call-site count (`repair.rs:103,113` was the
+  missing eighth `save_installed` caller) and fixes the vocabulary against the glossary:
+  `InstalledManifest` → `InstalledSet`, so "manifest" keeps meaning a bucket's `manifest.json`
+  (2026-09-03).
 - ci: add `.github/workflows/ci.yml` — quality gate running `cargo fmt --check`,
   `cargo clippy --all-targets -- -D warnings`, and `cargo test --all-targets` on
   ubuntu/windows/macos for every `pull_request` and push to `main`. No workflow previously ran
