@@ -47,6 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- docs(plan): add `docs/plan/2026-09-03-per-package-records-implementation.md` — an eleven-task,
+  TDD, commit-per-task plan implementing the per-package-records spec. Ordering is forced by two
+  constraints found while planning: `WENGET_ROOT` lands first because nothing else can be verified
+  on the release binary without it, and stage-and-swap lands before the record becomes
+  authoritative because every install path wipes the app directory before writing. Task 8 (delete
+  `Config::save_installed`, flip `install_path` to `#[serde(skip)]`, convert all eight writers,
+  strip `repair`'s `installed.json` branch) is called out as irreducible: it cannot be split
+  without leaving the tree red, and Tasks 1-7 exist to shrink it. Two steps deliberately send the
+  implementer to read reality first rather than guess — the Windows shim signature in
+  `installer/shim.rs`, and `PackageSource`'s serde shape (2026-09-03).
 - docs(spec): settle the design for removing `installed.json` in favor of per-package **package
   records** at `{app_dir}/.wenget/package.json`, and record the decision as
   `docs/adr/0001-no-global-installed-index.md`. The spec now covers what the draft left implicit:
