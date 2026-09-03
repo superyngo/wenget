@@ -63,6 +63,8 @@ impl InstalledStore {
     /// Performs no writes to `bin_dir` and never re-links a shim — drift is a
     /// `repair` finding, not a load-time repair.
     pub fn load(&self) -> Result<InstalledSet> {
+        self.migrate_legacy();
+
         let mut set = InstalledSet::new();
 
         for entry in self.scan_app_dirs()? {
@@ -80,6 +82,115 @@ impl InstalledStore {
         }
 
         Ok(set)
+    }
+
+    /// Convert a legacy `{root}/installed.json` into per-package records, once
+    ///
+    /// Best-effort by design: if any write fails, `installed.json` stays in place,
+    /// one warning is logged, and the command proceeds from whatever the scan
+    /// finds. The next writable run migrates.
+    fn migrate_legacy(&self) {
+        let legacy_path = self.paths.installed_json();
+        if !legacy_path.exists() {
+            return;
+        }
+
+        let content = match fs::read_to_string(&legacy_path) {
+            Ok(c) => c,
+            Err(e) => {
+                log::warn!("Could not read {}: {}", legacy_path.display(), e);
+                return;
+            }
+        };
+
+        let mut legacy: InstalledSet = match serde_json::from_str(&content) {
+            Ok(set) => set,
+            Err(e) => {
+                eprintln!(
+                    "{} {} could not be parsed ({}); leaving it in place.",
+                    "Warning:".yellow().bold(),
+                    legacy_path.display(),
+                    e
+                );
+                return;
+            }
+        };
+
+        // Run the historical fixups (`::` path rename, command_names -> executables)
+        // exactly once, here, so freshly written records never carry legacy fields.
+        legacy.migrate();
+
+        let mut written = 0usize;
+        let mut dropped: Vec<String> = Vec::new();
+        let mut failed = false;
+
+        for (key, package) in &legacy.packages {
+            let app_dir = if package.install_path.is_empty() {
+                self.paths.app_dir(key)
+            } else {
+                PathBuf::from(&package.install_path)
+            };
+
+            if !app_dir.exists() {
+                dropped.push(key.clone());
+                continue;
+            }
+
+            let record_path = app_dir.join(".wenget").join("package.json");
+            if record_path.exists() {
+                continue;
+            }
+
+            let mut to_write = package.clone();
+            to_write.meta_version = CURRENT_META_VERSION;
+
+            if let Err(e) = fs::create_dir_all(app_dir.join(".wenget")) {
+                log::warn!("Could not create record dir for '{}': {}", key, e);
+                failed = true;
+                continue;
+            }
+            if let Err(e) = write_record_atomically(&record_path, &to_write) {
+                log::warn!("Could not write record for '{}': {}", key, e);
+                failed = true;
+                continue;
+            }
+            written += 1;
+        }
+
+        if failed {
+            eprintln!(
+                "{} Some package records could not be written; {} is left in place \
+                 and migration will retry on the next run.",
+                "Warning:".yellow().bold(),
+                legacy_path.display()
+            );
+            return;
+        }
+
+        let retired = legacy_path.with_file_name(format!(
+            "installed.json.migrated-{}",
+            Utc::now().format("%Y%m%d%H%M%S")
+        ));
+        if let Err(e) = fs::rename(&legacy_path, &retired) {
+            log::warn!("Could not retire {}: {}", legacy_path.display(), e);
+            return;
+        }
+
+        println!(
+            "{} Migrated {} package(s) to per-package records. Previous file saved as {}.",
+            "*".cyan(),
+            written,
+            retired.display()
+        );
+        if !dropped.is_empty() {
+            let mut names = dropped.clone();
+            names.sort();
+            println!(
+                "  {} entr(ies) had no install directory and were dropped: {}",
+                names.len(),
+                names.join(" ")
+            );
+        }
     }
 
     /// Classify every entry under `{root}/apps/`
@@ -499,5 +610,115 @@ mod tests {
             .join("gone")
             .join("payload")
             .exists());
+    }
+
+    /// Writes a legacy installed.json holding `keys`, creating a matching app
+    /// directory for each key in `with_dirs`.
+    fn seed_legacy(tmp: &TempDir, keys: &[&str], with_dirs: &[&str]) {
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("apps")).unwrap();
+
+        let mut packages = serde_json::Map::new();
+        for key in keys {
+            let (repo, variant) = match key.split_once("::") {
+                Some((r, v)) => (r, Some(v)),
+                None => (*key, None),
+            };
+            let dir = root.join("apps").join(key.replace("::", "-"));
+            let mut p = pkg(repo, variant);
+            p.install_path = dir.to_string_lossy().to_string();
+            packages.insert(key.to_string(), serde_json::to_value(&p).unwrap());
+        }
+        for key in with_dirs {
+            std::fs::create_dir_all(root.join("apps").join(key.replace("::", "-"))).unwrap();
+        }
+
+        std::fs::write(
+            root.join("installed.json"),
+            serde_json::to_string_pretty(&serde_json::json!({ "packages": packages })).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn migrated_marker(tmp: &TempDir) -> Option<String> {
+        std::fs::read_dir(tmp.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .find(|n| n.starts_with("installed.json.migrated-"))
+    }
+
+    #[test]
+    fn test_migration_writes_records_and_retires_the_file() {
+        let tmp = TempDir::new().unwrap();
+        seed_legacy(&tmp, &["fnm", "bun::baseline"], &["fnm", "bun::baseline"]);
+        let s = store(&tmp);
+
+        let set = s.load().unwrap();
+        assert!(set.get_package("fnm").is_some());
+        assert!(set.get_package("bun::baseline").is_some());
+        assert!(s.paths().package_record_path("fnm").exists());
+        assert!(s.paths().package_record_path("bun::baseline").exists());
+        assert!(!tmp.path().join("installed.json").exists());
+        assert!(
+            migrated_marker(&tmp).is_some(),
+            "the old file is renamed, never deleted"
+        );
+
+        // Idempotent: a second load changes nothing and still sees both packages.
+        let again = s.load().unwrap();
+        assert_eq!(again.packages.len(), 2);
+    }
+
+    #[test]
+    fn test_migration_drops_entries_whose_directory_is_gone() {
+        let tmp = TempDir::new().unwrap();
+        seed_legacy(&tmp, &["alive", "dead"], &["alive"]);
+        let s = store(&tmp);
+
+        let set = s.load().unwrap();
+        assert!(set.get_package("alive").is_some());
+        assert!(set.get_package("dead").is_none());
+        assert!(!s.paths().package_record_path("dead").exists());
+    }
+
+    #[test]
+    fn test_empty_legacy_file_with_untracked_dirs_needs_no_special_case() {
+        // The maintainer's actual machine: 20-byte installed.json, populated apps/.
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir_all(tmp.path().join("apps").join("fnm")).unwrap();
+        std::fs::write(tmp.path().join("installed.json"), r#"{"packages": {}}"#).unwrap();
+        let s = store(&tmp);
+
+        let set = s.load().unwrap();
+        assert!(set.packages.is_empty(), "wenget never fabricates a record");
+        assert!(tmp.path().join("apps").join("fnm").exists());
+        assert!(migrated_marker(&tmp).is_some());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_read_only_root_still_loads() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.save_package("ro", &pkg("ro", None)).unwrap();
+        // A corrupt second record: quarantine will be refused, load must not fail.
+        s.save_package("broken", &pkg("broken", None)).unwrap();
+        std::fs::write(s.paths().package_record_path("broken"), "{ nope").unwrap();
+
+        let record_dir = s.paths().record_dir("broken");
+        let original = std::fs::metadata(&record_dir).unwrap().permissions();
+        let mut locked = original.clone();
+        locked.set_mode(0o500);
+        std::fs::set_permissions(&record_dir, locked).unwrap();
+
+        let result = s.load();
+
+        std::fs::set_permissions(&record_dir, original).unwrap();
+
+        let set = result.expect("load must not fail because a write was refused");
+        assert!(set.get_package("ro").is_some());
     }
 }
