@@ -6,7 +6,7 @@ use dialoguer::{Input, Select};
 use std::fs;
 use std::path::Path;
 
-use crate::core::{Config, InstalledManifest, InstalledPackage};
+use crate::core::{Config, InstalledPackage, InstalledSet};
 use crate::installer;
 
 /// Run the rename command
@@ -93,10 +93,7 @@ struct CommandCandidate {
 /// 2. Repo name (e.g. `confy`): every command of every installed variant
 ///    sharing that repo name.
 /// 3. Exact command name (e.g. `confyd`): that single command.
-fn find_command_candidates(
-    installed: &InstalledManifest,
-    name: &str,
-) -> Result<Vec<CommandCandidate>> {
+fn find_command_candidates(installed: &InstalledSet, name: &str) -> Result<Vec<CommandCandidate>> {
     // 1. Direct package key lookup
     if let Some(package) = installed.packages.get(name) {
         let cmds = package.get_command_names();
@@ -197,11 +194,7 @@ fn prompt_for_new_name(old_name: &str) -> Result<String> {
 }
 
 /// Validate that new name doesn't conflict with existing commands
-fn validate_new_name(
-    installed: &InstalledManifest,
-    exclude_key: &str,
-    new_name: &str,
-) -> Result<()> {
+fn validate_new_name(installed: &InstalledSet, exclude_key: &str, new_name: &str) -> Result<()> {
     for (key, package) in &installed.packages {
         if key == exclude_key {
             continue; // Skip the package we're renaming
@@ -224,7 +217,7 @@ fn validate_new_name(
 /// Updates symlink/shim and modifies InstalledPackage.executables
 fn rename_command(
     paths: &crate::core::WenPaths,
-    installed: &mut InstalledManifest,
+    installed: &mut InstalledSet,
     pkg_key: &str,
     old_cmd: &str,
     new_cmd: &str,
@@ -365,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_validate_new_name_success() {
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
         let mut exe1 = HashMap::new();
         exe1.insert("bin/oldcmd".to_string(), "oldcmd".to_string());
 
@@ -394,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_validate_new_name_conflict() {
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
 
         // First package
         let mut exe1 = HashMap::new();
@@ -498,7 +491,7 @@ mod tests {
         // Reproduces `wenget rn confy` when confy is installed as two
         // separate variant packages (confy-64 -> confy-64, confy-desktop-64
         // -> confyd), each contributing exactly one command of its own.
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
 
         let mut exe_cli = HashMap::new();
         exe_cli.insert("bin/confy-64".to_string(), "confy-64".to_string());

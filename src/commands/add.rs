@@ -145,7 +145,7 @@ pub fn run(
 ///
 /// `taken` is the precomputed set of command names already in use (excluding the
 /// package being resolved). Callers build it once via
-/// `InstalledManifest::command_name_set` rather than scanning all packages for
+/// `InstalledSet::command_name_set` rather than scanning all packages for
 /// every candidate suffix here.
 fn resolve_command_name(
     base_name: &str,
@@ -240,7 +240,7 @@ fn extract_repo_name_from_command(command_name: &str, variant: &str) -> Option<S
 fn install_scripts(
     config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     script_inputs: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
@@ -463,7 +463,7 @@ fn install_single_script(
 fn install_local_files(
     config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     files: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
@@ -556,7 +556,7 @@ fn install_local_files(
 fn install_from_urls(
     config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     urls: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
@@ -821,7 +821,7 @@ fn select_packages_for_platform(
 fn install_packages(
     config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     names: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
@@ -1692,7 +1692,7 @@ fn install_packages(
 /// caller holds the authoritative in-memory copy and persists it after install.
 #[allow(clippy::too_many_arguments)]
 fn install_package(
-    installed: &crate::core::InstalledManifest,
+    installed: &crate::core::InstalledSet,
     paths: &WenPaths,
     pkg: &crate::core::Package,
     platform_match: &crate::core::platform::PlatformMatch,
@@ -2194,7 +2194,7 @@ fn update_cache_with_packages(
 fn install_script_from_bucket(
     _config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     name: &str,
     url: &str,
     script_type: ScriptType,

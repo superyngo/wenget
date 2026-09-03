@@ -4,7 +4,7 @@
 
 use crate::bucket::BucketConfig;
 use crate::cache::ManifestCache;
-use crate::core::manifest::InstalledManifest;
+use crate::core::manifest::InstalledSet;
 use crate::core::repair::{check_json_file, create_backup, FileStatus};
 use crate::core::Config;
 use anyhow::Result;
@@ -23,7 +23,7 @@ pub fn run(force: bool) -> Result<()> {
     let buckets_path = paths.buckets_json();
     let cache_path = paths.manifest_cache_json();
 
-    let installed_status = check_json_file::<InstalledManifest>(&installed_path);
+    let installed_status = check_json_file::<InstalledSet>(&installed_path);
     let buckets_status = check_json_file::<BucketConfig>(&buckets_path);
     let cache_status = check_json_file::<ManifestCache>(&cache_path);
 
@@ -99,7 +99,7 @@ fn repair_installed(config: &Config, path: &std::path::Path, status: &FileStatus
             }
 
             // Reset to empty
-            let new_manifest = InstalledManifest::new();
+            let new_manifest = InstalledSet::new();
             config.save_installed(&new_manifest)?;
 
             println!(
@@ -109,7 +109,7 @@ fn repair_installed(config: &Config, path: &std::path::Path, status: &FileStatus
         }
         FileStatus::Missing => {
             // Create new file
-            let new_manifest = InstalledManifest::new();
+            let new_manifest = InstalledSet::new();
             config.save_installed(&new_manifest)?;
             println!("{}", "created".green());
         }

@@ -4,7 +4,7 @@
 //! - `Package`: Individual package information
 //! - `PlatformBinary`: Platform-specific binary information
 //! - `SourceManifest`: The sources.json structure
-//! - `InstalledManifest`: The installed.json structure
+//! - `InstalledSet`: The set of installed packages
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -470,14 +470,17 @@ impl InstalledPackage {
     }
 }
 
-/// Installed manifest (installed.json)
+/// The set of installed packages, loaded from per-package records
+///
+/// This is an in-memory collection, not a file format: each package's state is
+/// stored in its own `{app_dir}/.wenget/package.json` (see `src/core/store.rs`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InstalledManifest {
+pub struct InstalledSet {
     /// Map of package name to installed package info
     pub packages: HashMap<String, InstalledPackage>,
 }
 
-impl InstalledManifest {
+impl InstalledSet {
     /// Create a new empty installed manifest
     pub fn new() -> Self {
         Self {
@@ -761,7 +764,7 @@ impl InstalledManifest {
     }
 }
 
-impl Default for InstalledManifest {
+impl Default for InstalledSet {
     fn default() -> Self {
         Self::new()
     }
@@ -952,7 +955,7 @@ mod tests {
 
     #[test]
     fn test_installed_manifest() {
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
 
         let mut executables = HashMap::new();
         executables.insert("bin/test.exe".to_string(), "test".to_string());
@@ -1021,7 +1024,7 @@ mod tests {
 
     #[test]
     fn test_is_command_taken_with_executables() {
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
 
         let mut executables = HashMap::new();
         executables.insert("bin/rg".to_string(), "rg".to_string());
@@ -1056,7 +1059,7 @@ mod tests {
     fn test_command_name_set() {
         use std::collections::HashSet;
 
-        let mut manifest = InstalledManifest::new();
+        let mut manifest = InstalledSet::new();
 
         // Package A: executables map only
         let mut a_exes = HashMap::new();
@@ -1139,7 +1142,7 @@ mod tests {
             }
         }"#;
 
-        let manifest: InstalledManifest = serde_json::from_str(json).unwrap();
+        let manifest: InstalledSet = serde_json::from_str(json).unwrap();
         let pkg = manifest.get_package("test").unwrap();
 
         assert!(pkg.executables.is_empty());
@@ -1216,7 +1219,7 @@ mod tests {
             app_dir.display()
         );
 
-        let mut manifest: InstalledManifest = serde_json::from_str(&json).unwrap();
+        let mut manifest: InstalledSet = serde_json::from_str(&json).unwrap();
         manifest.migrate();
 
         let pkg = manifest.get_package("myapp").unwrap();
@@ -1246,7 +1249,7 @@ mod tests {
             }
         }"#;
 
-        let mut manifest: InstalledManifest = serde_json::from_str(json).unwrap();
+        let mut manifest: InstalledSet = serde_json::from_str(json).unwrap();
         manifest.migrate();
 
         let pkg = manifest.get_package("gone").unwrap();

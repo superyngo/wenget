@@ -6,7 +6,7 @@
 //! - Loading and saving manifest-cache.json
 //! - Directory initialization
 
-use super::manifest::{InstalledManifest, SourceManifest};
+use super::manifest::{InstalledSet, SourceManifest};
 use super::paths::WenPaths;
 use super::preferences::Preferences;
 use crate::bucket::BucketConfig;
@@ -74,7 +74,7 @@ impl Config {
 
         // Create empty manifests if they don't exist
         if !self.paths.installed_json().exists() {
-            self.save_installed(&InstalledManifest::new())?;
+            self.save_installed(&InstalledSet::new())?;
         }
 
         Ok(())
@@ -86,7 +86,7 @@ impl Config {
     }
 
     /// Load installed manifest with automatic repair on parse errors
-    pub fn load_installed(&self) -> Result<InstalledManifest> {
+    pub fn load_installed(&self) -> Result<InstalledSet> {
         use super::repair::{
             create_backup, print_repair_warning, try_parse_json, RepairAction, RepairSeverity,
         };
@@ -95,7 +95,7 @@ impl Config {
 
         // Handle missing file
         if !path.exists() {
-            return Ok(InstalledManifest::new());
+            return Ok(InstalledSet::new());
         }
 
         // Read file content
@@ -103,7 +103,7 @@ impl Config {
             .with_context(|| format!("Failed to read file: {}", path.display()))?;
 
         // Try to parse JSON
-        match try_parse_json::<InstalledManifest>(&content, &path) {
+        match try_parse_json::<InstalledSet>(&content, &path) {
             Ok(mut manifest) => {
                 // Migrate old format to new format
                 manifest.migrate();
@@ -121,7 +121,7 @@ impl Config {
                     .ok();
 
                 // Create new empty manifest
-                let new_manifest = InstalledManifest::new();
+                let new_manifest = InstalledSet::new();
 
                 // Save the new manifest
                 self.save_installed(&new_manifest)?;
@@ -143,7 +143,7 @@ impl Config {
     }
 
     /// Save installed manifest
-    pub fn save_installed(&self, manifest: &InstalledManifest) -> Result<()> {
+    pub fn save_installed(&self, manifest: &InstalledSet) -> Result<()> {
         let path = self.paths.installed_json();
         Self::save_json(&path, manifest).context("Failed to save installed.json")
     }
@@ -170,7 +170,7 @@ impl Config {
     }
 
     /// Get or create installed manifest (auto-initialize if needed)
-    pub fn get_or_create_installed(&self) -> Result<InstalledManifest> {
+    pub fn get_or_create_installed(&self) -> Result<InstalledSet> {
         if !self.is_initialized() {
             self.init()?;
         }
@@ -334,7 +334,7 @@ mod tests {
         let (config, tmp) = create_test_config();
         config.init().unwrap();
 
-        let manifest = InstalledManifest::new();
+        let manifest = InstalledSet::new();
         config.save_installed(&manifest).unwrap();
 
         let loaded = config.load_installed().unwrap();

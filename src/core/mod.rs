@@ -14,8 +14,7 @@ pub mod repair;
 pub use config::Config;
 #[allow(unused_imports)]
 pub use manifest::{
-    InstalledManifest, InstalledPackage, Package, PlatformBinary, ScriptItem, ScriptPlatform,
-    ScriptType,
+    InstalledPackage, InstalledSet, Package, PlatformBinary, ScriptItem, ScriptPlatform, ScriptType,
 };
 pub use paths::WenPaths;
 #[allow(unused_imports)]

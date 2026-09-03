@@ -93,7 +93,7 @@ pub fn run(names: Vec<String>) -> Result<()> {
 /// Display detailed information for a single package
 fn display_package_info(
     resolved: &ResolvedPackage,
-    installed: &crate::core::InstalledManifest,
+    installed: &crate::core::InstalledSet,
     resolver: &PackageResolver,
 ) -> Result<()> {
     let pkg = &resolved.package;
@@ -279,7 +279,7 @@ fn display_package_info(
 /// Display detailed information for a single script
 fn display_script_info(
     cached_script: &crate::cache::CachedScript,
-    installed: &crate::core::InstalledManifest,
+    installed: &crate::core::InstalledSet,
 ) -> Result<()> {
     let script = &cached_script.script;
 

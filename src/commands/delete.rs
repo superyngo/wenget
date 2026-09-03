@@ -258,7 +258,7 @@ pub fn run(
 fn delete_package(
     _config: &Config,
     paths: &WenPaths,
-    installed: &mut crate::core::InstalledManifest,
+    installed: &mut crate::core::InstalledSet,
     name: &str,
 ) -> Result<()> {
     // Get package info to find all command names

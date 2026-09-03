@@ -291,7 +291,7 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
 
 /// Find upgradeable packages by checking their sources
 fn find_upgradeable(
-    installed: &crate::core::InstalledManifest,
+    installed: &crate::core::InstalledSet,
     github: &GitHubProvider,
     cache: &mut crate::cache::ManifestCache,
     yes: bool,
@@ -506,7 +506,7 @@ fn find_upgradeable(
 /// packages are synced — direct-repo packages are not stored in the cache and are always
 /// resolved live from the GitHub API.
 fn sync_bucket_packages_to_cache(
-    installed: &crate::core::InstalledManifest,
+    installed: &crate::core::InstalledSet,
     keys: &[String],
     github: &GitHubProvider,
     cache: &mut crate::cache::ManifestCache,
