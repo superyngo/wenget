@@ -1740,6 +1740,10 @@ fn install_package(
         return Err(e);
     }
 
+    // Sanitized directory names are lossy, so a different package may already
+    // own the directory this key maps to.
+    crate::core::InstalledStore::new(paths.clone()).ensure_dir_available(installed_key)?;
+
     // Stage the extraction beside the app directory and swap it in on success, so
     // a failed install leaves the previous install and its record untouched.
     let staged = crate::installer::StagedInstall::begin(paths, installed_key)?;

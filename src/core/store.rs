@@ -340,6 +340,30 @@ impl InstalledStore {
             .filter(|(_, dirs)| dirs.len() > 1)
             .collect())
     }
+
+    /// Refuse to install `key` into an app directory another package occupies
+    ///
+    /// `sanitize_path_component` is lossy: `foo::bar` and `foo-bar` both map to
+    /// `apps/foo-bar`. Only detected, not resolved.
+    pub fn ensure_dir_available(&self, key: &str) -> Result<()> {
+        let app_dir = self.paths.app_dir(key);
+        if !app_dir.exists() {
+            return Ok(());
+        }
+
+        if let ScanEntry::Loaded { key: existing, .. } = self.classify(&app_dir) {
+            if existing != key {
+                anyhow::bail!(
+                    "Cannot install {key}: {} is occupied by package {existing}.\n\
+                     Run `wenget delete {existing}` first, or install {key} under a \
+                     different name.",
+                    app_dir.display()
+                );
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// `foo.old-1730000000` — residue from an interrupted swap
@@ -720,5 +744,47 @@ mod tests {
 
         let set = result.expect("load must not fail because a write was refused");
         assert!(set.get_package("ro").is_some());
+    }
+
+    #[test]
+    fn test_collision_guard_rejects_a_foreign_occupant() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        // `foo-bar` the package occupies apps/foo-bar ...
+        s.save_package("foo-bar", &pkg("foo-bar", None)).unwrap();
+
+        // ... which is also where `foo::bar` the variant would go.
+        let err = s.ensure_dir_available("foo::bar").unwrap_err().to_string();
+        assert!(
+            err.contains("foo::bar"),
+            "names the package being installed: {err}"
+        );
+        assert!(err.contains("foo-bar"), "names the occupant: {err}");
+        assert!(
+            err.contains("wenget delete foo-bar"),
+            "offers a way out: {err}"
+        );
+
+        // The existing record is untouched.
+        assert!(s.load().unwrap().get_package("foo-bar").is_some());
+    }
+
+    #[test]
+    fn test_collision_guard_allows_reinstall_of_the_same_key() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.save_package("bun::baseline", &pkg("bun", Some("baseline")))
+            .unwrap();
+        s.ensure_dir_available("bun::baseline").unwrap();
+    }
+
+    #[test]
+    fn test_collision_guard_allows_untracked_and_empty_targets() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.ensure_dir_available("fresh").unwrap();
+
+        std::fs::create_dir_all(tmp.path().join("apps").join("untracked")).unwrap();
+        s.ensure_dir_available("untracked").unwrap();
     }
 }

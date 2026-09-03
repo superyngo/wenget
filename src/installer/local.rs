@@ -35,6 +35,8 @@ pub fn install_local_file(
         normalize_command_name(filename)
     };
 
+    crate::core::InstalledStore::new(paths.clone()).ensure_dir_available(&name)?;
+
     let staged = crate::installer::StagedInstall::begin(paths, &name)?;
     let app_dir = staged.target().to_path_buf();
 

@@ -199,6 +199,8 @@ pub fn install_script(
     content: &str,
     script_type: &ScriptType,
 ) -> Result<Vec<String>> {
+    crate::core::InstalledStore::new(paths.clone()).ensure_dir_available(name)?;
+
     // Stage, then swap: an interrupted write cannot leave a half-written script
     // in place of a working one.
     let staged = crate::installer::StagedInstall::begin(paths, name)?;
