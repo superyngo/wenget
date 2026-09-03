@@ -219,6 +219,20 @@ impl InstalledStore {
             }
 
             let name = dir_entry.file_name().to_string_lossy().to_string();
+
+            // The staging directory itself is normal furniture; only its
+            // contents are residue from an interrupted swap.
+            if path == self.paths.staging_dir() {
+                if let Ok(children) = fs::read_dir(&path) {
+                    entries.extend(
+                        children
+                            .filter_map(|e| e.ok())
+                            .map(|e| ScanEntry::Residue(e.path())),
+                    );
+                }
+                continue;
+            }
+
             if name.starts_with('.') || is_old_install_residue(&name) {
                 entries.push(ScanEntry::Residue(path));
                 continue;
@@ -363,6 +377,50 @@ impl InstalledStore {
         }
 
         Ok(())
+    }
+
+    /// Remove `apps/.staging/*` and `apps/*.old-*` left by interrupted swaps
+    pub fn sweep_residue(&self) -> Result<Vec<PathBuf>> {
+        let mut removed = Vec::new();
+
+        let staging = self.paths.staging_dir();
+        if staging.exists() {
+            for entry in fs::read_dir(&staging)
+                .with_context(|| format!("Failed to read {}", staging.display()))?
+                .filter_map(|e| e.ok())
+            {
+                let path = entry.path();
+                let result = if path.is_dir() {
+                    fs::remove_dir_all(&path)
+                } else {
+                    fs::remove_file(&path)
+                };
+                match result {
+                    Ok(()) => removed.push(path),
+                    Err(e) => log::warn!("Could not remove {}: {}", path.display(), e),
+                }
+            }
+        }
+
+        let apps_dir = self.paths.apps_dir();
+        if apps_dir.exists() {
+            for entry in fs::read_dir(&apps_dir)
+                .with_context(|| format!("Failed to read {}", apps_dir.display()))?
+                .filter_map(|e| e.ok())
+            {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if !is_old_install_residue(&name) {
+                    continue;
+                }
+                let path = entry.path();
+                match fs::remove_dir_all(&path) {
+                    Ok(()) => removed.push(path),
+                    Err(e) => log::warn!("Could not remove {}: {}", path.display(), e),
+                }
+            }
+        }
+
+        Ok(removed)
     }
 }
 
@@ -820,5 +878,21 @@ mod tests {
 
         let set = s.load().unwrap();
         assert_eq!(set.get_package("tool").unwrap().version, "1.0.0");
+    }
+
+    #[test]
+    fn test_sweep_residue_removes_only_residue() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.save_package("keep", &pkg("keep", None)).unwrap();
+        std::fs::create_dir_all(s.paths().staging_dir().join("keep-99")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("apps").join("keep.old-123")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("apps").join("untracked")).unwrap();
+
+        let swept = s.sweep_residue().unwrap();
+        assert_eq!(swept.len(), 2, "staging entry and .old- dir: {swept:?}");
+        assert!(s.paths().app_dir("keep").exists());
+        assert!(tmp.path().join("apps").join("untracked").exists());
+        assert!(!tmp.path().join("apps").join("keep.old-123").exists());
     }
 }

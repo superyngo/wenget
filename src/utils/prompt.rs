@@ -37,7 +37,6 @@ pub fn confirm(message: &str) -> Result<bool> {
 ///
 /// # Arguments
 /// * `message` - The prompt message to display (without the [y/N] suffix)
-#[allow(dead_code)]
 pub fn confirm_no_default(message: &str) -> Result<bool> {
     print!("{} [y/N] ", message);
     io::stdout().flush()?;
