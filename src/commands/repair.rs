@@ -4,7 +4,6 @@
 
 use crate::bucket::BucketConfig;
 use crate::cache::ManifestCache;
-use crate::core::manifest::InstalledSet;
 use crate::core::repair::{check_json_file, create_backup, FileStatus};
 use crate::core::Config;
 use anyhow::Result;
@@ -18,27 +17,22 @@ pub fn run(force: bool) -> Result<()> {
     let config = Config::new()?;
     let paths = config.paths();
 
-    // Check all config files
-    let installed_path = paths.installed_json();
+    // Check the global config files (per-directory package records are handled
+    // by the app-directory scan, added next).
     let buckets_path = paths.buckets_json();
     let cache_path = paths.manifest_cache_json();
 
-    let installed_status = check_json_file::<InstalledSet>(&installed_path);
     let buckets_status = check_json_file::<BucketConfig>(&buckets_path);
     let cache_status = check_json_file::<ManifestCache>(&cache_path);
 
     // Display status
     println!("{}", "Configuration File Status:".bold());
-    println!("  installed.json:      {}", installed_status);
     println!("  buckets.json:        {}", buckets_status);
     println!("  manifest-cache.json: {}", cache_status);
     println!();
 
     // Count issues
     let mut issues = 0;
-    if matches!(installed_status, FileStatus::Corrupted(_)) {
-        issues += 1;
-    }
     if matches!(buckets_status, FileStatus::Corrupted(_)) {
         issues += 1;
     }
@@ -63,11 +57,6 @@ pub fn run(force: bool) -> Result<()> {
         println!();
     }
 
-    // Repair installed.json if corrupted or force mode
-    if force || matches!(installed_status, FileStatus::Corrupted(_)) {
-        repair_installed(&config, &installed_path, &installed_status)?;
-    }
-
     // Repair buckets.json if corrupted or force mode
     if force || matches!(buckets_status, FileStatus::Corrupted(_)) {
         repair_buckets(&config, &buckets_path, &buckets_status)?;
@@ -80,43 +69,6 @@ pub fn run(force: bool) -> Result<()> {
 
     println!();
     println!("{}", "Repair complete.".green());
-
-    Ok(())
-}
-
-/// Repair installed.json
-fn repair_installed(config: &Config, path: &std::path::Path, status: &FileStatus) -> Result<()> {
-    print!("  Repairing installed.json... ");
-
-    match status {
-        FileStatus::Corrupted(_) => {
-            // Create backup before repair
-            if let Ok(backup_path) = create_backup(path) {
-                println!(
-                    "{}",
-                    format!("backup created: {}", backup_path.display()).yellow()
-                );
-            }
-
-            // Reset to empty
-            let new_manifest = InstalledSet::new();
-            config.save_installed(&new_manifest)?;
-
-            println!(
-                "  {} Reset to empty (previous package records lost)",
-                "!".red()
-            );
-        }
-        FileStatus::Missing => {
-            // Create new file
-            let new_manifest = InstalledSet::new();
-            config.save_installed(&new_manifest)?;
-            println!("{}", "created".green());
-        }
-        FileStatus::Ok => {
-            println!("{}", "skipped (already OK)".green());
-        }
-    }
 
     Ok(())
 }

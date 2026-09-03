@@ -9,6 +9,7 @@
 use super::manifest::{InstalledSet, SourceManifest};
 use super::paths::WenPaths;
 use super::preferences::Preferences;
+use super::store::InstalledStore;
 use crate::bucket::BucketConfig;
 use crate::cache::ManifestCache;
 use anyhow::{Context, Result};
@@ -47,7 +48,7 @@ impl Config {
     /// Create a Config instance backed by an explicit paths manager
     ///
     /// Intended for tests: `Config::new()` resolves the real `~/.wenget/`, so
-    /// tests that call `init`/`save_installed` would otherwise overwrite the
+    /// tests that call `init` or write package records would otherwise touch the
     /// developer's actual installed-package records.
     #[cfg(test)]
     pub fn with_paths(paths: WenPaths) -> Self {
@@ -72,80 +73,26 @@ impl Config {
     pub fn init(&self) -> Result<()> {
         self.paths.init_dirs()?;
 
-        // Create empty manifests if they don't exist
-        if !self.paths.installed_json().exists() {
-            self.save_installed(&InstalledSet::new())?;
-        }
-
         Ok(())
     }
 
     /// Check if wenget is initialized
     pub fn is_initialized(&self) -> bool {
-        self.paths.is_initialized() && self.paths.installed_json().exists()
+        self.paths.is_initialized()
     }
 
-    /// Load installed manifest with automatic repair on parse errors
+    /// A handle for reading and writing per-package records
+    pub fn store(&self) -> InstalledStore {
+        InstalledStore::new(self.paths.clone())
+    }
+
+    /// Load the set of installed packages from per-package records
+    ///
+    /// Migration from a legacy `installed.json`, quarantine of unparseable
+    /// records, and skipping of future-version records all happen inside
+    /// `InstalledStore::load`.
     pub fn load_installed(&self) -> Result<InstalledSet> {
-        use super::repair::{
-            create_backup, print_repair_warning, try_parse_json, RepairAction, RepairSeverity,
-        };
-
-        let path = self.paths.installed_json();
-
-        // Handle missing file
-        if !path.exists() {
-            return Ok(InstalledSet::new());
-        }
-
-        // Read file content
-        let content = fs::read_to_string(&path)
-            .with_context(|| format!("Failed to read file: {}", path.display()))?;
-
-        // Try to parse JSON
-        match try_parse_json::<InstalledSet>(&content, &path) {
-            Ok(mut manifest) => {
-                // Migrate old format to new format
-                manifest.migrate();
-                Ok(manifest)
-            }
-            Err(parse_error) => {
-                log::error!("CRITICAL: Failed to parse installed.json: {}", parse_error);
-
-                // This is critical - create backup
-                let backup_path = create_backup(&path)
-                    .map_err(|e| {
-                        log::warn!("Failed to create backup of corrupted file: {}", e);
-                        e
-                    })
-                    .ok();
-
-                // Create new empty manifest
-                let new_manifest = InstalledSet::new();
-
-                // Save the new manifest
-                self.save_installed(&new_manifest)?;
-
-                // Notify user with critical warning
-                let action = RepairAction::ResetToEmpty {
-                    backup_path: backup_path.clone(),
-                };
-                print_repair_warning(
-                    "installed.json",
-                    &action,
-                    RepairSeverity::Critical,
-                    Some("Your installed package records were corrupted. wenget cannot track previously installed packages. You may need to reinstall them."),
-                );
-
-                Ok(new_manifest)
-            }
-        }
-    }
-
-    /// Save installed manifest
-    pub fn save_installed(&self, manifest: &InstalledSet) -> Result<()> {
-        let path = self.paths.installed_json();
-        Self::save_json(&path, manifest).context("Failed to save installed.json")
+        self.store().load()
     }
 
     /// Generic JSON loader (without repair - for internal use)
@@ -158,22 +105,12 @@ impl Config {
             .with_context(|| format!("Failed to parse JSON from: {}", path.display()))
     }
 
-    /// Generic JSON saver
-    fn save_json<T: serde::Serialize>(path: &Path, data: &T) -> Result<()> {
-        let json =
-            serde_json::to_string_pretty(data).context("Failed to serialize data to JSON")?;
-
-        fs::write(path, json)
-            .with_context(|| format!("Failed to write file: {}", path.display()))?;
-
-        Ok(())
-    }
-
-    /// Get or create installed manifest (auto-initialize if needed)
+    /// Load the set of installed packages
+    ///
+    /// No longer initializes: with no file that must exist for reads to work, an
+    /// absent root simply means nothing is installed. Initialization happens on
+    /// `add` and on `wenget init`.
     pub fn get_or_create_installed(&self) -> Result<InstalledSet> {
-        if !self.is_initialized() {
-            self.init()?;
-        }
         self.load_installed()
     }
 
@@ -329,19 +266,76 @@ mod tests {
         assert!(config.paths().apps_dir().exists());
     }
 
+    /// A minimal, valid installed package for tests.
+    fn sample_installed_package() -> crate::core::manifest::InstalledPackage {
+        crate::core::manifest::InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
+            repo_name: "ripgrep".to_string(),
+            variant: None,
+            version: "14.0.0".to_string(),
+            platform: "linux-x86_64".to_string(),
+            installed_at: chrono::Utc::now(),
+            install_path: String::new(),
+            executables: std::collections::HashMap::from([(
+                "bin/rg".to_string(),
+                "rg".to_string(),
+            )]),
+            source: crate::core::manifest::PackageSource::Bucket {
+                name: "main".to_string(),
+            },
+            description: "search tool".to_string(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: "ripgrep-linux.tar.gz".to_string(),
+            parent_package: None,
+            download_url: None,
+        }
+    }
+
     #[test]
-    fn test_manifest_round_trip() {
+    fn test_load_installed_reads_per_package_records() {
         let (config, tmp) = create_test_config();
+
+        config
+            .store()
+            .save_package("ripgrep", &sample_installed_package())
+            .unwrap();
+
+        let set = config.load_installed().unwrap();
+        assert!(set.get_package("ripgrep").is_some());
+        assert!(
+            !tmp.path().join("installed.json").exists(),
+            "no global index is ever written"
+        );
+    }
+
+    #[test]
+    fn test_get_or_create_installed_does_not_initialize() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().join("absent");
+        let config = Config::with_paths(WenPaths::with_root(root.clone()));
+
+        assert!(config
+            .get_or_create_installed()
+            .unwrap()
+            .packages
+            .is_empty());
+        assert!(!root.exists(), "a read must not create the root");
+    }
+
+    #[test]
+    fn test_is_initialized_ignores_installed_json() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().join("fresh");
+        let config = Config::with_paths(WenPaths::with_root(root.clone()));
+        assert!(!config.is_initialized());
+
         config.init().unwrap();
-
-        let manifest = InstalledSet::new();
-        config.save_installed(&manifest).unwrap();
-
-        let loaded = config.load_installed().unwrap();
-        assert_eq!(loaded.packages.len(), manifest.packages.len());
-
-        // The round trip must stay inside the temp root and never touch the
-        // developer's real ~/.wenget/installed.json.
-        assert!(config.paths().installed_json().starts_with(tmp.path()));
+        assert!(config.is_initialized());
+        assert!(root.join("apps").exists());
+        assert!(
+            !root.join("installed.json").exists(),
+            "init no longer creates a global index"
+        );
     }
 }

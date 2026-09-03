@@ -65,8 +65,11 @@ pub fn run(old_name: String, new_name: Option<String>, config: &Config) -> Resul
         &final_new_name,
     )?;
 
-    // Save updated manifest
-    config.save_installed(&installed)?;
+    // Only the renamed package's record changed.
+    let renamed = installed
+        .get_package(&pkg_key)
+        .context("renamed package vanished from the installed set")?;
+    config.store().save_package(&pkg_key, renamed)?;
 
     println!("{} Successfully renamed command", "✓".green().bold());
     println!(

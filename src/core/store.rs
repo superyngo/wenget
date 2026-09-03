@@ -463,7 +463,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "unignored in Task 8, when install_path becomes serde(skip)"]
     fn test_install_path_is_derived_not_stored() {
         let tmp = TempDir::new().unwrap();
         let s = store(&tmp);

@@ -238,7 +238,7 @@ fn extract_repo_name_from_command(command_name: &str, variant: &str) -> Option<S
 
 /// Install scripts from local paths or URLs
 fn install_scripts(
-    config: &Config,
+    _config: &Config,
     paths: &WenPaths,
     installed: &mut crate::core::InstalledSet,
     script_inputs: Vec<&String>,
@@ -366,7 +366,7 @@ fn install_scripts(
 
         match install_single_script(paths, &name, &content, &script_type, &origin) {
             Ok(inst_pkg) => {
-                installed.upsert_package(name.clone(), inst_pkg);
+                record_installed(paths, installed, name.clone(), inst_pkg);
                 println!("  {} Installed successfully", "✓".green());
                 success_count += 1;
                 successful_scripts.push(name);
@@ -376,12 +376,6 @@ fn install_scripts(
                 fail_count += 1;
                 failed_scripts.push(name);
             }
-        }
-    }
-
-    if success_count > 0 {
-        if let Err(e) = config.save_installed(installed) {
-            eprintln!("{} Failed to save installed manifest: {}", "✗".red(), e);
         }
     }
 
@@ -462,7 +456,7 @@ fn install_single_script(
 
 /// Install local binary or archive files
 fn install_local_files(
-    config: &Config,
+    _config: &Config,
     paths: &WenPaths,
     installed: &mut crate::core::InstalledSet,
     files: Vec<&String>,
@@ -508,7 +502,7 @@ fn install_local_files(
                     }
                 };
                 let display_names = inst_pkg.get_command_names().join(", ");
-                installed.upsert_package(name.clone(), inst_pkg);
+                record_installed(paths, installed, name.clone(), inst_pkg);
                 println!(
                     "  {} Installed successfully as {}",
                     "✓".green(),
@@ -524,12 +518,6 @@ fn install_local_files(
             }
         }
         println!();
-    }
-
-    if success_count > 0 {
-        if let Err(e) = config.save_installed(installed) {
-            eprintln!("{} Failed to save installed manifest: {}", "✗".red(), e);
-        }
     }
 
     println!("{}", "Summary:".bold());
@@ -555,7 +543,7 @@ fn install_local_files(
 
 /// Install binary or archive from direct URLs
 fn install_from_urls(
-    config: &Config,
+    _config: &Config,
     paths: &WenPaths,
     installed: &mut crate::core::InstalledSet,
     urls: Vec<&String>,
@@ -636,7 +624,7 @@ fn install_from_urls(
                                 }
                             };
                             let display_names = inst_pkg.get_command_names().join(", ");
-                            installed.upsert_package(name.clone(), inst_pkg);
+                            record_installed(paths, installed, name.clone(), inst_pkg);
                             println!(
                                 "  {} Installed successfully as {}",
                                 "✓".green(),
@@ -671,12 +659,6 @@ fn install_from_urls(
             }
         }
         println!();
-    }
-
-    if success_count > 0 {
-        if let Err(e) = config.save_installed(installed) {
-            eprintln!("{} Failed to save installed manifest: {}", "✗".red(), e);
-        }
     }
 
     println!("{}", "Summary:".bold());
@@ -1564,7 +1546,7 @@ fn install_packages(
                 update_mode,
             ) {
                 Ok(inst_pkg) => {
-                    installed.upsert_package(installed_key.clone(), inst_pkg);
+                    record_installed(paths, installed, installed_key.clone(), inst_pkg);
 
                     // Collect package for cache update if fetched from GitHub API
                     // (only once, not for each binary)
@@ -1583,12 +1565,6 @@ fn install_packages(
                 }
             }
             println!();
-        }
-    }
-
-    if success_count > 0 {
-        if let Err(e) = config.save_installed(installed) {
-            eprintln!("{} Failed to save installed manifest: {}", "✗".red(), e);
         }
     }
 
@@ -1639,12 +1615,6 @@ fn install_packages(
             }
         }
         println!();
-    }
-
-    if script_success_count > 0 {
-        if let Err(e) = config.save_installed(installed) {
-            eprintln!("{} Failed to save installed manifest: {}", "✗".red(), e);
-        }
     }
 
     // Summary
@@ -2196,6 +2166,27 @@ fn update_cache_with_packages(
     Ok(count)
 }
 
+/// Persist one package's record, then update the caller's in-memory snapshot.
+///
+/// The snapshot is what command-name conflict resolution reads during this run;
+/// the record on disk is what survives it.
+fn record_installed(
+    paths: &WenPaths,
+    installed: &mut crate::core::InstalledSet,
+    key: String,
+    pkg: InstalledPackage,
+) {
+    if let Err(e) = crate::core::InstalledStore::new(paths.clone()).save_package(&key, &pkg) {
+        eprintln!(
+            "{} Failed to save the package record for {}: {}",
+            "✗".red(),
+            key,
+            e
+        );
+    }
+    installed.upsert_package(key, pkg);
+}
+
 /// Install a script from bucket cache
 #[allow(clippy::too_many_arguments)]
 fn install_script_from_bucket(
@@ -2259,7 +2250,7 @@ fn install_script_from_bucket(
         parent_package: None,
         download_url: Some(url.to_string()),
     };
-    installed.upsert_package(name.to_string(), inst_pkg);
+    record_installed(paths, installed, name.to_string(), inst_pkg);
 
     Ok(())
 }

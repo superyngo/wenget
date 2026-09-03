@@ -96,12 +96,7 @@ fn collect_fresh_init_changes(config: &Config) -> PlannedChanges {
         changes.create_dirs.push(paths.cache_dir().to_path_buf());
     }
 
-    // Files to create
-    if !paths.installed_json().exists() {
-        changes
-            .create_files
-            .push(paths.installed_json().to_path_buf());
-    }
+    // Files to create (no global installed index: each package owns its record)
     if !paths.buckets_json().exists() {
         changes
             .create_files
@@ -315,7 +310,6 @@ pub fn run(yes: bool) -> Result<()> {
     println!("  Cache:     {}", config.paths().cache_dir().display());
     println!();
     println!("Created manifests:");
-    println!("  Installed: {}", config.paths().installed_json().display());
     println!("  Buckets:   {}", config.paths().buckets_json().display());
     println!();
 

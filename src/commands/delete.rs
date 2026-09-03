@@ -238,8 +238,8 @@ pub fn run(
         }
     }
 
-    // Save updated manifest
-    config.save_installed(&installed)?;
+    // No record write: `delete_package` removed each app directory, and the
+    // package record lived inside it.
 
     // Summary
     println!();

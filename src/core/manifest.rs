@@ -427,7 +427,13 @@ pub struct InstalledPackage {
     /// Installation timestamp
     pub installed_at: DateTime<Utc>,
 
-    /// Installation path
+    /// Where this package is installed
+    ///
+    /// Never serialized: a package record's own location is the answer, so the
+    /// file cannot disagree with reality. Populated on load by `InstalledStore`.
+    /// Still *deserialized*, because a legacy `installed.json` carries it and
+    /// migration reads it to find the app directory.
+    #[serde(default, skip_serializing)]
     pub install_path: String,
 
     /// Map of executable relative path (from install_path) to command name
