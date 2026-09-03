@@ -82,7 +82,22 @@ impl WenPaths {
     }
 
     /// Create a new WenPaths instance with optional custom bin directory
+    ///
+    /// `WENGET_ROOT`, when set and non-empty, overrides both the root and the bin
+    /// directory. This exists so migration, quarantine, the collision guard, and
+    /// orphaned-shim detection can be exercised on the shipped binary without
+    /// pointing it at the user's real `~/.wenget/`.
     pub fn new_with_custom_bin(custom_bin_dir: Option<PathBuf>) -> Result<Self> {
+        if let Some(root) = std::env::var_os("WENGET_ROOT") {
+            if !root.is_empty() {
+                let mut paths = Self::with_root(PathBuf::from(root));
+                if let Some(bin) = custom_bin_dir {
+                    paths.custom_bin_dir = Some(bin);
+                }
+                return Ok(paths);
+            }
+        }
+
         let is_system = is_elevated();
 
         let root = if is_system {
@@ -112,10 +127,9 @@ impl WenPaths {
 
     /// Create a WenPaths instance rooted at an arbitrary directory
     ///
-    /// Intended for tests, so they operate on a temporary directory instead of
-    /// the real `~/.wenget/`. `bin_dir` also resolves under `root`, keeping the
-    /// whole layout self-contained.
-    #[cfg(test)]
+    /// Used by tests and by the `WENGET_ROOT` override, so both operate on a
+    /// self-contained layout instead of the real `~/.wenget/`. `bin_dir` also
+    /// resolves under `root`, keeping the whole layout self-contained.
     pub fn with_root(root: PathBuf) -> Self {
         Self {
             custom_bin_dir: Some(root.join("bin")),
@@ -173,7 +187,10 @@ impl WenPaths {
         &self.root
     }
 
-    /// Get the installed manifest path
+    /// Get the legacy installed.json path
+    ///
+    /// Retained only so `InstalledStore` can migrate and retire the file. wenget
+    /// never writes it.
     pub fn installed_json(&self) -> PathBuf {
         self.root.join("installed.json")
     }
@@ -202,6 +219,29 @@ impl WenPaths {
     #[allow(dead_code)]
     pub fn app_bin_dir(&self, name: &str) -> PathBuf {
         self.app_dir(name).join("bin")
+    }
+
+    /// Get the `.wenget` directory holding a package's record
+    // First callers land with InstalledStore.
+    #[allow(dead_code)]
+    pub fn record_dir(&self, key: &str) -> PathBuf {
+        self.app_dir(key).join(".wenget")
+    }
+
+    /// Get a package's record path: `{app_dir}/.wenget/package.json`
+    #[allow(dead_code)]
+    pub fn package_record_path(&self, key: &str) -> PathBuf {
+        self.record_dir(key).join("package.json")
+    }
+
+    /// Get the staging directory used by install/update swaps
+    ///
+    /// Lives under `apps/` so the swap is a same-filesystem `rename`. The leading
+    /// dot keeps it out of the app-directory scan.
+    // First caller lands with stage-and-swap installs.
+    #[allow(dead_code)]
+    pub fn staging_dir(&self) -> PathBuf {
+        self.apps_dir().join(".staging")
     }
 
     /// Get the bin directory
@@ -447,6 +487,49 @@ mod tests {
         assert!(
             internal.ends_with("bin"),
             "Internal bin dir should end with 'bin'"
+        );
+    }
+
+    #[test]
+    fn test_wenget_root_env_override() {
+        // Serialized against other env-mutating tests by running in one test fn.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let previous = std::env::var_os("WENGET_ROOT");
+
+        std::env::set_var("WENGET_ROOT", tmp.path());
+        let paths = WenPaths::new_with_custom_bin(None).unwrap();
+        assert_eq!(paths.root(), tmp.path());
+        assert_eq!(paths.bin_dir(), tmp.path().join("bin"));
+
+        std::env::remove_var("WENGET_ROOT");
+        let default_paths = WenPaths::new_with_custom_bin(None).unwrap();
+        assert_ne!(default_paths.root(), tmp.path());
+
+        if let Some(value) = previous {
+            std::env::set_var("WENGET_ROOT", value);
+        }
+    }
+
+    #[test]
+    fn test_record_path_helpers() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = WenPaths::with_root(tmp.path().to_path_buf());
+
+        assert_eq!(
+            paths.package_record_path("bun::baseline"),
+            tmp.path()
+                .join("apps")
+                .join("bun-baseline")
+                .join(".wenget")
+                .join("package.json")
+        );
+        assert_eq!(
+            paths.record_dir("bun::baseline"),
+            tmp.path().join("apps").join("bun-baseline").join(".wenget")
+        );
+        assert_eq!(
+            paths.staging_dir(),
+            tmp.path().join("apps").join(".staging")
         );
     }
 }
