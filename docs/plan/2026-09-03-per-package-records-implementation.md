@@ -1,5 +1,7 @@
 # Per-Package Records Implementation Plan
 
+Status: Shipped (2026-09-03)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `subagent-driven-development` (recommended) or
 > `executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for
 > tracking.

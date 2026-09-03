@@ -1,6 +1,6 @@
 # Full Codebase Audit — 2026-09-03
 
-Status: In progress (findings not yet addressed)
+Status: In progress (A-1 and T-1 addressed by per-package records, 2026-09-03; remaining findings open)
 Scope: `wenget` v3.8.7 at commit `f0f8594`, all of `src/` (16,957 LOC, 41 files), plus
 `Cargo.toml`, `.github/workflows/`, `install.sh`, `install.ps1`, and the `docs/` tree.
 Dimensions: architecture, code quality, security, performance, testing, maintainability.

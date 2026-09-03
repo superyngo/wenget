@@ -6,9 +6,7 @@ once approved, dated by when it was written, never rewritten. Current behavior l
 
 ## In progress
 
-| Date | Document | Status |
-|---|---|---|
-| 2026-09-03 | [2026-09-03-per-package-meta-design.md](2026-09-03-per-package-meta-design.md) | Draft (2026-09-03) |
+None.
 
 ## Landed
 
@@ -18,3 +16,4 @@ once approved, dated by when it was written, never rewritten. Current behavior l
 | 2026-03-20 | [2026-03-20-delete-fix-and-installed-json-redesign.md](2026-03-20-delete-fix-and-installed-json-redesign.md) | Shipped (2026-03-20) |
 | 2026-04-10 | [2026-04-10-update-command-behavior-design.md](2026-04-10-update-command-behavior-design.md) | Shipped (2026-04-10) |
 | 2026-04-10 | [2026-04-10-update-default-binary-asset-matching-design.md](2026-04-10-update-default-binary-asset-matching-design.md) | Shipped (2026-04-10) |
+| 2026-09-03 | [2026-09-03-per-package-meta-design.md](2026-09-03-per-package-meta-design.md) | Implemented (2026-09-03) |
