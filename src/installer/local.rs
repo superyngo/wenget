@@ -133,6 +133,7 @@ pub fn install_local_file(
     };
 
     Ok(InstalledPackage {
+        meta_version: crate::core::manifest::CURRENT_META_VERSION,
         repo_name: name.clone(),
         variant: None,
         version: "local".to_string(), // We don't know the version from a file

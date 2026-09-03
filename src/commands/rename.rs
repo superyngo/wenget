@@ -363,6 +363,7 @@ mod tests {
         exe1.insert("bin/oldcmd".to_string(), "oldcmd".to_string());
 
         let package = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
             repo_name: "pkg1".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -394,6 +395,7 @@ mod tests {
         exe1.insert("bin/cmd1".to_string(), "cmd1".to_string());
 
         let package1 = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
             repo_name: "pkg1".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -418,6 +420,7 @@ mod tests {
         exe2.insert("bin/cmd2".to_string(), "cmd2".to_string());
 
         let package2 = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
             repo_name: "pkg2".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -496,6 +499,7 @@ mod tests {
         let mut exe_cli = HashMap::new();
         exe_cli.insert("bin/confy-64".to_string(), "confy-64".to_string());
         let pkg_cli = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
             repo_name: "confy".to_string(),
             variant: Some("64".to_string()),
             version: "0.19.1".to_string(),
@@ -518,6 +522,7 @@ mod tests {
         let mut exe_desktop = HashMap::new();
         exe_desktop.insert("bin/confyd".to_string(), "confyd".to_string());
         let pkg_desktop = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
             repo_name: "confy".to_string(),
             variant: Some("desktop-64".to_string()),
             version: "0.19.1".to_string(),

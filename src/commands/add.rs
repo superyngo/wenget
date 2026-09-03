@@ -437,6 +437,7 @@ fn install_single_script(
 
     // Create installed package info
     let inst_pkg = InstalledPackage {
+        meta_version: crate::core::manifest::CURRENT_META_VERSION,
         repo_name: name.to_string(),
         variant: None,
         version: "script".to_string(),
@@ -2092,6 +2093,7 @@ fn install_package(
 
     // Create installed package info
     let inst_pkg = InstalledPackage {
+        meta_version: crate::core::manifest::CURRENT_META_VERSION,
         repo_name,
         variant,
         version: version.to_string(),
@@ -2233,6 +2235,7 @@ fn install_script_from_bucket(
 
     // Create installed package info
     let inst_pkg = InstalledPackage {
+        meta_version: crate::core::manifest::CURRENT_META_VERSION,
         repo_name: command_name.to_string(),
         variant: None,
         version: "script".to_string(),

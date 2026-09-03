@@ -391,9 +391,23 @@ pub enum PackageSource {
     },
 }
 
+/// Highest package-record schema version this build understands.
+///
+/// A record above this version is skipped on load, never rewritten: a downgrade
+/// must be read-only toward data it cannot interpret.
+pub const CURRENT_META_VERSION: u32 = 1;
+
+fn default_meta_version() -> u32 {
+    1
+}
+
 /// Installed package information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstalledPackage {
+    /// Schema version of this package record. Absent means version 1.
+    #[serde(default = "default_meta_version")]
+    pub meta_version: u32,
+
     /// Canonical repository name (e.g., "bun", "cli")
     /// This is the base name from the repository, without variant suffix
     #[serde(default)]
@@ -961,6 +975,7 @@ mod tests {
         executables.insert("bin/test.exe".to_string(), "test".to_string());
 
         let package = InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
             repo_name: "test".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -994,6 +1009,7 @@ mod tests {
         executables.insert("bin/rg-doc".to_string(), "rg-doc".to_string());
 
         let pkg = InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
             repo_name: "ripgrep".to_string(),
             variant: None,
             version: "14.0.0".to_string(),
@@ -1030,6 +1046,7 @@ mod tests {
         executables.insert("bin/rg".to_string(), "rg".to_string());
 
         let pkg = InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
             repo_name: "ripgrep".to_string(),
             variant: None,
             version: "14.0.0".to_string(),
@@ -1068,6 +1085,7 @@ mod tests {
         manifest.upsert_package(
             "ripgrep".to_string(),
             InstalledPackage {
+                meta_version: CURRENT_META_VERSION,
                 repo_name: "ripgrep".to_string(),
                 variant: None,
                 version: "14.0.0".to_string(),
@@ -1091,6 +1109,7 @@ mod tests {
         manifest.upsert_package(
             "fzf".to_string(),
             InstalledPackage {
+                meta_version: CURRENT_META_VERSION,
                 repo_name: "fzf".to_string(),
                 variant: None,
                 version: "0.44.0".to_string(),
@@ -1155,6 +1174,7 @@ mod tests {
         executables.insert("bin/test".to_string(), "test".to_string());
 
         let pkg = InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
             repo_name: "test".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -1259,5 +1279,55 @@ mod tests {
             Some(&"gone-cmd".to_string())
         );
         assert!(pkg.command_names.is_empty());
+    }
+
+    /// A minimal, valid installed package for tests.
+    fn sample_package() -> InstalledPackage {
+        InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
+            repo_name: "ripgrep".to_string(),
+            variant: None,
+            version: "14.0.0".to_string(),
+            platform: "linux-x86_64".to_string(),
+            installed_at: Utc::now(),
+            install_path: "/tmp/apps/ripgrep".to_string(),
+            executables: HashMap::from([("bin/rg".to_string(), "rg".to_string())]),
+            source: PackageSource::Bucket {
+                name: "main".to_string(),
+            },
+            description: "search tool".to_string(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: "ripgrep-linux.tar.gz".to_string(),
+            parent_package: None,
+            download_url: None,
+        }
+    }
+
+    #[test]
+    fn test_meta_version_defaults_to_one_when_absent() {
+        let json = r#"{
+            "repo_name": "ripgrep",
+            "version": "14.0.0",
+            "platform": "linux-x86_64",
+            "installed_at": "2026-01-01T00:00:00Z",
+            "install_path": "/tmp/apps/ripgrep",
+            "executables": {"bin/rg": "rg"},
+            "source": {"type": "bucket", "name": "main"},
+            "description": "search tool",
+            "asset_name": "ripgrep-linux.tar.gz"
+        }"#;
+
+        let pkg: InstalledPackage = serde_json::from_str(json).unwrap();
+        assert_eq!(pkg.meta_version, 1);
+        assert_eq!(pkg.meta_version, CURRENT_META_VERSION);
+    }
+
+    #[test]
+    fn test_meta_version_round_trips() {
+        let json = serde_json::to_string(&sample_package()).unwrap();
+        assert!(json.contains("\"meta_version\":1"));
+        let back: InstalledPackage = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.meta_version, 1);
     }
 }
