@@ -501,7 +501,7 @@ pub struct InstalledSet {
 }
 
 impl InstalledSet {
-    /// Create a new empty installed manifest
+    /// Create a new empty installed set
     pub fn new() -> Self {
         Self {
             packages: HashMap::new(),
@@ -942,7 +942,7 @@ pub fn extract_variant_from_asset(asset_name: &str, repo_name: &str) -> Option<S
     }
 }
 
-/// Generate installed.json key from repo name and variant
+/// Generate the installed key from repo name and variant
 ///
 /// When a package has no variant, the key is just the repo_name.
 /// When a package has a variant, the key is "{repo_name}::{variant}"

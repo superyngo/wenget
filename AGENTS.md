@@ -59,7 +59,7 @@ src/
 │   ├── init.rs          # First-run setup, PATH configuration
 │   ├── list.rs          # List installed/available packages
 │   ├── rename.rs        # Rename installed commands
-│   ├── repair.rs        # Repair corrupted JSON state
+│   ├── repair.rs        # Report/repair drift between records, dirs, launchers
 │   ├── search.rs        # Search buckets
 │   └── update.rs        # Update packages + self-update
 ├── core/                # Core data structures & utilities
@@ -71,7 +71,8 @@ src/
 │   ├── preferences.rs   # config.toml user preferences
 │   ├── privilege.rs     # Root/admin detection
 │   ├── registry.rs      # Windows registry PATH ops
-│   └── repair.rs        # JSON file repair utilities
+│   ├── repair.rs        # JSON file repair utilities
+│   └── store.rs         # Per-package record I/O (apps/*/.wenget/package.json)
 ├── providers/           # External data sources
 │   ├── base.rs          # Provider trait
 │   └── github.rs        # GitHub API integration
@@ -81,6 +82,7 @@ src/
 │   ├── local.rs         # Local file installation
 │   ├── script.rs        # Script installation
 │   ├── shim.rs          # Windows shim creation
+│   ├── staging.rs       # Stage-and-swap install directories
 │   └── symlink.rs       # Unix symlink creation
 ├── downloader/          # File download with progress
 └── utils/               # HTTP client, prompts
@@ -225,7 +227,8 @@ eprintln!("{} {}", "Error:".red().bold(), e);
 - `WenPaths` manages all directory paths (user vs system level)
 - Platform detection uses fuzzy matching for binary names
 - Cache has 24-hour TTL; invalidate after bucket changes
-- Always update `installed.json` after install/remove operations
+- Write one package record per install/rename (`InstalledStore::save_package`); deleting an app
+  directory removes its record with it. There is no global installed index
 - JSON files have auto-repair on parse errors with backup
 
 ## Release Workflow

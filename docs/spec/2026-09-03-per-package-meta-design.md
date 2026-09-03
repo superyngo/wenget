@@ -1,6 +1,6 @@
 # Remove `installed.json`: Per-Package Records
 
-Status: Draft (2026-09-03)
+Status: Implemented (2026-09-03)
 
 ## Problem Statement
 

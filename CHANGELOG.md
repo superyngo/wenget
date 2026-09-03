@@ -47,6 +47,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- refactor(core)!: replace `installed.json` with per-package records at
+  `{app_dir}/.wenget/package.json`. All installed-package state lived in one file, rewritten in
+  full and non-atomically by eight call sites, so a crash mid-write or any bug that serialized an
+  empty collection lost the record of *every* package — which already happened once: `cargo test`
+  truncated the maintainer's `installed.json` while the app directories survived. Each package now
+  owns its own record inside its own app directory, and the set of installed packages is the set
+  of directories carrying a readable one; no global index is written, not even as a cache. Installs
+  stage into `apps/.staging/` and swap by `rename`, so a failed update leaves the previous install
+  and its record intact. `wenget repair` reports per-directory status, sweeps interrupted-install
+  leftovers, and only reports or removes a launcher in the bin directory whose wenget provenance it
+  can prove. A legacy `installed.json` is migrated on first load and renamed to
+  `installed.json.migrated-<timestamp>`, never deleted; entries whose directory is gone are
+  dropped and listed. `WENGET_ROOT` now overrides the root in release builds so this can be
+  verified without touching a real `~/.wenget`. See
+  `docs/adr/0001-no-global-installed-index.md` (2026-09-03).
+- refactor(core): rename `InstalledManifest` to `InstalledSet`. "Manifest" already means a
+  bucket's `manifest.json`, and the in-memory collection of installed packages is no longer a file
+  format at all (2026-09-03).
+- refactor(core): two deviations from the written plan, both found by tests rather than review.
+  `install_path` is `#[serde(default, skip_serializing)]`, not `#[serde(skip)]`: a record must
+  never store its own location, but a legacy `installed.json` carries it and migration reads it to
+  find the app directory — `skip` broke that. And launcher provenance is resolved *lexically*, not
+  by absolute-path substring match: both the Windows `.cmd` shim and the Unix symlink store the
+  target relative to the bin directory (`%~dp0..\apps\...`), so the planned absolute match would
+  have detected nothing and left orphan detection silently dead (2026-09-03).
 - docs(plan): add `docs/plan/2026-09-03-per-package-records-implementation.md` — an eleven-task,
   TDD, commit-per-task plan implementing the per-package-records spec. Ordering is forced by two
   constraints found while planning: `WENGET_ROOT` lands first because nothing else can be verified

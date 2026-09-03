@@ -210,7 +210,7 @@
 - **Cache 名稱解析**（`resolve_from_cache`，依序）：
   1. `repo::variant` 格式先取 `::` 前的 base name
   2. 含 `*` → glob 比對（`glob_match`：支援任意位置多個 `*` 萬用字元，錨定頭尾）；不含 → 完全相符
-  3. Cache 未命中且非 glob → 查 `installed.json` 中 DirectRepo 來源的已安裝套件，改走 URL 解析
+  3. Cache 未命中且非 glob → 查已安裝套件（各套件記錄 `package.json`）中 DirectRepo 來源者，改走 URL 解析
   4. 皆未命中 → 依情境報錯
 
 ### 5.3 安裝後命令名衝突解決（僅供參照，非資源篩選）

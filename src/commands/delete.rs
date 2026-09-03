@@ -23,7 +23,7 @@ pub fn run(
     let config = Config::new()?;
     let paths = WenPaths::new()?;
 
-    // Load installed manifest
+    // Load the installed set
     let mut installed = config.get_or_create_installed()?;
 
     if installed.packages.is_empty() {
@@ -262,10 +262,9 @@ fn delete_package(
     name: &str,
 ) -> Result<()> {
     // Get package info to find all command names
-    let pkg = installed.get_package(name).context(format!(
-        "Package '{}' not found in installed manifest",
-        name
-    ))?;
+    let pkg = installed
+        .get_package(name)
+        .context(format!("Package '{}' is not installed", name))?;
 
     // Remove symlinks/shims for all command names
     for command_name in pkg.executables.values() {
@@ -296,7 +295,7 @@ fn delete_package(
         fs::remove_dir_all(&app_dir)?;
     }
 
-    // Remove from installed manifest
+    // Remove from the in-memory installed set
     installed.remove_package(name);
 
     Ok(())

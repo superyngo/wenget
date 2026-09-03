@@ -204,6 +204,8 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 ├── apps/                  # Installed applications
 │   ├── wenget/            # wenget itself
 │   └── <package>/        # Each installed package
+│       └── .wenget/
+│           └── package.json  # This package's record (version, source, commands)
 ├── bin/                   # Symlinks/shims (added to PATH)
 │   ├── wenget.cmd         # wenget shim (Windows)
 │   ├── wenget             # wenget symlink (Unix)
@@ -212,8 +214,7 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │   ├── manifest-cache.json  # Cached package list
 │   └── downloads/        # Downloaded archives
 ├── config.toml           # User preferences (platform, paths, etc.)
-├── buckets.json          # Bucket configuration
-└── installed.json        # Installed packages info (with descriptions)
+└── buckets.json          # Bucket configuration
 ```
 
 ### System-Level Installation (root/Administrator)
@@ -225,8 +226,7 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │   ├── wenget/
 │   └── <package>/
 ├── cache/
-├── buckets.json
-└── installed.json
+└── buckets.json
 
 /usr/local/bin/            # Symlinks to binaries
 ├── wenget -> /opt/wenget/app/wenget/wenget
@@ -243,8 +243,7 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │   ├── wenget.exe
 │   └── <package>.exe
 ├── cache\
-├── buckets.json
-└── installed.json
+└── buckets.json
 ```
 
 ## Configuration

@@ -119,26 +119,26 @@ The codebase follows a layered architecture:
 6. `Downloader` downloads and caches the archive
 7. `Installer` extracts binary to `~/.wenget/apps/ripgrep/`
 8. Shim/symlink created in `~/.local/bin/`
-9. Installation recorded in `installed.json`
+9. Installation recorded in `~/.wenget/apps/ripgrep/.wenget/package.json`
 
 **Installing from a GitHub URL:**
 1. User runs `wenget add https://github.com/user/repo`
 2. `PackageResolver` identifies it as a DirectUrl
 3. `GitHubProvider` fetches release info directly from GitHub
 4. Platform detection and installation proceed as above
-5. Source recorded as `DirectRepo` in `installed.json`
+5. Source recorded as `DirectRepo` in the package's own record
 
 ### Directory Structure
 
 **User-level (`~/.wenget/`):**
 ```
 ~/.wenget/
-├── apps/              # Installed binaries (each in own subdirectory)
+├── apps/              # Installed binaries (each in own subdirectory,
+│                   #   with its record at <pkg>/.wenget/package.json)
 ├── cache/             # Downloaded archives and manifest cache
 │   ├── manifest-cache.json
 │   └── downloads/
-├── buckets.json       # Bucket configuration
-└── installed.json     # Installed package metadata
+└── buckets.json       # Bucket configuration
 
 ~/.local/
 └── bin/               # Shims/symlinks (added to PATH)
@@ -193,7 +193,8 @@ Packages can come from three sources (see `PackageSource` enum in `src/core/mani
 - Unix: Atomic rename with fallback
 
 ### Auto-Repair
-- Corrupted JSON files (installed.json, buckets.json, manifest-cache.json) are automatically detected
+- Corrupted package records are quarantined per package; corrupted buckets.json and
+  manifest-cache.json are detected and repaired
 - `repair.rs` creates backups before attempting repair
 - Graceful degradation when config files are unreadable
 
@@ -268,7 +269,7 @@ The CI/CD workflow (`.github/workflows/release.yml`) builds wenget for the follo
 
 ## Common Gotchas
 
-- Always update `installed.json` when installing/removing packages
+- Write one package record per install/rename; deleting an app directory removes its record
 - Cache must be rebuilt when buckets are added/removed
 - Platform detection requires exact platform string matching for manifest entries
 - Shims on Windows must handle spaces in paths correctly

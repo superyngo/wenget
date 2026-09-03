@@ -1417,7 +1417,7 @@ fn install_packages(
                     (binaries.clone(), (0..binaries.len()).collect())
                 }
             } else {
-                // No stored asset_name (package not in installed.json): fall back to
+                // No stored asset_name (package has no record): fall back to
                 // named variant filter or return all binaries.
                 if let Some(filter) = effective_variant_filter {
                     binary_meta
@@ -1657,7 +1657,7 @@ fn install_packages(
 
 /// Install a single package
 ///
-/// `installed` is the in-memory snapshot of `installed.json` held by the caller
+/// `installed` is the in-memory snapshot of the installed set held by the caller
 /// (`install_packages`). It is used for executable reuse in update mode and for
 /// command-name conflict resolution. It must NOT be re-read from disk here: the
 /// caller holds the authoritative in-memory copy and persists it after install.

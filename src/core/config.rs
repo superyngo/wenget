@@ -1,7 +1,7 @@
 //! Configuration management for wenget
 //!
 //! This module handles:
-//! - Loading and saving installed.json
+//! - Loading the installed set from per-package records
 //! - Loading and saving buckets.json
 //! - Loading and saving manifest-cache.json
 //! - Directory initialization

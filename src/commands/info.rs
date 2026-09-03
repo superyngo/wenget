@@ -423,7 +423,7 @@ fn display_installed_only_info(name: &str, inst_pkg: &InstalledPackage) -> Resul
         }
     }
 
-    // Installation status (always installed since we found it in installed.json)
+    // Installation status (always installed since it has a package record)
     println!(
         "{:<16} {} (v{})",
         "Status:".bold(),

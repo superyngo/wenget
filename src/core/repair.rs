@@ -1,7 +1,6 @@
 //! Configuration file repair utilities for wenget
 //!
 //! This module handles intelligent repair/rebuild of corrupted config files:
-//! - installed.json: Critical file, backup before repair
 //! - buckets.json: Reset to empty, user can re-add
 //! - manifest-cache.json: Rebuild from buckets
 

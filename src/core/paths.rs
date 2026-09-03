@@ -4,7 +4,7 @@
 //!
 //! ## User-level installation (~/.wenget/):
 //! - Root directory: ~/.wenget/
-//! - Installed manifest: ~/.wenget/installed.json
+//! - Package records: ~/.wenget/apps/<name>/.wenget/package.json
 //! - Buckets config: ~/.wenget/buckets.json
 //! - Manifest cache: ~/.wenget/manifest-cache.json
 //! - Apps directory: ~/.wenget/apps/

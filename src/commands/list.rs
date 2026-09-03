@@ -40,7 +40,7 @@ fn truncate_desc(desc: &str, max_width: usize) -> String {
 
 /// List only installed packages
 fn list_installed_packages(config: &Config) -> Result<()> {
-    // Load installed manifest
+    // Load the installed set
     let manifest = config.get_or_create_installed()?;
 
     if manifest.packages.is_empty() {

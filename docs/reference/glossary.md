@@ -36,9 +36,36 @@ the current machine to the best bucket. See `Platform::possible_identifiers` /
 _Avoid_: Target (reserved for Rust target triples specifically).
 
 **Installed package**:
-An entry in `installed.json` recording what was actually installed: source, version, resolved
+A package wenget has installed, described by its **Package record**: source, version, resolved
 **Variant**, and installed command name(s).
-_Avoid_: Install record.
+
+**Package record**:
+The `{app_dir}/.wenget/package.json` file. The authoritative statement that a package is
+installed, holding its version, platform, source, and executable map. Written by
+`InstalledStore::save_package` in `src/core/store.rs`. There is no global index.
+_Avoid_: Meta, meta file, ledger, registry, index, install record, `installed.json`.
+
+**App directory**:
+`{root}/apps/<sanitized-name>/` — the directory holding one package's files and its **Package
+record**. Named by `sanitize_path_component`, which is lossy, so the directory name is never
+parsed for identity.
+_Avoid_: Payload, install dir.
+
+**Untracked app directory**:
+A directory under `{root}/apps/` with no readable **Package record**. `wenget repair` reports it
+and otherwise leaves it alone; wenget never fabricates a record for it.
+_Avoid_: Orphan (reserved for launchers in the bin directory).
+
+**Installed key**:
+`{repo_name}` or `{repo_name}::{variant}` — the identity of an installed package, produced by
+`generate_installed_key`. Reconstructed from **Package record** content on load, never parsed
+from the **App directory** name.
+_Avoid_: Package id, slug.
+
+**Installed set**:
+The in-memory collection of every loaded **Package record** (`InstalledSet`). Rebuilt on each
+command from a scan of `{root}/apps/`; never serialized as a whole.
+_Avoid_: Installed manifest, installed.json.
 
 **Provider**:
 A `SourceProvider` implementation (currently `GitHubProvider`) that fetches release/asset data
