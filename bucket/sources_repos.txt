@@ -23,12 +23,6 @@ https://github.com/superyngo/agd
 https://github.com/superyngo/confy
 https://github.com/superyngo/bkp
 
-# === Search & Find ===
-https://github.com/BurntSushi/ripgrep
-https://github.com/sharkdp/fd
-https://github.com/junegunn/fzf
-https://github.com/alexpasmantier/television
-
 # === Development Tools ===
 https://github.com/cli/cli
 https://github.com/astral-sh/uv
@@ -55,11 +49,12 @@ https://github.com/wavetermdev/waveterm
 https://github.com/microsoft/terminal
 https://github.com/cmderdev/cmder
 https://github.com/Adembc/lazyssh
-https://github.com/AlistGo/alist
+https://github.com/mobile-shell/mosh
 
 # === System Monitoring ===
 https://github.com/itefixnet/wincdu
 https://github.com/aristocratos/btop
+https://github.com/htop-dev/htop
 https://github.com/pranshuparmar/witr
 https://github.com/fastfetch-cli/fastfetch
 https://github.com/smartmontools/smartmontools
@@ -75,6 +70,13 @@ https://github.com/rn7s2/rsync-win
 https://github.com/rclone/rclone
 https://github.com/t8y2/dbx
 https://github.com/erikjuhani/basalt
+https://github.com/aria2/aria2
+https://github.com/AlistGo/alist
+https://github.com/BurntSushi/ripgrep
+https://github.com/sharkdp/fd
+https://github.com/junegunn/fzf
+https://github.com/alexpasmantier/television
+https://github.com/eza-community/eza
 
 # === Viewers/Editors ===
 https://github.com/sharkdp/bat
@@ -83,6 +85,7 @@ https://github.com/neovim/neovim
 https://github.com/inlyne-project/inlyne
 https://github.com/charmbracelet/glow
 https://github.com/fathyb/carbonyl
+https://github.com/jqlang/jq
 
 # === Media ===
 https://github.com/llychao/m3u8-downloader
