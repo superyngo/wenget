@@ -8,8 +8,12 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
-  # Trigger when source files or binary change
+  # Trigger when source files or binary change (branch pushes only; tag pushes
+  # bypass the `paths` filter and would otherwise run this job against a
+  # detached-HEAD checkout, breaking `git push origin main`)
   push:
+    branches:
+      - main
     paths:
       - 'bucket/sources_repos.txt'
       - 'bucket/sources_scripts.txt'
