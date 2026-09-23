@@ -2214,7 +2214,6 @@ dependencies = [
  "sha2",
  "tar",
  "tempfile",
- "thiserror 1.0.69",
  "toml",
  "winreg",
  "xz2",

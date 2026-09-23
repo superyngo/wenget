@@ -23,7 +23,6 @@ use crate::core::paths::WenPaths;
 // variants. Boxing it would buy nothing: the enum is built and consumed in one
 // scan, never stored in bulk.
 #[allow(clippy::large_enum_variant)]
-#[allow(dead_code)]
 pub enum ScanEntry {
     /// A directory with a readable, understood record
     Loaded {

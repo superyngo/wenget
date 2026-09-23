@@ -19,7 +19,6 @@ use std::path::Path;
 /// Configuration manager
 pub struct Config {
     paths: WenPaths,
-    #[allow(dead_code)]
     preferences: Preferences,
 }
 
@@ -58,7 +57,6 @@ impl Config {
     }
 
     /// Get the preferences
-    #[allow(dead_code)]
     pub fn preferences(&self) -> &Preferences {
         &self.preferences
     }

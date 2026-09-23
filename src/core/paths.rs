@@ -239,7 +239,6 @@ impl WenPaths {
     /// Lives under `apps/` so the swap is a same-filesystem `rename`. The leading
     /// dot keeps it out of the app-directory scan.
     // First caller lands with stage-and-swap installs.
-    #[allow(dead_code)]
     pub fn staging_dir(&self) -> PathBuf {
         self.apps_dir().join(".staging")
     }

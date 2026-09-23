@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- chore: drop unused `thiserror` dependency and stale `#[allow(dead_code)]` on live items
+  (`Config::preferences`, `WenPaths::staging_dir`, `ScanEntry`) (CL-7, CL-2).
 - docs(config): the generated `config.toml` now documents the real default user bin directory
   `~/.local/bin` (CL-4).
 - fix(add): URLs are treated as GitHub repos only when the host is github.com; other URLs that
