@@ -1,5 +1,5 @@
 # Documentation audit fixes
-Status: Draft
+Status: Shipped (2026-09-23)
 
 Fixes for [`../audit/2026-09-23-documentation-audit.md`](../audit/2026-09-23-documentation-audit.md).
 Decisions taken with the user on 2026-09-23: `CLAUDE.md` becomes a pointer to `AGENTS.md`; archive

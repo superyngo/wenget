@@ -1,5 +1,5 @@
 # Documentation Audit — 2026-09-23
-Status: Draft
+Status: Resolved (2026-09-23)
 
 Two-pass sweep of every tracked Markdown file against `wens-dev-principles docs` (structure) and
 against the code at `aca10c9` (accuracy). Pass 1 was mechanical (index, filename, `Status:`, link,
@@ -82,5 +82,4 @@ Not documentation fixes; they go to the backlog:
 
 ## Proposed fixes
 
-Pending approval; see the plan in the session. Once the fixes land, this record's `Status:`
-becomes `Resolved (YYYY-MM-DD)`.
+See [`../plan/2026-09-23-documentation-audit.md`](../plan/2026-09-23-documentation-audit.md).
