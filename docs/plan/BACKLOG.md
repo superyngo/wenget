@@ -117,5 +117,5 @@ last checked against the tree — not when it was opened.
 | B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | 33315ef |
 | B-10 | Empty `apps/.staging/` left behind after install | df5be2e |
 | T-2 | No end-to-end integration tests (added `tests/lifecycle.rs`, 6 offline scenarios; `update` split into T-3) | 205ab40 |
-| Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | COMMIT |
+| Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | 9fc727e |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
