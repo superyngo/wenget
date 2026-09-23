@@ -12,7 +12,7 @@ use crate::installer::{
     normalize_command_name, read_local_script,
 };
 use crate::package_resolver::{PackageInput, PackageResolver, ResolvedPackage};
-use crate::providers::{GitHubProvider, SourceProvider};
+use crate::providers::GitHubProvider;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
@@ -1026,7 +1026,9 @@ fn install_packages(
             // User specified a version
             let ver = custom_ver.trim_start_matches('v').to_string();
             if let Some(ref gh) = github {
-                if let Ok(pkg) = gh.fetch_package_by_version(repo, custom_ver) {
+                if let Ok(pkg) =
+                    gh.fetch_package(repo, Some(custom_ver), Some((&resolved.package).into()))
+                {
                     target_pkg = pkg;
                 } else if let Some(derived) =
                     derive_versioned_package(&resolved.package, custom_ver)
@@ -1047,8 +1049,9 @@ fn install_packages(
                 .clone()
                 .unwrap_or_else(|| "unknown".to_string())
         } else if let Some(ref gh) = github {
-            // Fetch latest package info from API for accurate comparison and correct URLs
-            if let Ok(pkg) = gh.fetch_package(repo) {
+            // Fetch latest release for accurate comparison and correct URLs; reuse the
+            // bucket's description/license so this costs a single API call.
+            if let Ok(pkg) = gh.fetch_package(repo, None, Some((&resolved.package).into())) {
                 target_pkg = pkg;
                 target_pkg
                     .version
@@ -1064,6 +1067,13 @@ fn install_packages(
         } else if let Some(ref v) = resolved.package.version {
             // No GitHub provider available - use cached version
             v.clone()
+        } else if matches!(resolved.source, PackageSource::DirectRepo { .. }) {
+            // A GitHub URL was just resolved from its latest release; don't fetch it again.
+            resolved
+                .package
+                .version
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string())
         } else {
             "unknown".to_string()
         };
@@ -1284,7 +1294,8 @@ fn install_packages(
                 )
             } else if let Some(ref gh) = github {
                 // User specified a version - fetch that specific version
-                match gh.fetch_package_by_version(repo_url, custom_ver) {
+                match gh.fetch_package(repo_url, Some(custom_ver), Some((&resolved.package).into()))
+                {
                     Ok(versioned_pkg) => {
                         // Successfully fetched specific version from GitHub API
                         let version = custom_ver.trim_start_matches('v').to_string();
@@ -1348,7 +1359,7 @@ fn install_packages(
             (resolved.package.clone(), version, false)
         } else if let Some(ref gh) = github {
             // No version specified - fetch latest
-            match gh.fetch_package(repo_url) {
+            match gh.fetch_package(repo_url, None, Some((&resolved.package).into())) {
                 Ok(latest_pkg) => {
                     // Successfully fetched from GitHub API - use latest download links
                     // Version is now included in the package struct

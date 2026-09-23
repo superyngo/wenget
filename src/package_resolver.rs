@@ -8,7 +8,7 @@
 use crate::cache::ManifestCache;
 use crate::core::manifest::{Package, PackageSource};
 use crate::core::Config;
-use crate::providers::{GitHubProvider, SourceProvider};
+use crate::providers::GitHubProvider;
 use anyhow::{anyhow, Context, Result};
 
 /// Represents the type of package input
@@ -210,7 +210,7 @@ impl<'a> PackageResolver<'a> {
     fn resolve_from_url(&self, url: &str) -> Result<ResolvedPackage> {
         let package = self
             .github
-            .fetch_package(url)
+            .fetch_package(url, None, None)
             .with_context(|| format!("Failed to fetch package from: {}", url))?;
 
         let source = PackageSource::DirectRepo {

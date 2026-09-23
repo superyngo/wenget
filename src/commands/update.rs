@@ -2,8 +2,8 @@
 
 use crate::commands::add;
 use crate::core::manifest::PackageSource;
+use crate::core::manifest::RepoMeta;
 use crate::core::{Config, Package};
-use crate::providers::base::SourceProvider;
 use crate::providers::GitHubProvider;
 use anyhow::Result;
 use colored::Colorize;
@@ -29,7 +29,7 @@ type FetchResult = (String, Result<Package>);
 /// The caller is responsible for finishing/clearing an externally provided bar.
 fn parallel_fetch_packages(
     github: &GitHubProvider,
-    jobs: Vec<(String, String)>,
+    jobs: Vec<(String, String, RepoMeta)>,
     existing_pb: Option<&indicatif::ProgressBar>,
 ) -> Vec<FetchResult> {
     let total = jobs.len();
@@ -68,8 +68,9 @@ fn parallel_fetch_packages(
                 if i >= total {
                     break;
                 }
-                let (name, url) = &jobs[i];
-                let res = github.fetch_package(url);
+                let (name, url, meta) = &jobs[i];
+                // Metadata is known, so only the release is fetched (1 API call)
+                let res = github.fetch_package(url, None, Some(meta.clone()));
                 results.lock().unwrap()[i] = Some((name.clone(), res));
                 pb.inc(1);
             });
@@ -318,20 +319,23 @@ fn find_upgradeable(
     // path in Phase 3 both look packages up by repo name, which is O(cache) per lookup
     // against the URL-keyed `cache.packages` map.
     let cache_by_name = cache.packages_by_name();
-    let mut jobs: Vec<(String, String)> = Vec::new();
+    let mut jobs: Vec<(String, String, RepoMeta)> = Vec::new();
     let mut job_meta: HashMap<String, (PackageSource, String)> = HashMap::new();
 
     for (repo_name, variants) in grouped {
         // Use the first variant to get version and source info
         let (_key, inst_pkg) = variants[0];
 
-        let repo_url = match &inst_pkg.source {
+        let (repo_url, meta) = match &inst_pkg.source {
             PackageSource::Bucket { name: bucket_name } => {
                 // Get package info from cache for bucket packages
                 let found = cache_by_name.get(repo_name.as_str());
 
                 if let Some(cached_pkg) = found {
-                    cached_pkg.package.repo.clone()
+                    (
+                        cached_pkg.package.repo.clone(),
+                        RepoMeta::from(&cached_pkg.package),
+                    )
                 } else {
                     eprintln!(
                         "{} Package {} not found in bucket {} cache, skipping update check",
@@ -344,8 +348,16 @@ fn find_upgradeable(
                 }
             }
             PackageSource::DirectRepo { url } => {
-                // Use the stored repo URL directly
-                url.clone()
+                // Use the stored repo URL directly; only the version of the result is used
+                (
+                    url.clone(),
+                    RepoMeta {
+                        name: repo_name.clone(),
+                        description: inst_pkg.description.clone(),
+                        homepage: None,
+                        license: None,
+                    },
+                )
             }
             PackageSource::Script { origin, .. } => {
                 // Check if this is a bucket-sourced script
@@ -394,7 +406,7 @@ fn find_upgradeable(
             }
         };
 
-        jobs.push((repo_name.clone(), repo_url));
+        jobs.push((repo_name.clone(), repo_url, meta));
         job_meta.insert(
             repo_name,
             (inst_pkg.source.clone(), inst_pkg.version.clone()),
@@ -512,7 +524,7 @@ fn sync_bucket_packages_to_cache(
     cache: &mut crate::cache::ManifestCache,
 ) {
     let mut synced = HashSet::new();
-    let mut jobs: Vec<(String, String)> = Vec::new();
+    let mut jobs: Vec<(String, String, RepoMeta)> = Vec::new();
     let mut source_map: HashMap<String, PackageSource> = HashMap::new();
 
     // Name-keyed index of the cache so per-key lookups are O(1) instead of
@@ -535,12 +547,16 @@ fn sync_bucket_packages_to_cache(
         }
 
         // Look up the repo URL from the cached bucket entry.
-        let repo_url = match cache_by_name.get(inst_pkg.repo_name.as_str()) {
-            Some(cached) => cached.package.repo.clone(),
+        let cached = match cache_by_name.get(inst_pkg.repo_name.as_str()) {
+            Some(cached) => cached,
             None => continue,
         };
 
-        jobs.push((inst_pkg.repo_name.clone(), repo_url));
+        jobs.push((
+            inst_pkg.repo_name.clone(),
+            cached.package.repo.clone(),
+            RepoMeta::from(&cached.package),
+        ));
         source_map.insert(inst_pkg.repo_name.clone(), inst_pkg.source.clone());
     }
 
@@ -690,7 +706,14 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
     println!("{}", "Upgrading wenget...".cyan());
 
     // Get package information including binaries
-    let package = provider.fetch_package("https://github.com/superyngo/wenget")?;
+    let meta = RepoMeta {
+        name: "wenget".to_string(),
+        description: String::new(),
+        homepage: None,
+        license: None,
+    };
+    let package =
+        provider.fetch_package("https://github.com/superyngo/wenget", None, Some(meta))?;
 
     // Select binary for current platform
     // Note: Uses same platform matching logic as add command (see add.rs).

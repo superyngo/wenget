@@ -225,6 +225,28 @@ pub struct Package {
     pub platforms: HashMap<String, Vec<PlatformBinary>>,
 }
 
+/// Package metadata that does not change between releases.
+///
+/// Passing it to `GitHubProvider::fetch_package` saves the repository-info API call.
+#[derive(Debug, Clone)]
+pub struct RepoMeta {
+    pub name: String,
+    pub description: String,
+    pub homepage: Option<String>,
+    pub license: Option<String>,
+}
+
+impl From<&Package> for RepoMeta {
+    fn from(pkg: &Package) -> Self {
+        Self {
+            name: pkg.name.clone(),
+            description: pkg.description.clone(),
+            homepage: pkg.homepage.clone(),
+            license: pkg.license.clone(),
+        }
+    }
+}
+
 /// Script item metadata (for bucket scripts)
 ///
 /// Supports multi-platform scripts where the same script name

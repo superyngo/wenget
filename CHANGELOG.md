@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: `add`, `update` and `info` use `GITHUB_TOKEN` when set, raising the GitHub API limit from
   60 to 5000 requests per hour.
 
+- perf: fewer GitHub API calls (audit OP-1). Installing a bucket package takes 1 request,
+  a GitHub URL 2, and each `update` check 1 (the audit counted 4, 6 and 2): repository description/license are
+  fetched only for a URL's first resolution, and a just-resolved URL is not fetched again.
+  `fetch_package` and `fetch_package_by_version` are merged, and the single-implementor
+  `SourceProvider` trait is removed (SI-2).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

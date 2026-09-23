@@ -1,6 +1,6 @@
 //! GitHub provider implementation
 
-use super::base::SourceProvider;
+use crate::core::manifest::RepoMeta;
 use crate::core::{BinaryAsset, BinarySelector, Package, PlatformBinary};
 use crate::utils::HttpClient;
 use anyhow::{Context, Result};
@@ -114,67 +114,81 @@ impl GitHubProvider {
         Ok(release.tag_name.trim_start_matches('v').to_string())
     }
 
-    /// Fetch package information for a specific version
-    pub fn fetch_package_by_version(&self, url: &str, version: &str) -> Result<Package> {
-        log::debug!("Fetching package from: {} (version: {})", url, version);
+    /// Fetch package information for `version` (latest when `None`).
+    ///
+    /// When `meta` is given its description/license are reused and only the release is
+    /// fetched (1 API call); otherwise the repository info is fetched too (2 calls).
+    pub fn fetch_package(
+        &self,
+        url: &str,
+        version: Option<&str>,
+        meta: Option<RepoMeta>,
+    ) -> Result<Package> {
+        log::debug!("Fetching package from: {} (version: {:?})", url, version);
 
-        // Parse URL
         let (owner, repo) = Self::parse_github_url(url)
             .ok_or_else(|| anyhow::anyhow!("Invalid GitHub URL: {}", url))?;
 
-        // Fetch repo info for description and license
-        let repo_info = self.fetch_repo_info(&owner, &repo)?;
-
-        // Fetch specific release by tag
-        let release = self.fetch_release_by_tag(&owner, &repo, version)
-            .with_context(|| {
+        let release = match version {
+            Some(v) => self.fetch_release_by_tag(&owner, &repo, v).with_context(|| {
                 format!(
                     "Version '{}' not found for {}/{}. Use 'wenget info {}' to see available versions.",
-                    version, owner, repo, repo
+                    v, owner, repo, repo
                 )
-            })?;
+            })?,
+            None => self.fetch_latest_release(&owner, &repo)?,
+        };
+        let label = version.unwrap_or("latest");
 
         if release.assets.is_empty() {
             anyhow::bail!(
                 "No binary assets found in release {} for {}/{}",
-                version,
+                label,
                 owner,
                 repo
             );
         }
 
-        // Use shared platform extraction logic
         let platforms = Self::extract_platform_binaries(&release.assets);
-
         if platforms.is_empty() {
             anyhow::bail!(
                 "No matching binaries found for any platform in {}/{} (version: {})",
                 owner,
                 repo,
-                version
+                label
             );
         }
 
-        // Create package
-        let package = Package {
-            name: repo.clone(),
-            description: repo_info.description.unwrap_or_else(|| repo.clone()),
-            repo: url.to_string(),
-            homepage: Some(repo_info.html_url),
-            license: repo_info.license.map(|l| l.name),
-            version: Some(release.tag_name.trim_start_matches('v').to_string()),
-            platforms,
+        let meta = match meta {
+            Some(m) => m,
+            None => {
+                let info = self.fetch_repo_info(&owner, &repo)?;
+                RepoMeta {
+                    name: repo.clone(),
+                    description: info.description.unwrap_or_else(|| repo.clone()),
+                    homepage: Some(info.html_url),
+                    license: info.license.map(|l| l.name),
+                }
+            }
         };
 
-        let normalized_version = release.tag_name.trim_start_matches('v').to_string();
+        let version = release.tag_name.trim_start_matches('v').to_string();
         log::debug!(
             "✓ Found {} v{} with {} platform(s)",
-            package.name,
-            normalized_version,
-            package.platforms.len()
+            meta.name,
+            version,
+            platforms.len()
         );
 
-        Ok(package)
+        Ok(Package {
+            name: meta.name,
+            description: meta.description,
+            repo: url.to_string(),
+            homepage: meta.homepage,
+            license: meta.license,
+            version: Some(version),
+            platforms,
+        })
     }
 
     /// Convert GitHub release assets to platform binaries map
@@ -213,66 +227,6 @@ impl GitHubProvider {
                 (platform_id, binaries)
             })
             .collect()
-    }
-}
-
-impl SourceProvider for GitHubProvider {
-    fn fetch_package(&self, url: &str) -> Result<Package> {
-        log::debug!("Fetching package from: {}", url);
-
-        // Parse URL
-        let (owner, repo) = Self::parse_github_url(url)
-            .ok_or_else(|| anyhow::anyhow!("Invalid GitHub URL: {}", url))?;
-
-        // Fetch repo info for description and license
-        let repo_info = self.fetch_repo_info(&owner, &repo)?;
-
-        // Fetch latest release
-        let release = self.fetch_latest_release(&owner, &repo)?;
-
-        if release.assets.is_empty() {
-            anyhow::bail!(
-                "No binary assets found in latest release for {}/{}",
-                owner,
-                repo
-            );
-        }
-
-        // Use shared platform extraction logic
-        let platforms = Self::extract_platform_binaries(&release.assets);
-
-        if platforms.is_empty() {
-            anyhow::bail!(
-                "No matching binaries found for any platform in {}/{}",
-                owner,
-                repo
-            );
-        }
-
-        // Create package
-        let package = Package {
-            name: repo.clone(),
-            description: repo_info.description.unwrap_or_else(|| repo.clone()),
-            repo: url.to_string(),
-            homepage: Some(repo_info.html_url),
-            license: repo_info.license.map(|l| l.name),
-            version: Some(release.tag_name.trim_start_matches('v').to_string()),
-            platforms,
-        };
-
-        let version = release.tag_name.trim_start_matches('v').to_string();
-        log::debug!(
-            "✓ Found {} v{} with {} platform(s)",
-            package.name,
-            version,
-            package.platforms.len()
-        );
-
-        Ok(package)
-    }
-
-    fn name(&self) -> &str {
-        "GitHub"
     }
 }
 
@@ -362,7 +316,7 @@ mod tests {
     fn test_fetch_package() {
         let provider = GitHubProvider::new().unwrap();
         // Test with a real repo that has releases
-        let result = provider.fetch_package("https://github.com/BurntSushi/ripgrep");
+        let result = provider.fetch_package("https://github.com/BurntSushi/ripgrep", None, None);
         assert!(result.is_ok());
     }
 }
