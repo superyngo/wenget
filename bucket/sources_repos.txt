@@ -48,6 +48,7 @@ https://github.com/rustdesk/rustdesk
 https://github.com/cloudflare/cloudflared
 https://github.com/wavetermdev/waveterm
 https://github.com/microsoft/terminal
+https://github.com/herdrdev/herdr
 https://github.com/cmderdev/cmder
 https://github.com/Adembc/lazyssh
 https://github.com/mobile-shell/mosh
@@ -109,7 +110,8 @@ https://github.com/openai/codex
 https://github.com/dynatrace-oss/ai-config-manager
 https://github.com/pardnchiu/Agenvoy
 https://github.com/DeusData/codebase-memory-mcp
-https://github.com/herdrdev/herdr
+https://github.com/google-antigravity/antigravity-cli
+
 
 
 # === Archived ===
