@@ -18,5 +18,7 @@ node_modules/
 .gemini/
 gha-creds-*.json
 bucket/wenget.serena/
+# Built from releases in CI (update-manifest.yml); never committed
+bucket/wenget
 # Agent scratch (docs/tmp/ itself stays committed)
 docs/tmp/*-scratch/

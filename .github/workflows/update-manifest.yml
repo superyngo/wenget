@@ -17,7 +17,6 @@ on:
     paths:
       - 'bucket/sources_repos.txt'
       - 'bucket/sources_scripts.txt'
-      # - 'bucket/wenget'
 
 jobs:
   update-manifest:
@@ -29,12 +28,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download latest wenget release
+        run: |
+          # Verified release asset instead of a binary committed to the repo
+          ASSET=wenget-linux-x86_64-musl.tar.gz
+          mkdir -p "$RUNNER_TEMP/wenget"
+          cd "$RUNNER_TEMP/wenget"
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern "$ASSET" --pattern SHA256SUMS
+          grep " $ASSET\$" SHA256SUMS | sha256sum -c -
+          tar -xzf "$ASSET"
+          chmod +x wenget
+          echo "$RUNNER_TEMP/wenget" >> "$GITHUB_PATH"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate manifest with wenget
         run: |
-          # Use bucket binary
-          chmod +x ./bucket/wenget
-          echo "wenget version: $(./bucket/wenget -V)"
-          ./bucket/wenget bucket create \
+          echo "wenget version: $(wenget -V)"
+          wenget bucket create \
             -r bucket/sources_repos.txt \
             -s bucket/sources_scripts.txt \
             -o bucket/manifest.json \

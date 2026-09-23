@@ -35,10 +35,10 @@ To add a new package or script:
 
 ## Manual Generation
 
-To manually generate the manifest locally from the repository root:
+To manually generate the manifest locally from the repository root, with an installed `wenget`:
 
 ```bash
-./bucket/wenget bucket create \
+wenget bucket create \
   -r bucket/sources_repos.txt \
   -s bucket/sources_scripts.txt \
   -o bucket/manifest.json \

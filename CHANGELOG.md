@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- ci: stop committing the 4.5 MB `bucket/wenget` binary on every release; `update-manifest.yml`
+  now downloads the latest release asset and checks it against `SHA256SUMS` (M-2). Existing
+  history is not rewritten.
 - feat(install): `install.sh` and `install.ps1` verify the downloaded release asset against the
   release's `SHA256SUMS` and abort on mismatch; `install.ps1` downloads to a temp file first
   (S-10).
