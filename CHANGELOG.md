@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(add): one `BatchReport` replaces five hand-rolled success/failure tallies and summary
+  blocks; failed packages are now always named in the summary (SI-11).
 - refactor: `bucket` subcommands consume the clap `BucketCommands` enum directly (SI-8); one
   `first_free` helper replaces three numeric-suffix loops (SI-9); `init` reuses
   `installer::create_symlink` (SI-4).

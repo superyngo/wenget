@@ -45,6 +45,57 @@ pub struct InstallOptions {
     pub update_mode: bool,
 }
 
+/// Successes and failures of one batch (packages, scripts, files or URLs)
+struct BatchReport {
+    noun: &'static str,
+    succeeded: Vec<String>,
+    failed: Vec<String>,
+}
+
+impl BatchReport {
+    fn new(noun: &'static str) -> Self {
+        Self {
+            noun,
+            succeeded: Vec::new(),
+            failed: Vec::new(),
+        }
+    }
+
+    fn ok(&mut self, name: String) {
+        self.succeeded.push(name);
+    }
+
+    fn fail(&mut self, name: String) {
+        self.failed.push(name);
+    }
+
+    fn failures(&self) -> usize {
+        self.failed.len()
+    }
+
+    /// Print the installed/failed summary lines (nothing for an empty side)
+    fn print(&self) {
+        if !self.succeeded.is_empty() {
+            println!(
+                "  {} {} {}(s) installed: {}",
+                "✓".green(),
+                self.succeeded.len(),
+                self.noun,
+                self.succeeded.join(" ")
+            );
+        }
+        if !self.failed.is_empty() {
+            println!(
+                "  {} {} {}(s) failed: {}",
+                "✗".red(),
+                self.failed.len(),
+                self.noun,
+                self.failed.join(" ")
+            );
+        }
+    }
+}
+
 /// Install packages (smart detection: package names from cache or GitHub URLs)
 pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     let InstallOptions {
@@ -361,10 +412,7 @@ fn install_scripts(
 
     println!();
 
-    let mut success_count = 0;
-    let mut fail_count = 0;
-    let mut successful_scripts: Vec<String> = Vec::new();
-    let mut failed_scripts: Vec<String> = Vec::new();
+    let mut report = BatchReport::new("script");
 
     for (name, content, script_type, origin) in scripts_to_install {
         println!(
@@ -378,42 +426,24 @@ fn install_scripts(
             Ok(inst_pkg) => {
                 if let Err(e) = record_installed(paths, installed, name.clone(), inst_pkg) {
                     println!("  {} {:#}", "✗".red(), e);
-                    fail_count += 1;
-                    failed_scripts.push(name);
+                    report.fail(name);
                     continue;
                 }
                 println!("  {} Installed successfully", "✓".green());
-                success_count += 1;
-                successful_scripts.push(name);
+                report.ok(name);
             }
             Err(e) => {
                 println!("  {} {}", "✗".red(), e);
-                fail_count += 1;
-                failed_scripts.push(name);
+                report.fail(name);
             }
         }
     }
 
     println!();
     println!("{}", "Summary:".bold());
-    if success_count > 0 {
-        println!(
-            "  {} {} script(s) installed: {}",
-            "✓".green(),
-            success_count,
-            successful_scripts.join(" ")
-        );
-    }
-    if fail_count > 0 {
-        println!(
-            "  {} {} script(s) failed: {}",
-            "✗".red(),
-            fail_count,
-            failed_scripts.join(" ")
-        );
-    }
+    report.print();
 
-    Ok(resolve_failures + fail_count)
+    Ok(resolve_failures + report.failures())
 }
 
 /// Install a single script
@@ -491,10 +521,7 @@ fn install_local_files(
 
     println!();
 
-    let mut success_count = 0;
-    let mut fail_count = 0;
-    let mut successful_files: Vec<String> = Vec::new();
-    let mut failed_files: Vec<String> = Vec::new();
+    let mut report = BatchReport::new("file");
 
     for file in files {
         println!("{} {}...", "Installing".cyan(), file);
@@ -511,16 +538,14 @@ fn install_local_files(
                             "  {} No command names found in installed package",
                             "✗".red()
                         );
-                        fail_count += 1;
-                        failed_files.push(file.to_string());
+                        report.fail(file.to_string());
                         continue;
                     }
                 };
                 let display_names = inst_pkg.get_command_names().join(", ");
                 if let Err(e) = record_installed(paths, installed, name.clone(), inst_pkg) {
                     println!("  {} {:#}", "✗".red(), e);
-                    fail_count += 1;
-                    failed_files.push(file.to_string());
+                    report.fail(file.to_string());
                     continue;
                 }
                 println!(
@@ -528,37 +553,20 @@ fn install_local_files(
                     "✓".green(),
                     display_names
                 );
-                success_count += 1;
-                successful_files.push(name);
+                report.ok(name);
             }
             Err(e) => {
                 println!("  {} Failed to install {}: {}", "✗".red(), file, e);
-                fail_count += 1;
-                failed_files.push(file.to_string());
+                report.fail(file.to_string());
             }
         }
         println!();
     }
 
     println!("{}", "Summary:".bold());
-    if success_count > 0 {
-        println!(
-            "  {} {} file(s) installed: {}",
-            "✓".green(),
-            success_count,
-            successful_files.join(" ")
-        );
-    }
-    if fail_count > 0 {
-        println!(
-            "  {} {} file(s) failed: {}",
-            "✗".red(),
-            fail_count,
-            failed_files.join(" ")
-        );
-    }
+    report.print();
 
-    Ok(fail_count)
+    Ok(report.failures())
 }
 
 /// Install binary or archive from direct URLs
@@ -583,10 +591,7 @@ fn install_from_urls(
 
     println!();
 
-    let mut success_count = 0;
-    let mut fail_count = 0;
-    let mut successful_urls: Vec<String> = Vec::new();
-    let mut failed_urls: Vec<String> = Vec::new();
+    let mut report = BatchReport::new("URL");
 
     // Create temp dir for downloads
     let temp_dir = paths.cache_dir().join("downloads");
@@ -599,8 +604,7 @@ fn install_from_urls(
             Some(name) => name,
             None => {
                 println!("  {} Invalid URL", "✗".red());
-                fail_count += 1;
-                failed_urls.push(url.to_string());
+                report.fail(url.to_string());
                 continue;
             }
         };
@@ -617,8 +621,7 @@ fn install_from_urls(
                     crate::core::checksum::verify_download(url, filename, &download_path)
                 {
                     println!("  {} {}", "✗".red(), e);
-                    fail_count += 1;
-                    failed_urls.push(url.to_string());
+                    report.fail(url.to_string());
                 } else {
                     println!("{} {}...", "Installing".cyan(), filename);
 
@@ -638,8 +641,7 @@ fn install_from_urls(
                                         "  {} No command names found in installed package",
                                         "✗".red()
                                     );
-                                    fail_count += 1;
-                                    failed_urls.push(filename.to_string());
+                                    report.fail(filename.to_string());
                                     continue;
                                 }
                             };
@@ -648,30 +650,26 @@ fn install_from_urls(
                                 record_installed(paths, installed, name.clone(), inst_pkg)
                             {
                                 println!("  {} {:#}", "✗".red(), e);
-                                fail_count += 1;
-                                failed_urls.push(filename.to_string());
+                                report.fail(filename.to_string());
                             } else {
                                 println!(
                                     "  {} Installed successfully as {}",
                                     "✓".green(),
                                     display_names
                                 );
-                                success_count += 1;
-                                successful_urls.push(name);
+                                report.ok(name);
                             }
                         }
                         Err(e) => {
                             println!("  {} Failed to install {}: {}", "✗".red(), filename, e);
-                            fail_count += 1;
-                            failed_urls.push(filename.to_string());
+                            report.fail(filename.to_string());
                         }
                     }
                 }
             }
             Err(e) => {
                 println!("  {} Failed to download {}: {}", "✗".red(), url, e);
-                fail_count += 1;
-                failed_urls.push(url.to_string());
+                report.fail(url.to_string());
             }
         }
 
@@ -689,24 +687,9 @@ fn install_from_urls(
     }
 
     println!("{}", "Summary:".bold());
-    if success_count > 0 {
-        println!(
-            "  {} {} URL(s) installed: {}",
-            "✓".green(),
-            success_count,
-            successful_urls.join(" ")
-        );
-    }
-    if fail_count > 0 {
-        println!(
-            "  {} {} URL(s) failed: {}",
-            "✗".red(),
-            fail_count,
-            failed_urls.join(" ")
-        );
-    }
+    report.print();
 
-    Ok(fail_count)
+    Ok(report.failures())
 }
 
 /// Print available variant names for a package's binaries
@@ -1252,10 +1235,7 @@ fn install_packages(
     println!();
 
     // Install/update packages
-    let mut success_count = 0;
-    let mut fail_count = 0;
-    let mut successful_packages: Vec<String> = Vec::new();
-    let mut failed_packages: Vec<String> = Vec::new();
+    let mut report = BatchReport::new("package");
 
     // Combine new installs and updates
     let all_packages: Vec<_> = to_install.into_iter().chain(to_update).collect();
@@ -1342,7 +1322,7 @@ fn install_packages(
                             _ => {
                                 // Not a bucket package or no usable cached version - abort.
                                 println!("  {} {}", "✗".red(), e);
-                                fail_count += 1;
+                                report.fail(pkg_name.to_string());
                                 continue;
                             }
                         }
@@ -1360,7 +1340,7 @@ fn install_packages(
                             "✗".red(),
                             custom_ver
                         );
-                        fail_count += 1;
+                        report.fail(pkg_name.to_string());
                         continue;
                     }
                 }
@@ -1426,8 +1406,7 @@ fn install_packages(
             Some(bins) => bins,
             None => {
                 println!("  {} Platform binary not found", "✗".red());
-                fail_count += 1;
-                failed_packages.push(pkg_name.to_string());
+                report.fail(pkg_name.to_string());
                 continue;
             }
         };
@@ -1548,8 +1527,7 @@ fn install_packages(
                     print_available_variants(binaries, pkg_name);
                 }
             }
-            fail_count += 1;
-            failed_packages.push(pkg_name.to_string());
+            report.fail(pkg_name.to_string());
             continue;
         }
 
@@ -1559,8 +1537,7 @@ fn install_packages(
                 Ok(indices) => indices,
                 Err(e) => {
                     println!("  {} {}", "✗".red(), e);
-                    fail_count += 1;
-                    failed_packages.push(pkg_name.to_string());
+                    report.fail(pkg_name.to_string());
                     continue;
                 }
             };
@@ -1624,8 +1601,7 @@ fn install_packages(
                         record_installed(paths, installed, installed_key.clone(), inst_pkg)
                     {
                         println!("  {} {:#}", "✗".red(), e);
-                        fail_count += 1;
-                        failed_packages.push(installed_key.clone());
+                        report.fail(installed_key.clone());
                         println!();
                         continue;
                     }
@@ -1637,13 +1613,11 @@ fn install_packages(
                     }
 
                     println!("  {} Installed successfully", "✓".green());
-                    success_count += 1;
-                    successful_packages.push(installed_key.clone());
+                    report.ok(installed_key.clone());
                 }
                 Err(e) => {
                     println!("  {} {}", "✗".red(), e);
-                    fail_count += 1;
-                    failed_packages.push(installed_key.clone());
+                    report.fail(installed_key.clone());
                 }
             }
             println!();
@@ -1664,10 +1638,7 @@ fn install_packages(
     }
 
     // Install scripts from bucket cache
-    let mut script_success_count = 0;
-    let mut script_fail_count = 0;
-    let mut successful_scripts: Vec<String> = Vec::new();
-    let mut failed_scripts: Vec<String> = Vec::new();
+    let mut script_report = BatchReport::new("script");
 
     for (name, url, script_type, origin) in scripts_to_process {
         println!(
@@ -1687,13 +1658,11 @@ fn install_packages(
         ) {
             Ok(_) => {
                 println!("  {} Installed successfully", "✓".green());
-                script_success_count += 1;
-                successful_scripts.push(name);
+                script_report.ok(name);
             }
             Err(e) => {
                 println!("  {} {}", "✗".red(), e);
-                script_fail_count += 1;
-                failed_scripts.push(name);
+                script_report.fail(name);
             }
         }
         println!();
@@ -1701,40 +1670,10 @@ fn install_packages(
 
     // Summary
     println!("{}", "Summary:".bold());
-    if success_count > 0 {
-        println!(
-            "  {} {} package(s) installed: {}",
-            "✓".green(),
-            success_count,
-            successful_packages.join(" ")
-        );
-    }
-    if fail_count > 0 {
-        println!(
-            "  {} {} package(s) failed: {}",
-            "✗".red(),
-            fail_count,
-            failed_packages.join(" ")
-        );
-    }
-    if script_success_count > 0 {
-        println!(
-            "  {} {} script(s) installed: {}",
-            "✓".green(),
-            script_success_count,
-            successful_scripts.join(" ")
-        );
-    }
-    if script_fail_count > 0 {
-        println!(
-            "  {} {} script(s) failed: {}",
-            "✗".red(),
-            script_fail_count,
-            failed_scripts.join(" ")
-        );
-    }
+    report.print();
+    script_report.print();
 
-    Ok(resolve_failures + fail_count + script_fail_count)
+    Ok(resolve_failures + report.failures() + script_report.failures())
 }
 
 /// Install a single package
