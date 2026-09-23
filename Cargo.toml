@@ -27,7 +27,7 @@ zip = "0.6"
 tar = "0.4"
 flate2 = "1.0"
 xz2 = "0.1"
-sevenz-rust = "0.6"
+sevenz-rust2 = { version = "0.23", default-features = false, features = ["util", "bzip2", "ppmd"] }
 bzip2 = "0.5"
 
 # Progress bar
@@ -65,6 +65,7 @@ winreg = "0.55"
 
 [dev-dependencies]
 tempfile = "3.8"
+sevenz-rust2 = { version = "0.23", default-features = false, features = ["util", "compress"] }
 
 [profile.release]
 opt-level = "z"

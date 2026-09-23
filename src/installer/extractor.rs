@@ -138,28 +138,34 @@ fn extract_tar_bz2(archive_path: &Path, dest_dir: &Path) -> Result<Vec<String>> 
 
 /// Extract a .7z file
 fn extract_7z(archive_path: &Path, dest_dir: &Path) -> Result<Vec<String>> {
-    // `sevenz_rust::decompress_file` joins `entry.name()` onto the destination
-    // with no sanitization, so a crafted archive can escape `dest_dir`.
-    // Validate every entry name before letting the default extractor write it.
+    // `sevenz_rust2::decompress_file` already rejects escaping entries; we
+    // still validate every name first so an unsafe archive fails before any
+    // write. A rooted name without a drive (`\evil` on Windows) is not
+    // `is_absolute()` but still replaces the base in `Path::join`.
     let mut reader = File::open(archive_path)
         .with_context(|| format!("Failed to open archive: {}", archive_path.display()))?;
-    let archive = sevenz_rust::Archive::read(&mut reader, archive_path.metadata()?.len(), &[])
+    let archive = sevenz_rust2::Archive::read(&mut reader, &sevenz_rust2::Password::empty())
         .map_err(|e| anyhow::anyhow!("Failed to read 7z archive: {e}"))?;
 
     for entry in &archive.files {
         let name = entry.name();
         let path = Path::new(name);
         if path.is_absolute()
-            || path
-                .components()
-                .any(|c| matches!(c, std::path::Component::ParentDir))
+            || path.components().any(|c| {
+                matches!(
+                    c,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
         {
             anyhow::bail!("Refusing to extract unsafe 7z entry: {name}");
         }
     }
 
     // Extract the 7z archive
-    sevenz_rust::decompress_file(archive_path, dest_dir)
+    sevenz_rust2::decompress_file(archive_path, dest_dir)
         .with_context(|| format!("Failed to extract 7z archive: {}", archive_path.display()))?;
 
     // Collect all extracted files
@@ -795,6 +801,41 @@ pub fn normalize_command_name(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Build a .7z holding one file entry named `entry_name`.
+    fn write_7z(path: &Path, entry_name: &str) {
+        let mut sz = sevenz_rust2::ArchiveWriter::create(path).unwrap();
+        sz.push_archive_entry(
+            sevenz_rust2::ArchiveEntry::new_file(entry_name),
+            Some(&b"payload"[..]),
+        )
+        .unwrap();
+        sz.finish().unwrap();
+    }
+
+    #[test]
+    fn test_extract_7z_ok() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let archive = dir.path().join("tool.7z");
+        write_7z(&archive, "bin/tool");
+        let dest = dir.path().join("out");
+        let files = extract_7z(&archive, &dest).unwrap();
+        assert_eq!(files, vec!["bin/tool".to_string()]);
+        assert_eq!(fs::read(dest.join("bin/tool")).unwrap(), b"payload");
+    }
+
+    #[test]
+    fn test_extract_7z_rejects_unsafe_entries() {
+        let dir = tempfile::TempDir::new().unwrap();
+        for (i, name) in ["../evil", "/evil", "a/../../evil"].iter().enumerate() {
+            let archive = dir.path().join(format!("bad{i}.7z"));
+            write_7z(&archive, name);
+            let dest = dir.path().join(format!("out{i}"));
+            let err = extract_7z(&archive, &dest).unwrap_err().to_string();
+            assert!(err.contains("unsafe 7z entry"), "{name}: {err}");
+        }
+        assert!(!dir.path().join("evil").exists());
+    }
 
     #[test]
     fn test_extract_tar_gz_strips_curdir_prefix() {

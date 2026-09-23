@@ -38,7 +38,7 @@ last checked against the tree — not when it was opened.
 | OP-4 (P-6) | 2026-09-03 | 2026-09-23 | P3 | Asset filenames lowercased repeatedly and keyword arrays rebuilt per call | `core/platform.rs` `BinarySelector::score_parsed`, `contains_unknown_arch_pattern` | XS | Filenames lowercased once in `ParsedAsset` and keyword tables hoisted to `const` slices |
 | M-2 | 2026-09-03 | 2026-09-23 | P1 | Compiled 4.4MB `bucket/wenget` binary committed and force-pushed each release | `bucket/wenget`, `.github/workflows/release.yml`, `.github/workflows/update-manifest.yml` | S | Tracked `bucket/wenget` binary removed; CI builds or downloads verified release asset |
 | M-4 | 2026-09-03 | 2026-09-23 | P2 | Redundant content between `AGENTS.md` and `CLAUDE.md` | `AGENTS.md`, `CLAUDE.md` | S | `CLAUDE.md` trimmed to reference pointer and overlapping instruction rules consolidated |
-| M-5 | 2026-09-03 | 2026-09-23 | P2 | Aging dependencies (`zip 0.6`, `sevenz-rust 0.6`, `is_elevated 0.1`) | `Cargo.toml` | M | Dependencies updated to modern supported releases; `is_elevated` replaced with `windows-sys` API |
+| M-5 | 2026-09-03 | 2026-09-23 | P2 | Aging dependencies (`zip 0.6`, `is_elevated 0.1`); `sevenz-rust` replaced by `sevenz-rust2` | `Cargo.toml` | M | Dependencies updated to modern supported releases; `is_elevated` replaced with `windows-sys` API |
 | IM-6 | 2026-09-23 | 2026-09-23 | P2 | Failure to save package record reported as success in batch summary | `commands/add.rs` `record_installed` | XS | Package record save errors return `Err` and fail the batch install |
 | IM-7 | 2026-09-23 | 2026-09-23 | P2 | Invalid `config.toml` announced as using defaults but bad values still used | `core/config.rs` `Config::new` | XS | Validated preferences fallback to `Preferences::default()` when validation fails |
 | IM-8 | 2026-09-23 | 2026-09-23 | P2 | Version comparison differs between API and cache update paths | `commands/update.rs` `is_newer_version`, `find_upgradeable` | S | Single version comparison routine uses `semver` crate with integer fallback for pre-releases |
@@ -85,6 +85,7 @@ last checked against the tree — not when it was opened.
 | Item | Why not now | Trigger | Re-read |
 |---|---|---|---|
 | Real `~/.wenget` state after IM-5 test | State is consistent (fd 10.5.0 from bucket wenget, launcher `~/.local/bin/fd`), prior state unknown | User reports fd issues | 2026-09-23 |
+| `number_prefix` unmaintained (RUSTSEC-2025-0119), pulled in by `indicatif` | Warning only, no vulnerability; needs an `indicatif` upgrade | Advisory escalates or `indicatif` bump lands | 2026-09-23 |
 
 ## Done
 
@@ -112,3 +113,5 @@ last checked against the tree — not when it was opened.
 | OP-1 (P-1) | Excessive GitHub API calls per package (4–8 calls reduced to 1) | 3f56915 |
 | Rate limit reported as "Not found" | Unfetchable GitHub URLs reporting "Not found" instead of rate limit error | eb19b8b |
 | GITHUB_TOKEN support | `add`, `update`, `info` support for `GITHUB_TOKEN` authentication | d787223 |
+| DEP-1 | Dependabot alerts #1–#10 (`tar`, `rustls-webpki`, `quinn-proto`, `rand`) plus `rustls` RUSTSEC-2026-0285 | bf4bfc5 |
+| DEP-2 | `sevenz-rust` abandoned with unpatched path traversal (RUSTSEC-2026-0245); `extract_7z` let rooted/drive-prefixed names through on Windows | commit "fix(deps): replace sevenz-rust with sevenz-rust2" |

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(deps): replace abandoned `sevenz-rust` (unpatched path traversal RUSTSEC-2026-0245) with
+  `sevenz-rust2` 0.23; `extract_7z` also rejects rooted and drive-prefixed entry names, which
+  could escape the extraction directory on Windows. Adds 7z extraction tests.
+
 - fix(deps): bump locked crates past security advisories — `tar` 0.4.46, `rustls` 0.23.45,
   `rustls-webpki` 0.103.15, `quinn-proto` 0.11.18 (`rand` 0.10.3), `anyhow` 1.0.104. Closes
   Dependabot alerts #1–#10 and RUSTSEC-2026-0285/-0190.
