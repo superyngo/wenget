@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add): "Removed obsolete command" is printed only when removal succeeds; failures now
+  show a warning with the reason (IM-10).
 - fix(repair): a directory or dangling symlink at a launcher path is reported instead of
   counting as a healthy launcher (B-1).
 - fix(add): a failed package-record save now counts the install as failed (non-zero exit)

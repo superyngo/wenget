@@ -2161,8 +2161,15 @@ fn install_package(
             if !executables.values().any(|n| n == old_cmd) {
                 let old_bin = paths.bin_shim_path(old_cmd);
                 if old_bin.exists() {
-                    fs::remove_file(&old_bin).ok();
-                    println!("  Removed obsolete command: {}", old_cmd);
+                    match fs::remove_file(&old_bin) {
+                        Ok(()) => println!("  Removed obsolete command: {}", old_cmd),
+                        Err(e) => println!(
+                            "  {} Could not remove obsolete command {}: {}",
+                            "⚠".yellow(),
+                            old_cmd,
+                            e
+                        ),
+                    }
                 }
             }
         }
