@@ -368,7 +368,8 @@ fn extract_zip(archive_path: &Path, dest_dir: &Path) -> Result<Vec<String>> {
             }
         }
 
-        extracted_files.push(file_path.to_string_lossy().to_string());
+        // Use `/` like the tar paths, so records look the same on Windows
+        extracted_files.push(file_path.to_string_lossy().replace('\\', "/"));
     }
 
     Ok(extracted_files)
@@ -836,6 +837,69 @@ mod tests {
             assert!(err.contains("unsafe 7z entry"), "{name}: {err}");
         }
         assert!(!dir.path().join("evil").exists());
+    }
+
+    /// Build a .zip holding `(name, mode)` file entries
+    fn write_zip(path: &Path, entries: &[(&str, u32)]) {
+        use std::io::Write;
+        let mut zip = zip::ZipWriter::new(File::create(path).unwrap());
+        for (name, mode) in entries {
+            let options = zip::write::FileOptions::default().unix_permissions(*mode);
+            zip.start_file(*name, options).unwrap();
+            zip.write_all(b"payload").unwrap();
+        }
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn test_extract_zip_ok_and_keeps_exec_bit() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let archive = dir.path().join("tool.zip");
+        write_zip(&archive, &[("bin/tool", 0o755), ("README.md", 0o644)]);
+        let dest = dir.path().join("out");
+        let mut files = extract_archive(&archive, &dest).unwrap();
+        files.sort();
+        assert_eq!(files, vec!["README.md".to_string(), "bin/tool".to_string()]);
+        assert_eq!(fs::read(dest.join("bin/tool")).unwrap(), b"payload");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(dest.join("bin/tool"))
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_ne!(mode & 0o111, 0, "exec bit lost");
+        }
+    }
+
+    #[test]
+    fn test_extract_zip_rejects_traversal() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let archive = dir.path().join("bad.zip");
+        write_zip(&archive, &[("../evil", 0o644)]);
+        let dest = dir.path().join("out");
+        assert!(extract_archive(&archive, &dest).is_err());
+        assert!(!dir.path().join("evil").exists());
+    }
+
+    /// Truncated or garbage archives fail with an error, never a panic
+    #[test]
+    fn test_corrupt_archives_return_errors() {
+        let dir = tempfile::TempDir::new().unwrap();
+        for name in ["x.zip", "x.tar.gz", "x.tar.xz", "x.tar.bz2", "x.7z"] {
+            let archive = dir.path().join(name);
+            fs::write(&archive, b"this is not an archive at all").unwrap();
+            let dest = dir.path().join(format!("out-{name}"));
+            assert!(extract_archive(&archive, &dest).is_err(), "{name} accepted");
+        }
+
+        // A valid zip cut in half
+        let good = dir.path().join("good.zip");
+        write_zip(&good, &[("bin/tool", 0o755)]);
+        let bytes = fs::read(&good).unwrap();
+        let cut = dir.path().join("cut.zip");
+        fs::write(&cut, &bytes[..bytes.len() / 2]).unwrap();
+        assert!(extract_archive(&cut, &dir.path().join("out-cut")).is_err());
     }
 
     #[test]

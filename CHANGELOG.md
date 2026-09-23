@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- test(extractor): zip extraction (contents, exec bit, `../` rejection) and corrupt/truncated
+  zip, tar.gz, tar.xz, tar.bz2 and 7z archives are covered; zip paths use `/` on Windows (T-5).
 - test(delete): variant grouping moved into `group_delete_candidates`; tests call it instead of a
   copied loop (T-4).
 - refactor(add): one `BatchReport` replaces five hand-rolled success/failure tallies and summary
