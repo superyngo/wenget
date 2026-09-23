@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix: legacy record migration writes `/`-separated executable keys on Windows too.
 - feat(repair): `repair` offers to recreate missing launchers from the package record (`--force`
   recreates them without prompting); a directory blocking the path is reported, never removed
   (IM-12).

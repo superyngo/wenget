@@ -739,11 +739,12 @@ impl InstalledSet {
                                 break;
                             }
 
+                            // `/`-separated like keys written by fresh installs
                             let rel_path = entry_path
                                 .strip_prefix(install_path)
                                 .unwrap_or(entry_path)
                                 .to_string_lossy()
-                                .to_string();
+                                .replace('\\', "/");
 
                             let filename = entry_path
                                 .file_name()
