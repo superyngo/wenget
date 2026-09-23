@@ -54,7 +54,7 @@ last checked against the tree — not when it was opened.
 | B-2 | 2026-09-23 | 2026-09-23 | P3 | `update` may recreate launcher under original name after `wenget rename` | `commands/update.rs` `run`, `commands/rename.rs` `rename_command` | S | Regression test verifies whether `update` preserves renamed launcher or restores original manifest name |
 | B-3 | 2026-09-23 | 2026-09-23 | P3 | `FallbackType` enum variants for libc and Windows compiler are dead code | `core/platform.rs` `FallbackType::MuslOnGnu`, `GnuOnMusl`, `WindowsCompilerVariant` | XS | Unconstructed fallback enum variants removed or wired into platform matching |
 | B-4 | 2026-09-23 | 2026-09-23 | P3 | `wenget update self` prints "'self' is not installed" (`update self` intentionally removed in 2026-03; self-check always runs) | `commands/update.rs` `run` | XS | `self` accepted silently as no-op or rejected with a clear message |
-| B-5 | 2026-09-23 | 2026-09-23 | P2 | `add` and `delete` ignore `custom_bin_path`: they build `WenPaths::new()` instead of `config.paths()`, so launchers go to the default bin dir while `repair`/`rename`/`init` use the custom one | `commands/add.rs` `run`, `commands/delete.rs` `run`, `delete_self` | XS | `add`/`delete` use `config.paths()`; launcher lands in `custom_bin_path` on the real binary |
+| B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
 
 ## Pending verification
 
@@ -115,3 +115,4 @@ last checked against the tree — not when it was opened.
 | IM-14 | GitHub repo URLs classified by substring (source archives kept as repo URLs on purpose) | f761851 |
 | CL-4 | `config.toml` template documents wrong user bin dir | c3fa271 |
 | CL-7 / CL-2 | Unused `thiserror`; `#[allow(dead_code)]` on live items | d1cc80d |
+| B-5 | `add`/`delete` ignore `custom_bin_path` (`del self` split out as B-6) | d201b7a |
