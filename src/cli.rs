@@ -133,7 +133,8 @@ pub enum Commands {
 
     /// Repair corrupted configuration files
     Repair {
-        /// Force rebuild all configuration files (not just corrupted ones)
+        /// Apply every fix without prompting (recreate missing launchers, remove
+        /// orphans) and rebuild all configuration files, not just corrupted ones
         #[arg(short, long)]
         force: bool,
     },

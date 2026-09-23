@@ -174,6 +174,24 @@ pub fn run(force: bool) -> Result<()> {
         }
     }
 
+    for (command, shim) in &missing {
+        if shim.is_dir() {
+            println!(
+                "  {} {} is a directory; remove it, then run repair again",
+                "!".yellow(),
+                shim.display()
+            );
+            continue;
+        }
+        let question = format!("Recreate launcher for '{}'?", command);
+        if force || crate::utils::prompt::confirm(&question)? {
+            match recreate_launcher(&paths, &set, command) {
+                Ok(()) => println!("  {} Recreated launcher: {}", "✓".green(), command),
+                Err(e) => println!("  {} {}: {:#}", "✗".red(), command, e),
+            }
+        }
+    }
+
     if force || matches!(buckets_status, FileStatus::Corrupted(_)) {
         repair_buckets(&config, &buckets_path, &buckets_status)?;
     }
@@ -317,6 +335,50 @@ pub fn missing_shims(paths: &WenPaths, set: &InstalledSet) -> Vec<(String, PathB
     }
     missing.sort();
     missing
+}
+
+/// Recreate the launcher for `command` from its package record
+///
+/// The target comes from the record (`install_path` + executable key), so this
+/// works even when the old launcher is gone entirely. A dangling symlink at the
+/// launcher path is replaced; the executable itself must still exist.
+fn recreate_launcher(paths: &WenPaths, set: &InstalledSet, command: &str) -> Result<()> {
+    let (package, exe) = set
+        .packages
+        .values()
+        .find_map(|p| {
+            p.executables
+                .iter()
+                .find(|(_, cmd)| cmd.as_str() == command)
+                .map(|(exe, _)| (p, exe))
+        })
+        .context("No package record owns this command")?;
+
+    let target = Path::new(&package.install_path).join(exe);
+    if !target.is_file() {
+        anyhow::bail!(
+            "executable {} is missing; reinstall with: wenget add {}",
+            target.display(),
+            package.repo_name
+        );
+    }
+
+    let shim = paths.bin_shim_path(command);
+    if shim.is_symlink() && !shim.exists() {
+        std::fs::remove_file(&shim)
+            .with_context(|| format!("Failed to remove dangling link {}", shim.display()))?;
+    }
+
+    if let crate::core::manifest::PackageSource::Script { script_type, .. } = &package.source {
+        return crate::installer::create_script_launcher(paths, command, &target, script_type);
+    }
+
+    #[cfg(unix)]
+    crate::installer::create_symlink(&target, &shim)?;
+    #[cfg(windows)]
+    crate::installer::create_shim(&target, &shim, command)?;
+
+    Ok(())
 }
 
 /// Repair buckets.json
@@ -510,6 +572,25 @@ mod tests {
         let missing = missing_shims(&paths, &set);
         assert_eq!(missing.len(), 1);
         assert_eq!(missing[0].0, "tool");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_recreate_missing_launcher() {
+        let tmp = TempDir::new().unwrap();
+        let paths = WenPaths::with_root(tmp.path().to_path_buf());
+        let mut package = package_with_command("hello");
+        let app_dir = paths.app_dir("hello");
+        std::fs::create_dir_all(&app_dir).unwrap();
+        std::fs::write(app_dir.join("hello"), b"#!/bin/sh\n").unwrap();
+        package.install_path = app_dir.display().to_string();
+        package.executables = [("hello".to_string(), "hello".to_string())].into();
+        let mut set = InstalledSet::default();
+        set.upsert_package("hello".to_string(), package);
+
+        assert_eq!(missing_shims(&paths, &set).len(), 1);
+        recreate_launcher(&paths, &set, "hello").unwrap();
+        assert!(missing_shims(&paths, &set).is_empty());
     }
 
     #[test]
