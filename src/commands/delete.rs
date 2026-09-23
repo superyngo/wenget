@@ -602,8 +602,6 @@ fn delete_executable_windows(
     exe_in_wenget: bool,
     wenget_root: &Path,
 ) -> Result<()> {
-    use std::process::Command;
-
     // Create a temporary batch script to delete the executable after exit
     let temp_dir = env::temp_dir();
     let script_path = temp_dir.join("wenget_uninstall.bat");
@@ -635,9 +633,7 @@ del /f /q "%~f0"
     fs::write(&script_path, script_content).context("Failed to create uninstall script")?;
 
     // Launch the script in background
-    Command::new("cmd")
-        .args(["/C", "start", "/min", script_path.to_str().unwrap()])
-        .spawn()
+    crate::utils::process::spawn_script_detached(&script_path, "/min")
         .context("Failed to launch uninstall script")?;
 
     println!(

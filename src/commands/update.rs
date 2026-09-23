@@ -874,8 +874,8 @@ fn replace_exe_windows(
     current_exe: &std::path::PathBuf,
     new_exe: &std::path::PathBuf,
 ) -> Result<()> {
+    use anyhow::Context;
     use std::fs;
-    use std::process::Command;
 
     let old_exe = current_exe.with_extension("exe.old");
 
@@ -889,7 +889,10 @@ fn replace_exe_windows(
     fs::copy(new_exe, current_exe)?;
 
     // Create cleanup script
-    let cleanup_script = current_exe.parent().unwrap().join("wenget_cleanup.cmd");
+    let cleanup_script = current_exe
+        .parent()
+        .context("Executable path has no parent directory")?
+        .join("wenget_cleanup.cmd");
 
     let script_content = format!(
         r#"@echo off
@@ -903,9 +906,7 @@ del /f /q "%~f0"
     fs::write(&cleanup_script, script_content)?;
 
     // Start cleanup script in background
-    let _ = Command::new("cmd")
-        .args(["/C", "start", "/B", cleanup_script.to_str().unwrap()])
-        .spawn();
+    let _ = crate::utils::process::spawn_script_detached(&cleanup_script, "/B");
 
     Ok(())
 }

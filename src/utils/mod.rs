@@ -1,6 +1,7 @@
 //! Utility modules for wenget
 
 pub mod http;
+pub mod process;
 pub mod prompt;
 
 // Re-export commonly used items
