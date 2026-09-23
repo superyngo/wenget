@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(paths): resolve `~/.local/bin` when `WenPaths` is built, removing the `expect` in
+  `bin_dir()` (Q-6; the panic was unreachable, no behavior change).
 - test: add `tests/lifecycle.rs`, offline end-to-end tests that run the real binary in a
   `WENGET_ROOT` sandbox (script and archive install, rename, repair, failed install, reinstall,
   delete); `assert_cmd` dev-dependency (T-2; T-3 narrowed to `update`).

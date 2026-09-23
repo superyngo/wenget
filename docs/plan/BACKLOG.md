@@ -17,7 +17,6 @@ last checked against the tree — not when it was opened.
 | SI-12 (A-5) | 2026-09-03 | 2026-09-23 | P2 | Divergent HTTP clients across downloader, checksum, and utils | `utils/http.rs` `HttpClient`, `downloader/mod.rs` `download_file`, `core/checksum.rs` `fetch_checksum_file` | S | Process-wide `reqwest::blocking::Client` instance shared with unified authentication and configurable timeouts |
 | A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
-| Q-6 | 2026-09-03 | 2026-09-23 | P2 | `bin_dir()` panics when home directory is missing | `core/paths.rs` `WenPaths::bin_dir` | XS | Home directory resolved fallibly at `WenPaths::new` and errors propagated gracefully |
 | SI-7 (Q-8) | 2026-09-03 | 2026-09-23 | P2 | 43 compiler-confirmed dead items masked by `#[allow(dead_code)]` | `core/platform.rs`, `core/manifest.rs`, `core/paths.rs`, `utils/http.rs` | S | Unused dead items and non-cfg `#[allow(dead_code)]` annotations removed |
 | Q-9 | 2026-09-03 | 2026-09-23 | P3 | Backup failures swallowed before mutating repair actions | `commands/repair.rs` `repair_buckets`, `core/config.rs` `create_backup` | XS | Backup failure produces a visible warning or prompts user before destructive repair |
 | OP-2 (P-2) | 2026-09-03 | 2026-09-23 | P2 | Cache and Installed set re-read and re-parsed multiple times per `update` | `commands/update.rs` `run`, `commands/add.rs` `run`, `update_cache_with_packages` | S | In-memory `InstalledSet` and `ManifestCache` passed down without redundant disk re-reads |
@@ -118,4 +117,5 @@ last checked against the tree — not when it was opened.
 | B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | 33315ef |
 | B-10 | Empty `apps/.staging/` left behind after install | df5be2e |
 | T-2 | No end-to-end integration tests (added `tests/lifecycle.rs`, 6 offline scenarios; `update` split into T-3) | 205ab40 |
+| Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | COMMIT |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |

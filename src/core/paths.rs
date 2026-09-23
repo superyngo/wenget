@@ -103,10 +103,13 @@ impl WenPaths {
 
         let is_system = is_elevated();
 
-        let root = if is_system {
-            Self::system_root_path()
+        let (root, custom_bin_dir) = if is_system {
+            (Self::system_root_path(), custom_bin_dir)
         } else {
-            Self::user_root_path()?
+            let home = Self::home()?;
+            // Resolve ~/.local/bin now so `bin_dir` never has to look up home
+            let bin = custom_bin_dir.unwrap_or_else(|| home.join(".local").join("bin"));
+            (home.join(".wenget"), Some(bin))
         };
 
         Ok(Self {
@@ -122,10 +125,11 @@ impl WenPaths {
     /// This bypasses the privilege detection and always uses ~/.wenget/
     #[allow(dead_code)]
     pub fn new_user() -> Result<Self> {
+        let home = Self::home()?;
         Ok(Self {
-            root: Self::user_root_path()?,
+            root: home.join(".wenget"),
             is_system_install: false,
-            custom_bin_dir: None,
+            custom_bin_dir: Some(home.join(".local").join("bin")),
             root_override: false,
         })
     }
@@ -157,10 +161,9 @@ impl WenPaths {
         }
     }
 
-    /// Get the user-level root path (~/.wenget/)
-    fn user_root_path() -> Result<PathBuf> {
-        let home = dirs::home_dir().context("Failed to determine home directory")?;
-        Ok(home.join(".wenget"))
+    /// The user's home directory
+    fn home() -> Result<PathBuf> {
+        dirs::home_dir().context("Failed to determine home directory")
     }
 
     /// Get the system-level root path
@@ -279,9 +282,8 @@ impl WenPaths {
                 self.root.join("bin")
             }
         } else {
-            // User-level installation: use ~/.local/bin
-            let home = dirs::home_dir().expect("Failed to determine home directory");
-            home.join(".local").join("bin")
+            // User constructors always set `custom_bin_dir` to ~/.local/bin
+            self.root.join("bin")
         }
     }
 
