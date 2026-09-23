@@ -844,7 +844,7 @@ mod tests {
         use std::io::Write;
         let mut zip = zip::ZipWriter::new(File::create(path).unwrap());
         for (name, mode) in entries {
-            let options = zip::write::FileOptions::default().unix_permissions(*mode);
+            let options = zip::write::SimpleFileOptions::default().unix_permissions(*mode);
             zip.start_file(*name, options).unwrap();
             zip.write_all(b"payload").unwrap();
         }
