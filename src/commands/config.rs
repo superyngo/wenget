@@ -28,7 +28,9 @@ pub fn run(config: &Config) -> Result<()> {
     println!("  {} Using editor: {}", "ℹ".cyan(), editor.dimmed());
 
     // Open editor
-    let status = Command::new(&editor)
+    let (program, args) = split_editor_command(&editor);
+    let status = Command::new(program)
+        .args(args)
         .arg(&config_path)
         .status()
         .with_context(|| format!("Failed to launch editor: {}", editor))?;
@@ -78,16 +80,17 @@ pub fn run(config: &Config) -> Result<()> {
 /// Detect the appropriate editor to use
 ///
 /// Priority:
-/// 1. $EDITOR environment variable
+/// 1. $VISUAL, then $EDITOR environment variable (may include arguments, e.g. `code --wait`)
 /// 2. Platform-specific defaults:
 ///    - Unix: nano (fallback to vi if nano not found)
 ///    - Windows: notepad.exe
 ///    - macOS: nano (fallback to vim)
 fn detect_editor() -> String {
-    // Check $EDITOR environment variable
-    if let Ok(editor) = env::var("EDITOR") {
-        if !editor.is_empty() {
-            return editor;
+    for var in ["VISUAL", "EDITOR"] {
+        if let Ok(editor) = env::var(var) {
+            if !editor.trim().is_empty() {
+                return editor;
+            }
         }
     }
 
@@ -108,6 +111,15 @@ fn detect_editor() -> String {
             "vi".to_string()
         }
     }
+}
+
+/// Split an editor command such as `code --wait` into program and arguments.
+///
+/// Splits on whitespace; editor paths containing spaces are not supported.
+fn split_editor_command(editor: &str) -> (&str, Vec<&str>) {
+    let mut parts = editor.split_whitespace();
+    let program = parts.next().unwrap_or(editor);
+    (program, parts.collect())
 }
 
 /// Check if a command exists in PATH
@@ -137,9 +149,23 @@ mod tests {
 
     #[test]
     fn test_detect_editor_with_env() {
+        env::remove_var("VISUAL");
         env::set_var("EDITOR", "custom-editor");
         let editor = detect_editor();
         assert_eq!(editor, "custom-editor");
         env::remove_var("EDITOR");
+    }
+
+    #[test]
+    fn test_split_editor_command() {
+        assert_eq!(split_editor_command("vim"), ("vim", vec![]));
+        assert_eq!(
+            split_editor_command("code --wait"),
+            ("code", vec!["--wait"])
+        );
+        assert_eq!(
+            split_editor_command("  vim -u NONE "),
+            ("vim", vec!["-u", "NONE"])
+        );
     }
 }

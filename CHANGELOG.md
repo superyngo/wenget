@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(config): `wenget config` honours `$VISUAL` and editor commands with arguments such as
+  `code --wait` (IM-13).
 - docs(backlog): re-verify all open rows; close A-4/M-4, merge Q-7 into S-8, drop P-4/P-5,
   re-prioritise S-5/S-6/S-7 and fix stale evidence symbols.
 - fix(deps): replace abandoned `sevenz-rust` (unpatched path traversal RUSTSEC-2026-0245) with
