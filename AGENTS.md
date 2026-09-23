@@ -42,54 +42,8 @@ cargo run -- list --all
 
 ## Project Structure
 
-```
-src/
-├── main.rs              # Entry point, command dispatch
-├── cli.rs               # clap argument definitions
-├── bucket.rs            # Bucket config management
-├── cache.rs             # Manifest cache management (24h TTL)
-├── package_resolver.rs  # Package name/URL resolution
-├── commands/            # CLI command implementations
-│   ├── mod.rs
-│   ├── add.rs           # Install packages/scripts/local files/URLs
-│   ├── bucket.rs        # Bucket subcommands (add/remove/create)
-│   ├── config.rs        # Edit config.toml
-│   ├── delete.rs        # Uninstall + PATH/shim cleanup
-│   ├── info.rs          # Show package details
-│   ├── init.rs          # First-run setup, PATH configuration
-│   ├── list.rs          # List installed/available packages
-│   ├── rename.rs        # Rename installed commands
-│   ├── repair.rs        # Report/repair drift between records, dirs, launchers
-│   ├── search.rs        # Search buckets
-│   └── update.rs        # Update packages + self-update
-├── core/                # Core data structures & utilities
-│   ├── checksum.rs      # SHA-256 asset verification
-│   ├── config.rs        # Config file management
-│   ├── fuzzy.rs         # Search scoring & "did you mean" suggestions
-│   ├── manifest.rs      # Package/script manifest structs
-│   ├── paths.rs         # Directory path management
-│   ├── platform.rs      # OS/arch detection & matching
-│   ├── preferences.rs   # config.toml user preferences
-│   ├── privilege.rs     # Root/admin detection
-│   ├── registry.rs      # Windows registry PATH ops
-│   ├── repair.rs        # JSON file repair utilities
-│   └── store.rs         # Per-package record I/O (apps/*/.wenget/package.json)
-├── providers/           # External data sources
-│   ├── base.rs          # Provider trait
-│   └── github.rs        # GitHub API integration
-├── installer/           # Binary/script installation
-│   ├── extractor.rs     # Archive extraction
-│   ├── input_detector.rs # Classify input (script vs binary vs URL)
-│   ├── local.rs         # Local file installation
-│   ├── script.rs        # Script installation
-│   ├── shim.rs          # Windows shim creation
-│   ├── staging.rs       # Stage-and-swap install directories
-│   └── symlink.rs       # Unix symlink creation
-├── downloader/          # File download with progress
-└── utils/               # HTTP client, prompts
-```
-
-Note `src/bucket.rs` (config) and `src/commands/bucket.rs` (CLI) are distinct modules.
+See [`CONTEXT.md`](CONTEXT.md) and [`docs/reference/`](docs/reference/) for architecture, module structure, and data flow.
+Note that `src/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
 
 ## Code Style Guidelines
 
@@ -109,15 +63,15 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::core::Config;
-use super::base::SourceProvider;
+use crate::providers::GitHubProvider;
 ```
 
 ### Error Handling
 
 - Use `anyhow::Result<T>` for functions that can fail
-- Use `thiserror` for defining custom error types
+- Use `anyhow::bail!()` for early error returns
 - Add context with `.context()` or `.with_context()`
-- Return `anyhow::bail!()` for early error returns
+- Use `anyhow` as the codebase standard; use `thiserror` only if a typed error is genuinely needed
 
 ```rust
 pub fn load_config(path: &Path) -> Result<Config> {
@@ -135,7 +89,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
 - **Functions/Methods**: `snake_case` (`fetch_latest_release`, `install_package`)
 - **Constants**: `SCREAMING_SNAKE_CASE` (`INTERPRETER_CACHE`)
 - **Modules**: `snake_case` (`package_resolver.rs`)
-- **Boolean methods**: Use `is_`/`has_` prefix (`is_installed`, `has_updates`)
+- **Boolean methods**: Use `is_`/`has_` prefix (`is_installed`, `is_valid`)
 
 ### Documentation
 
@@ -224,13 +178,22 @@ eprintln!("{} {}", "Error:".red().bold(), e);
 
 ## Key Implementation Notes
 
-- `Config` is the main entry point for loading/saving state
-- `WenPaths` manages all directory paths (user vs system level)
+- `Config` coordinates path management, preferences, and bucket/manifest caching
+- `WenPaths` manages all directory paths (user vs system level), with `WENGET_ROOT` override for testing
 - Platform detection uses fuzzy matching for binary names
 - Cache has 24-hour TTL; invalidate after bucket changes
 - Write one package record per install/rename (`InstalledStore::save_package`); deleting an app
   directory removes its record with it. There is no global installed index
-- JSON files have auto-repair on parse errors with backup
+- JSON config files have auto-repair on parse errors with backup (`repair.rs`), and corrupt package records are quarantined per package (`store.rs`)
+
+## Gotchas
+
+- **Sandbox manual runs**: Always pass `env WENGET_ROOT=/tmp/wg-...` when testing the real binary locally so operations do not touch the developer's real `~/.wenget`.
+- **GitHub rate limits**: Unauthenticated requests are limited to 60/hr. Set `GITHUB_TOKEN` in the environment to raise the limit to 5000/hr during multi-package testing.
+- **Platform launchers**: User installs place launchers in `~/.local/bin/` (or custom bin dir): Unix uses symlinks (`installer::symlink`), Windows uses `.cmd` shims (`installer::shim`). Shims must quote paths to handle spaces.
+- **Per-package records**: Each installed package owns its record at `{app_dir}/.wenget/package.json`. There is no global installed index; removing an app directory removes its tracking record.
+- **Cache freshness**: Manifest cache has a 24-hour TTL. Rebuild or invalidate cache (`wenget bucket refresh` or `Config::invalidate_cache`) after bucket changes.
+- **Self-deletion**: `wenget del self` uninstalls wenget itself, with platform-specific handling for running executables.
 
 ## Release Workflow
 
@@ -290,43 +253,39 @@ git status  # Should show "nothing to commit, working tree clean"
 - Ask user to confirm the new version number
 
 ### 4. Collect Version Changes
-- Gather all changes since last release
-- Categorize: Added, Changed, Fixed, Removed
-- Write clear, user-facing descriptions
+- Review accumulated entries under `## [Unreleased]` in `CHANGELOG.md`
+- Categorize changes clearly into user-facing descriptions
 
-### 5. Update Documentation
+### 5. Update Documentation and Changelog
 - Update `Cargo.toml` version field
 - Update `README.md` version badge (MANDATORY):
   - Change `[![Version](https://img.shields.io/badge/version-X.X.X-blue.svg)]` to new version
   - Update usage examples if new features added
   - Update feature descriptions if behavior changed
-- Update `CHANGELOG.md` with new version section:
-  ```markdown
-  ## [x.x.x] - YYYY-MM-DD
-  ### Added
-  - New feature description
-  ### Changed
-  - Modified behavior
-  ### Fixed
-  - Bug fix description
-  ```
-- Add version comparison link at bottom of `CHANGELOG.md`:
-  ```markdown
-  [x.x.x]: https://github.com/superyngo/wenget/compare/vX.X.X...vX.X.X
-  ```
+- Update `CHANGELOG.md`:
+  - During development, entries accumulate under `## [Unreleased]` → `### YYYY-MM-DD`.
+  - At release, rename the day's heading under `## [Unreleased]` to:
+    ```markdown
+    ## [X.Y.Z] - YYYY-MM-DD
+    ```
+    (Ensure an empty `## [Unreleased]` heading remains at the top for future development).
+  - Add the version comparison link at the bottom of `CHANGELOG.md`:
+    ```markdown
+    [X.Y.Z]: https://github.com/superyngo/wenget/compare/vPREV...vX.Y.Z
+    ```
+- **Changelog Archiving Rule**: Root `CHANGELOG.md` keeps `[Unreleased]` plus the current major series only (e.g. 3.x). When cutting the first release of a new major series (e.g. `v4.0.0`), move the entire preceding major series verbatim into `docs/reference/changelog/` (e.g. `docs/reference/changelog/v3.x.md`) and update the index in `docs/reference/changelog/README.md`. Never archive the series the next tag belongs to.
 
 ### 6. Create Tag and Release
 ```bash
-# Create annotated tag
-git tag -a vX.X.X -m "Release vX.X.X"
-
-# Or with release notes
+# Create annotated tag with release notes
 git tag -a vX.X.X -m "Release vX.X.X
 
 - Feature 1
 - Fix 1
 "
 ```
+
+**Note on release notes**: `.github/workflows/release.yml` extracts release notes directly from the tag annotation message (`git tag -l --format='%(contents)' "$TAG_NAME"`) and does **not** read `CHANGELOG.md`. Always provide descriptive notes in the annotated tag.
 
 ### 7. Push and Publish
 ```bash
@@ -338,6 +297,6 @@ git push origin vX.X.X
 ```
 
 The `.github/workflows/release.yml` workflow will:
-- Trigger on version tags (`v*`)
+- Trigger on version tags matching `v*.*.*`
 - Build binaries for all platforms
-- Create GitHub Release with artifacts
+- Create GitHub Release with artifacts and tag annotation notes

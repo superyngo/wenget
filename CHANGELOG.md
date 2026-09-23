@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs: `CLAUDE.md` is now a pointer that imports `AGENTS.md`; `AGENTS.md` drops its project
+  tree and the removed `SourceProvider` example, adds a Gotchas section, and its release steps
+  match the `[Unreleased]` convention, the `v*.*.*` tag trigger and the changelog archive rule
+  (documentation audit DS-13, DA-19–DA-22).
+
 - docs: add `docs/plan/BACKLOG.md`, the one living tracker of open work, seeded with every
   still-open finding from the 2026-09-03 and 2026-09-23 audits (documentation audit DS-1).
 
