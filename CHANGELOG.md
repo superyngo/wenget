@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   symlink" on Unix; script launchers are rebuilt from the package record. The new launcher is now
   created before the old one is removed, so a failed rename keeps the old command (audit IM-4).
 
+- fix(add): a launcher failure after the staged swap no longer erases the package. Command names
+  are resolved and executables checked before the swap; after it, launcher errors are collected,
+  the new package record is still written, and the install then fails with the list of launchers
+  that could not be created (audit IM-5).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

@@ -1958,10 +1958,6 @@ fn install_package(
         }
     };
 
-    // Every remaining step reads from the final location: swap now, so the
-    // launchers point at the app directory rather than the staging path.
-    let app_dir = staged.commit()?;
-
     // Install all selected executables
     let mut executables: HashMap<String, String> = HashMap::new();
 
@@ -1990,17 +1986,23 @@ fn install_package(
     // for every candidate suffix in `resolve_command_name`.
     let mut taken_names = installed.command_name_set(Some(installed_key));
 
+    // Resolve every command name before the swap: anything that can fail here must
+    // fail while the previous install and its record are still in place.
+    let mut launchers: Vec<(String, String)> = Vec::new(); // (exe_relative, command name)
     for exe_relative in selected_executables {
-        let exe_path = app_dir.join(&exe_relative);
+        let staged_exe = staged.path().join(&exe_relative);
 
-        if !exe_path.exists() {
-            anyhow::bail!("Executable not found: {}", exe_path.display());
+        if !staged_exe.exists() {
+            anyhow::bail!("Executable not found: {}", exe_relative);
         }
 
         // When updating, try to reuse old command names
         let reused_name = if update_mode {
-            if let Some(ref old_exes) = old_executables {
-                let filename = exe_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            if let Some(old_exes) = &old_executables {
+                let filename = staged_exe
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("");
 
                 // Try path match first, then filename match
                 old_exes.get(&exe_relative).cloned().or_else(|| {
@@ -2028,11 +2030,11 @@ fn install_package(
             // Extract the actual command name from the executable path
             let (base_name, is_custom) = if let Some(custom) = custom_name {
                 // Use custom name if provided (only for first executable)
-                if executables.is_empty() {
+                if launchers.is_empty() {
                     (custom.to_string(), true)
                 } else {
                     // For additional executables, use auto-detected name
-                    let raw_name = exe_path
+                    let raw_name = staged_exe
                         .file_name()
                         .and_then(|s| s.to_str())
                         .context("Failed to extract command name")?;
@@ -2040,7 +2042,7 @@ fn install_package(
                 }
             } else {
                 // Auto-detect and normalize command name
-                let raw_name = exe_path
+                let raw_name = staged_exe
                     .file_name()
                     .and_then(|s| s.to_str())
                     .context("Failed to extract command name")?;
@@ -2055,25 +2057,36 @@ fn install_package(
 
         println!("  Command will be available as: {}", resolved_name);
 
-        // Create symlink/shim using the resolved name
+        // Record the name as taken so subsequent executables in the same package
+        // don't resolve to a colliding name.
+        taken_names.insert(resolved_name.clone());
+        launchers.push((exe_relative, resolved_name));
+    }
+
+    // Every remaining step reads from the final location: swap now, so the
+    // launchers point at the app directory rather than the staging path.
+    let app_dir = staged.commit()?;
+
+    // From here on the previous install is gone, so a launcher failure must not skip
+    // writing the new record: collect failures and report them after saving it.
+    let mut launcher_errors: Vec<String> = Vec::new();
+    for (exe_relative, resolved_name) in launchers {
+        let exe_path = app_dir.join(&exe_relative);
         let bin_path = paths.bin_shim_path(&resolved_name);
 
         println!("  Creating launcher at {}...", bin_path.display());
 
         #[cfg(unix)]
-        {
-            create_symlink(&exe_path, &bin_path)?;
-        }
+        let created = create_symlink(&exe_path, &bin_path);
 
         #[cfg(windows)]
-        {
-            create_shim(&exe_path, &bin_path, &resolved_name)?;
+        let created = create_shim(&exe_path, &bin_path, &resolved_name);
+
+        if let Err(e) = created {
+            launcher_errors.push(format!("{}: {:#}", bin_path.display(), e));
         }
 
-        // Record the name as taken so subsequent executables in the same package
-        // don't resolve to a colliding name.
-        taken_names.insert(resolved_name.clone());
-        executables.insert(exe_relative.clone(), resolved_name);
+        executables.insert(exe_relative, resolved_name);
     }
 
     // Clean up symlinks/shims for old executables that no longer exist in the new version
@@ -2090,7 +2103,9 @@ fn install_package(
     }
 
     // Clean up download
-    fs::remove_file(&download_path)?;
+    if let Err(e) = fs::remove_file(&download_path) {
+        log::warn!("Could not remove {}: {}", download_path.display(), e);
+    }
 
     // Extract repo_name and variant from installed_key
     // installed_key format: "repo_name" or "repo_name::variant"
@@ -2121,6 +2136,20 @@ fn install_package(
         parent_package: None, // Deprecated field
         download_url: None,
     };
+
+    if !launcher_errors.is_empty() {
+        // Keep the package tracked; `wenget repair` reports the missing launchers
+        crate::core::InstalledStore::new(paths.clone())
+            .save_package(installed_key, &inst_pkg)
+            .with_context(|| format!("Failed to save the package record for {}", installed_key))?;
+        anyhow::bail!(
+            "Installed {} but could not create its launcher(s): {}. Fix the path, then run \
+             `wenget del {}` and `wenget add` again",
+            installed_key,
+            launcher_errors.join("; "),
+            installed_key
+        );
+    }
 
     Ok(inst_pkg)
 }
