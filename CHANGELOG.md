@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(cli): error messages now include the full cause chain (e.g. `Failed to create wenget root
   directory: Not a directory`) instead of only the outermost context (audit IM-2).
 
+- fix(cli): `--verbose` now shows wenget's debug logs and `RUST_LOG` is honored; they were
+  previously overridden by a hard-coded Info filter. Default level is now Warn, so INFO lines that
+  duplicated normal output are no longer printed (audit IM-3).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

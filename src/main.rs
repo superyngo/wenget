@@ -16,18 +16,17 @@ use cli::{BucketCommands, Cli, Commands};
 use colored::Colorize;
 
 fn main() {
-    // Initialize logger
-    env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Info)
-        .init();
-
     // Parse CLI arguments
     let cli = Cli::parse_args();
 
-    // Set verbose logging if requested
-    if cli.verbose {
-        log::set_max_level(log::LevelFilter::Debug);
-    }
+    // Initialize logger: RUST_LOG wins when set; otherwise --verbose shows debug, default warn
+    let default_level = if cli.verbose {
+        "warn,wenget=debug"
+    } else {
+        "warn"
+    };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
+        .init();
 
     // Handle no command (show help and exit 0)
     let Some(command) = cli.command else {
