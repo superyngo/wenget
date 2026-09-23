@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs(readme): `del` replaces the nonexistent `delete`; only `--verbose` is global; bucket
+  manifest examples now parse; `update self` is gone (`update` always checks wenget first);
+  `apps`, `manifest-cache.json` and bin-dir paths, the `GITHUB_TOKEN` rate-limit text and Windows
+  ARM64 are corrected; aliases, `add`/`del`/`repair` flags, `WENGET_ROOT`, exit status, checksum
+  verification and stage-and-swap installs are documented (documentation audit DA-1–DA-10).
+
 - docs(reference): `RESOURCE_FILTERING_RULES.md` describes the single scoring engine
   `score_parsed`, the fallbacks `fallback_identifiers` actually produces, and multi-executable
   selection; the glossary drops the removed `SourceProvider`, fixes **Manifest**, and adds

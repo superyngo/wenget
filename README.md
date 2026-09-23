@@ -11,13 +11,14 @@ wenget simplifies the installation and management of command-line tools and appl
 ## Features
 
 - **🚀 One-line Installation**: Remote installation scripts for quick setup
-- **🔄 Auto-update**: Always installs the latest version from GitHub Releases
+- **🔄 Auto-update**: Always checks for latest releases from GitHub Releases
 - **📦 Bucket System**: Organize packages and scripts using bucket manifests
 - **📜 Script Support**: Install and manage PowerShell, Bash, and Python scripts from buckets
 - **🌐 Cross-platform**: Windows, macOS, Linux (multiple architectures)
-- **📁 Organized Storage**: All packages in `~/.wenget/` with proper structure
+- **📁 Organized Storage**: Packages stored under `~/.wenget/apps/` with shims/symlinks in `~/.local/bin/`
+- **🔒 Checksum Verification**: Best-effort SHA-256 validation against published release checksums
+- **⚡ Stage-and-Swap Installs**: Atomic extractions prevent partial or broken installations
 - **🔍 Smart Search**: Fuzzy, ranked search across all configured buckets — prefixes, typos, abbreviations (`rgp` → ripgrep), and description keywords
-- **⚡ Fast Downloads**: Multi-threaded downloads with caching
 - **🎯 Platform Detection**: Automatically selects the correct binary for your system
 - **🔧 Smart Command Naming**: Automatically removes platform suffixes from executable names
 
@@ -54,8 +55,8 @@ The install scripts automatically detect elevated privileges and switch to syste
 |------|----------|---------------|---------------|
 | User | Linux/macOS | `~/.wenget/apps` | `~/.local/bin` |
 | User | Windows | `%USERPROFILE%\.wenget\apps` | `%USERPROFILE%\.local\bin` |
-| Root/Admin | Linux/macOS | `/opt/wenget/app` | `/usr/local/bin` (symlinks) |
-| Root/Admin | Windows | `%ProgramW6432%\wenget\app` | `%ProgramW6432%\wenget\bin` |
+| Root/Admin | Linux/macOS | `/opt/wenget/apps` | `/usr/local/bin` (symlinks) |
+| Root/Admin | Windows | `%ProgramW6432%\wenget\apps` | `%ProgramW6432%\wenget\bin` |
 
 **When to use Administrator/Root:**
 - When you want packages available to all users on the system
@@ -116,43 +117,47 @@ wenget add ripgrep
 # List installed packages
 wenget list
 
-# Update installed packages
+# Update installed packages (always checks for a wenget update first)
 wenget update
 
-# Upgrade wenget itself
-wenget update self
-
 # Delete a package
-wenget delete ripgrep
+wenget del ripgrep
 ```
 
 ## Commands
 
 ### Package Management
 
-- `wenget add <name|url>...` - Install packages (from bucket or GitHub URL)
+- `wenget add <name|url>...` (aliases: `install`, `a`) - Install packages (from bucket, GitHub repository URL, script, or local file)
+  - `-c, --command <name>` - Custom command name (overrides default executable name)
+  - `-v, --ver <version>` - Specify version to install (e.g., `v1.0.0`, `1.0.0`)
+  - `-p, --platform <target>` - Specify target platform (e.g., `windows-x64`, `linux-x64`, `darwin-arm64`)
   - `--variant <name>` - Install a specific variant (e.g., `--variant baseline`)
   - `--no-suffix` - Don't append variant suffix to command name
-- `wenget info <name|url>` - Show package information
-- `wenget delete <name>...` - Uninstall packages
-  - `wenget del self` - Uninstall wenget itself
-- `wenget list` - List installed packages (with source and description)
-  - `wenget list --all` - Show all available packages from buckets
-- `wenget search <keyword>` - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs still supported)
-- `wenget update [name]` - Update installed packages
-  - `wenget update self` - Upgrade wenget itself to the latest version
-  - `wenget update [name] -p <target>` - Update for a specific platform (overrides `preferred_platform`)
+  - `-y, --yes` - Skip confirmation prompts
+- `wenget info <name|url>...` (alias: `i`) - Show package information from buckets or GitHub repository
+- `wenget del <name>...` (aliases: `remove`, `rm`, `uninstall`) - Uninstall packages
+  - `-f, --force` - Force deletion (allows removing wenget itself without interactive confirmation)
+  - `--variant <name>` - Specify variant to delete (e.g., `baseline`, `profile`)
+  - `-y, --yes` - Skip confirmation prompts
+  - `wenget del self` - Uninstall wenget itself and clean up PATH and files
+- `wenget list` (alias: `ls`) - List installed packages (with source and description)
+  - `-a, --all` - Show all available packages from buckets
+- `wenget search <terms>...` (alias: `s`) - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs supported)
+- `wenget update [name]...` (alias: `up`) - Update installed packages (always checks for a wenget update first)
+  - `-p, --platform <target>` - Update for a specific platform (overrides `preferred_platform`)
+  - `-y, --yes` - Skip confirmation prompts
 
 ### Bucket Management
 
-- `wenget bucket add <name> <url>` - Add a bucket
-- `wenget bucket del <name>` - Remove a bucket
-- `wenget bucket list` - List all buckets
-- `wenget bucket refresh` - Rebuild package cache
-- `wenget bucket create` - Generate a bucket manifest from source files
+- `wenget bucket add <name> <url>` - Add a bucket manifest URL
+- `wenget bucket del <name>...` - Remove buckets
+- `wenget bucket list` - List all configured buckets
+- `wenget bucket refresh` - Rebuild package cache from all enabled buckets
+- `wenget bucket create` - Generate a bucket manifest from source files or direct URLs
 
-`add`, `update` and `info` also send `GITHUB_TOKEN` when it is set, raising the GitHub API limit
-from 60 to 5000 requests per hour.
+`add`, `update`, and `info` automatically send `GITHUB_TOKEN` when set, raising the GitHub API limit
+from 60 to 5,000 requests per hour.
 
 ### Bucket Manifest Generator
 
@@ -178,8 +183,8 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 ```
 
 **Options:**
-- `-r, --repos-src` - Source file(s) with GitHub repo URLs (one per line)
-- `-s, --scripts-src` - Source file(s) with Gist/script URLs (one per line)
+- `-r, --repos-src` - Source file(s) with GitHub repo URLs (comma-separated or multiple)
+- `-s, --scripts-src` - Source file(s) with Gist/script URLs (comma-separated or multiple)
 - `-d, --direct` - Direct URLs (comma-separated)
 - `-o, --output` - Output file (default: manifest.json)
 - `-t, --token` - GitHub personal access token
@@ -188,16 +193,17 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 ### System
 
 - `wenget init` - Initialize wenget directories and configuration
-- `wenget config` - Edit user preferences (config.toml) with default editor
-- `wenget rename <old> [new]` - Rename an installed command
+  - `-y, --yes` - Skip confirmation prompts
+- `wenget config` (alias: `c`) - Edit user preferences (config.toml) with default editor
+- `wenget rename <old> [new]` (aliases: `mv`, `rn`) - Rename an installed command
 - `wenget repair` - Repair corrupted configuration files
+  - `-f, --force` - Force rebuild all configuration files (not just corrupted ones)
 - `wenget --version` - Show version information
 - `wenget --help` - Show help message
 
 ### Global Options
 
-- `--yes`, `-y` - Skip confirmation prompts
-- `--verbose`, `-v` - Enable verbose logging
+- `--verbose` - Enable verbose logging (global; long form only; `-y/--yes` is a per-command option on `add`, `del`, `update`, and `init`)
 
 ## Directory Structure
 
@@ -209,15 +215,15 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │   └── <package>/        # Each installed package
 │       └── .wenget/
 │           └── package.json  # This package's record (version, source, commands)
-├── bin/                   # Symlinks/shims (added to PATH)
-│   ├── wenget.cmd         # wenget shim (Windows)
-│   ├── wenget             # wenget symlink (Unix)
-│   └── <package>.cmd     # Package shims
-├── cache/                 # Download and package cache
-│   ├── manifest-cache.json  # Cached package list
+├── cache/                 # Download cache
 │   └── downloads/        # Downloaded archives
+├── manifest-cache.json    # Cached package list from buckets
 ├── config.toml           # User preferences (platform, paths, etc.)
 └── buckets.json          # Bucket configuration
+
+~/.local/bin/              # Symlinks/shims (added to PATH; %USERPROFILE%\.local\bin on Windows)
+├── wenget                 # wenget symlink (Unix) / shim (Windows)
+└── <package>             # Package symlinks / shims
 ```
 
 ### System-Level Installation (root/Administrator)
@@ -225,27 +231,31 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 **Linux/macOS:**
 ```
 /opt/wenget/
-├── app/                   # Installed applications
+├── apps/                  # Installed applications
 │   ├── wenget/
 │   └── <package>/
 ├── cache/
+│   └── downloads/
+├── manifest-cache.json
 └── buckets.json
 
 /usr/local/bin/            # Symlinks to binaries
-├── wenget -> /opt/wenget/app/wenget/wenget
+├── wenget -> /opt/wenget/apps/wenget/wenget
 └── <package> -> ...
 ```
 
 **Windows:**
 ```
 %ProgramW6432%\wenget\
-├── app\                   # Installed applications
+├── apps\                  # Installed applications
 │   ├── wenget\
 │   └── <package>\
 ├── bin\                   # Binaries (added to system PATH)
 │   ├── wenget.exe
 │   └── <package>.exe
 ├── cache\
+│   └── downloads\
+├── manifest-cache.json
 └── buckets.json
 ```
 
@@ -285,6 +295,11 @@ custom_bin_path = "/usr/local/bin"
 
 Useful for custom PATH setups or when `~/.local/bin` cannot be added to PATH.
 
+### Environment Variables
+
+- `WENGET_ROOT` - Override wenget root and bin directories (e.g., `env WENGET_ROOT=/tmp/test wenget ...`). Sets both application data and binary links under the specified directory; useful for testing and sandboxing without touching `~/.wenget/`.
+- `GITHUB_TOKEN` - GitHub personal access token. Raises the GitHub API limit from 60 to 5,000 requests/hour; automatically honored by `add`, `update`, `info`, and `bucket create`.
+
 ## Bucket System
 
 Buckets are collections of package and script manifests hosted online. The official wenget bucket provides curated open-source tools.
@@ -312,15 +327,22 @@ Create a `manifest.json` with the following structure:
       "description": "Tool description",
       "homepage": "https://example.com",
       "license": "MIT",
+      "version": "1.0.0",
       "platforms": {
-        "windows-x86_64": {
-          "url": "https://github.com/username/repo/releases/download/v1.0.0/tool-windows-x64.zip",
-          "size": 1234567
-        },
-        "linux-x86_64": {
-          "url": "https://github.com/username/repo/releases/download/v1.0.0/tool-linux-x64.tar.gz",
-          "size": 1234567
-        }
+        "windows-x86_64": [
+          {
+            "url": "https://github.com/username/repo/releases/download/v1.0.0/tool-windows-x64.zip",
+            "size": 1234567,
+            "asset_name": "tool-windows-x64.zip"
+          }
+        ],
+        "linux-x86_64": [
+          {
+            "url": "https://github.com/username/repo/releases/download/v1.0.0/tool-linux-x64.tar.gz",
+            "size": 1234567,
+            "asset_name": "tool-linux-x64.tar.gz"
+          }
+        ]
       }
     }
   ],
@@ -328,11 +350,17 @@ Create a `manifest.json` with the following structure:
     {
       "name": "my-script",
       "description": "Useful script",
-      "url": "https://raw.githubusercontent.com/username/repo/main/script.ps1",
-      "script_type": "powershell",
       "repo": "https://github.com/username/repo",
       "homepage": "https://example.com",
-      "license": "MIT"
+      "license": "MIT",
+      "platforms": {
+        "powershell": {
+          "url": "https://raw.githubusercontent.com/username/repo/main/script.ps1"
+        },
+        "bash": {
+          "url": "https://raw.githubusercontent.com/username/repo/main/script.sh"
+        }
+      }
     }
   ]
 }
@@ -344,22 +372,24 @@ Create a `manifest.json` with the following structure:
 - `name`: Package name (used in commands)
 - `repo`: GitHub repository URL
 - `description`: Brief package description
-- `platforms`: Platform-specific binary information
+- `platforms`: Platform-specific binary entries as a map of platform identifiers (`windows-x86_64`, `linux-x86_64-musl`, `macos-aarch64`, etc.) to arrays of binary objects:
   - `url`: Download URL for the binary
   - `size`: File size in bytes
+  - `asset_name`: Original asset filename from the release
 
 **For Scripts:**
 - `name`: Script name (used in commands)
 - `description`: Brief script description
-- `url`: Direct URL to the script file
-- `script_type`: Script type (`powershell`, `bash`, `batch`, or `python`)
-- `repo`: Repository URL (for reference)
+- `repo`: Repository URL (for reference, e.g. Gist URL)
+- `platforms`: Map of script type (`powershell`, `bash`, `batch`, `python`) to platform info:
+  - `url`: Direct URL to the script file
 
 #### Optional Fields
 
-- `homepage`: Project homepage URL
-- `license`: Package/script license
-- `checksum`: SHA256 checksum for verification
+- `homepage`: Project homepage URL (packages and scripts)
+- `license`: Package or script license (packages and scripts)
+- `version`: Package version string (packages)
+- `checksum`: SHA256 checksum for verification (on `PlatformBinary` or `ScriptPlatform` entries)
 
 #### Hosting Your Bucket
 
@@ -416,6 +446,7 @@ wenget supports the following platforms:
 |----------|--------------|--------|
 | Windows | x86_64 (64-bit) | ✅ Supported |
 | Windows | i686 (32-bit) | ✅ Supported |
+| Windows | aarch64 (ARM64) | ✅ Supported |
 | Linux | x86_64 | ✅ Supported |
 | Linux | i686 | ✅ Supported |
 | Linux | aarch64 (ARM64) | ✅ Supported |
@@ -428,9 +459,11 @@ wenget supports the following platforms:
 1. **Platform Detection**: wenget automatically detects your OS and architecture
 2. **Package Resolution**: Searches buckets for the requested package
 3. **Binary Selection**: Identifies the appropriate binary from GitHub Releases
-4. **Download**: Downloads and caches the binary
-5. **Installation**: Extracts and places the binary in `~/.wenget/apps/<package>/`
-6. **Shim Creation**: Creates a shim/symlink in `~/.local/bin/` for easy access
+4. **Download & Checksum**: Downloads the asset and performs best-effort SHA-256 verification against published checksums (`.sha256`, `checksums.txt`, `SHA256SUMS`). Mismatches abort immediately.
+5. **Stage & Swap**: Extracts the archive into `.staging/` before atomically swapping into `~/.wenget/apps/<package>/`, ensuring interrupted runs never leave corrupted installs
+6. **Launcher Creation**: Creates shims (Windows) or symlinks (Unix) in `~/.local/bin/` (or configured bin directory) for immediate command access
+
+If any package in a multi-package install fails, wenget aborts and exits with a non-zero exit code (`1`).
 
 ## GitHub API Rate Limits
 
@@ -441,29 +474,30 @@ wenget uses the GitHub API to fetch package information and download binaries. B
 | Authentication | Rate Limit | Impact |
 |---------------|------------|--------|
 | Unauthenticated | 60 requests/hour | Limited package searches and updates |
-| Authenticated | 5,000 requests/hour | Sufficient for normal usage |
+| Authenticated (`GITHUB_TOKEN`) | 5,000 requests/hour | Sufficient for normal usage |
+
+Setting `GITHUB_TOKEN` in your environment (or passing `-t/--token` to `wenget bucket create`) automatically enables authenticated requests with 5,000 requests/hour.
 
 ### Impact on wenget Operations
 
 **Operations that consume API calls:**
-- `wenget add <url>` - 2 calls per URL (when installing from GitHub URL)
-- `wenget info <url>` - 1 call per URL (when querying GitHub URL)
-- `wenget update` - 1 call per installed package to check for updates
+- `wenget add <name>` - 1 call per package (fetches latest release from GitHub API, reusing cached bucket metadata)
+- `wenget add <url>` - 2 calls per URL (when installing from GitHub repository URL: repo info + release)
+- `wenget info <url>` - 2 calls per URL (querying GitHub repository directly)
+- `wenget update` - 1 call per installed package checked via GitHub API
 
 **Operations that don't consume API calls:**
-- `wenget add <name>` - Uses cached bucket data (no API calls)
-- `wenget info <name>` - Uses cached bucket data for bucket packages
+- `wenget info <name>` - Uses cached bucket data for bucket packages (0 API calls)
+- `wenget search` - Uses cached bucket data (0 API calls)
 - `wenget list` - Local only
-- `wenget delete` - Local only
-- `wenget bucket list/add/remove` - Local only
-- `wenget search` - Uses cached bucket data
+- `wenget del` - Local only
+- `wenget bucket` (`list`, `add`, `del`, `refresh`) - Local configuration / HTTP manifest downloads only
 
 ### Recommendations
 
-1. **Use Buckets**: The bucket system caches package information, reducing API calls significantly
-2. **Run `wenget update` periodically** rather than before each search
-3. **For heavy usage**: Consider authenticating with GitHub (future feature)
-4. **Rate limit exceeded?** Wait an hour or use buckets for cached package data
+1. **Use Buckets**: The bucket system caches package metadata, keeping installs down to a single release fetch
+2. **Set `GITHUB_TOKEN`**: For heavy usage or CI environments, export `GITHUB_TOKEN=...` in your shell configuration
+3. **Rate limit exceeded?** Wait an hour or use authenticated requests with `GITHUB_TOKEN`
 
 The official wenget bucket is updated regularly, so most users won't need to worry about rate limits when using bucket-based package management.
 
@@ -502,7 +536,7 @@ wenget add tokei
 wenget list
 
 # Remove a package
-wenget delete tokei
+wenget del tokei
 ```
 
 ## Important Disclaimer
@@ -574,18 +608,22 @@ cargo test
 ```
 wenget/
 ├── src/
-│   ├── bucket.rs         # Bucket management
-│   ├── cache.rs          # Package cache
-│   ├── cli.rs            # CLI interface
-│   ├── commands/         # Command implementations
-│   ├── core/             # Core functionality
-│   ├── downloader/       # Download logic
-│   ├── installer/        # Installation logic
-│   ├── providers/        # GitHub API integration
-│   └── utils/            # Utilities (HTTP client, prompts)
-├── install.ps1           # Windows installer
-└── install.sh            # Unix installer
+│   ├── bucket.rs           # Bucket management
+│   ├── cache.rs            # Package cache
+│   ├── cli.rs              # CLI interface
+│   ├── commands/           # Command implementations
+│   ├── core/               # Core functionality
+│   ├── downloader/         # Download logic
+│   ├── installer/          # Installation logic
+│   ├── main.rs             # Entry point
+│   ├── package_resolver.rs # Package and script resolution
+│   ├── providers/          # GitHub API integration
+│   └── utils/              # Utilities (HTTP client, prompts)
+├── install.ps1             # Windows installer
+└── install.sh              # Unix installer
 ```
+
+For architecture and documentation structure, see [CONTEXT.md](./CONTEXT.md).
 
 ## Troubleshooting
 

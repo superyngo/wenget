@@ -35,12 +35,14 @@ To add a new package or script:
 
 ## Manual Generation
 
-To manually generate the manifest locally:
+To manually generate the manifest locally from the repository root:
 
 ```bash
-./wenget bucket create \
+./bucket/wenget bucket create \
   -r bucket/sources_repos.txt \
   -s bucket/sources_scripts.txt \
   -o bucket/manifest.json \
   -u incremental
 ```
+
+For full `bucket create` options (update modes, token authentication, and direct URLs), see [Bucket Manifest Generator in README.md](../README.md#bucket-manifest-generator).
