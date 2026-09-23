@@ -114,7 +114,16 @@ impl StagedInstall {
             }
         }
 
+        remove_if_empty(self.staging_path.parent());
         Ok(self.app_dir.clone())
+    }
+}
+
+/// Remove the shared staging root once no install is using it
+fn remove_if_empty(dir: Option<&Path>) {
+    if let Some(dir) = dir {
+        // `remove_dir` only succeeds on an empty directory
+        let _ = fs::remove_dir(dir);
     }
 }
 
@@ -128,6 +137,7 @@ impl Drop for StagedInstall {
                     e
                 );
             }
+            remove_if_empty(self.staging_path.parent());
         }
     }
 }
