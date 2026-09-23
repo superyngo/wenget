@@ -120,7 +120,7 @@ fn main() {
 
     // Handle errors
     if let Err(e) = result {
-        eprintln!("{} {}", "Error:".red().bold(), e);
+        eprintln!("{} {:#}", "Error:".red().bold(), e);
         std::process::exit(1);
     }
 }
