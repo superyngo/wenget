@@ -30,14 +30,8 @@ impl Config {
         let temp_paths = WenPaths::new()?;
         let config_path = temp_paths.config_toml();
 
-        // Load preferences
-        let preferences = Preferences::load(&config_path)?;
-
-        // Validate preferences
-        if let Err(e) = preferences.validate() {
-            log::warn!("Invalid preferences in config.toml: {}", e);
-            log::warn!("Using default preferences instead");
-        }
+        // Load preferences, falling back to defaults when they fail validation
+        let preferences = validated_or_default(Preferences::load(&config_path)?);
 
         // Create WenPaths with custom bin directory if specified
         let paths = WenPaths::new_with_custom_bin(preferences.custom_bin_path.clone())?;
@@ -238,6 +232,18 @@ impl Config {
     }
 }
 
+/// Return `preferences` if valid, otherwise warn and return the defaults
+fn validated_or_default(preferences: Preferences) -> Preferences {
+    match preferences.validate() {
+        Ok(()) => preferences,
+        Err(e) => {
+            log::warn!("Invalid preferences in config.toml: {}", e);
+            log::warn!("Using default preferences instead");
+            Preferences::default()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +256,21 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = Config::with_paths(WenPaths::with_root(temp_dir.path().to_path_buf()));
         (config, temp_dir)
+    }
+
+    #[test]
+    fn test_invalid_preferences_fall_back_to_defaults() {
+        let invalid = Preferences {
+            custom_bin_path: Some(std::path::PathBuf::from("relative/bin")),
+            ..Preferences::default()
+        };
+        assert!(validated_or_default(invalid).custom_bin_path.is_none());
+
+        let valid = Preferences {
+            custom_bin_path: Some(std::env::temp_dir()),
+            ..Preferences::default()
+        };
+        assert!(validated_or_default(valid).custom_bin_path.is_some());
     }
 
     #[test]
