@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add): a failed package-record save now counts the install as failed (non-zero exit)
+  instead of reporting success (IM-6).
 - fix(config): invalid `config.toml` preferences now really fall back to defaults instead of
   being used after the "using defaults" warning (IM-7).
 - fix(config): `wenget config` honours `$VISUAL` and editor commands with arguments such as

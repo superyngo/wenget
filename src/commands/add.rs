@@ -397,7 +397,12 @@ fn install_scripts(
 
         match install_single_script(paths, &name, &content, &script_type, &origin) {
             Ok(inst_pkg) => {
-                record_installed(paths, installed, name.clone(), inst_pkg);
+                if let Err(e) = record_installed(paths, installed, name.clone(), inst_pkg) {
+                    println!("  {} {:#}", "✗".red(), e);
+                    fail_count += 1;
+                    failed_scripts.push(name);
+                    continue;
+                }
                 println!("  {} Installed successfully", "✓".green());
                 success_count += 1;
                 successful_scripts.push(name);
@@ -533,7 +538,12 @@ fn install_local_files(
                     }
                 };
                 let display_names = inst_pkg.get_command_names().join(", ");
-                record_installed(paths, installed, name.clone(), inst_pkg);
+                if let Err(e) = record_installed(paths, installed, name.clone(), inst_pkg) {
+                    println!("  {} {:#}", "✗".red(), e);
+                    fail_count += 1;
+                    failed_files.push(file.to_string());
+                    continue;
+                }
                 println!(
                     "  {} Installed successfully as {}",
                     "✓".green(),
@@ -655,14 +665,21 @@ fn install_from_urls(
                                 }
                             };
                             let display_names = inst_pkg.get_command_names().join(", ");
-                            record_installed(paths, installed, name.clone(), inst_pkg);
-                            println!(
-                                "  {} Installed successfully as {}",
-                                "✓".green(),
-                                display_names
-                            );
-                            success_count += 1;
-                            successful_urls.push(name);
+                            if let Err(e) =
+                                record_installed(paths, installed, name.clone(), inst_pkg)
+                            {
+                                println!("  {} {:#}", "✗".red(), e);
+                                fail_count += 1;
+                                failed_urls.push(filename.to_string());
+                            } else {
+                                println!(
+                                    "  {} Installed successfully as {}",
+                                    "✓".green(),
+                                    display_names
+                                );
+                                success_count += 1;
+                                successful_urls.push(name);
+                            }
                         }
                         Err(e) => {
                             println!("  {} Failed to install {}: {}", "✗".red(), filename, e);
@@ -1624,7 +1641,15 @@ fn install_packages(
                 update_mode,
             ) {
                 Ok(inst_pkg) => {
-                    record_installed(paths, installed, installed_key.clone(), inst_pkg);
+                    if let Err(e) =
+                        record_installed(paths, installed, installed_key.clone(), inst_pkg)
+                    {
+                        println!("  {} {:#}", "✗".red(), e);
+                        fail_count += 1;
+                        failed_packages.push(installed_key.clone());
+                        println!();
+                        continue;
+                    }
 
                     // Collect package for cache update if fetched from GitHub API
                     // (only once, not for each binary)
@@ -2282,16 +2307,13 @@ fn record_installed(
     installed: &mut crate::core::InstalledSet,
     key: String,
     pkg: InstalledPackage,
-) {
-    if let Err(e) = crate::core::InstalledStore::new(paths.clone()).save_package(&key, &pkg) {
-        eprintln!(
-            "{} Failed to save the package record for {}: {}",
-            "✗".red(),
-            key,
-            e
-        );
-    }
+) -> Result<()> {
+    let saved = crate::core::InstalledStore::new(paths.clone())
+        .save_package(&key, &pkg)
+        .with_context(|| format!("Failed to save the package record for {}", key));
+    // The files are on disk either way, so the snapshot keeps the name taken.
     installed.upsert_package(key, pkg);
+    saved
 }
 
 /// Install a script from bucket cache
@@ -2357,7 +2379,7 @@ fn install_script_from_bucket(
         parent_package: None,
         download_url: Some(url.to_string()),
     };
-    record_installed(paths, installed, name.to_string(), inst_pkg);
+    record_installed(paths, installed, name.to_string(), inst_pkg)?;
 
     Ok(())
 }
@@ -2365,6 +2387,40 @@ fn install_script_from_bucket(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_record_installed_reports_save_failure() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = WenPaths::with_root(tmp.path().to_path_buf());
+        // A directory where the record file belongs makes the save fail.
+        fs::create_dir_all(paths.record_dir("hello").join("package.json")).unwrap();
+        let mut installed = crate::core::InstalledSet::default();
+        let pkg = InstalledPackage {
+            meta_version: crate::core::manifest::CURRENT_META_VERSION,
+            repo_name: "hello".to_string(),
+            variant: None,
+            version: "1.0.0".to_string(),
+            platform: "linux-x86_64".to_string(),
+            installed_at: chrono::Utc::now(),
+            install_path: String::new(),
+            executables: HashMap::new(),
+            source: crate::core::manifest::PackageSource::Bucket {
+                name: "main".to_string(),
+            },
+            description: String::new(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: String::new(),
+            parent_package: None,
+            download_url: None,
+        };
+
+        let result = record_installed(&paths, &mut installed, "hello".to_string(), pkg);
+
+        assert!(result.is_err());
+        // The files are on disk, so the name stays taken for this run.
+        assert!(installed.get_package("hello").is_some());
+    }
 
     fn cached_pkg(version: &str, url: &str, asset_name: &str) -> crate::core::Package {
         let mut platforms = HashMap::new();
