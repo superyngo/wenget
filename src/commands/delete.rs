@@ -72,75 +72,13 @@ pub fn run(
 
     // Group packages by repo: find repos and their variants
     // Support both repo names ("bun") and specific variants ("bun::baseline")
-    let mut packages_to_delete: Vec<(String, Vec<String>)> = Vec::new();
-    let mut processed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let packages_to_delete = group_delete_candidates(
+        &installed,
+        &names,
+        &matching_packages,
+        variant_filter.as_deref(),
+    );
     let mut final_to_delete: Vec<String> = Vec::new();
-
-    for name in &matching_packages {
-        if processed.contains(name) {
-            continue;
-        }
-
-        // Get the package to find repo_name
-        let pkg = installed.get_package(name).unwrap();
-        let repo_name = &pkg.repo_name;
-
-        // Check if user explicitly requested this specific variant
-        // (i.e., user input contained "::" AND matched this exact key)
-        let is_specific_variant_request = names.iter().any(|user_input| {
-            user_input.contains("::")
-                && (user_input == name
-                    || Pattern::new(user_input)
-                        .map(|p| p.matches(name))
-                        .unwrap_or(false))
-        });
-
-        if is_specific_variant_request {
-            // User explicitly requested this variant - show it individually
-            packages_to_delete.push((name.clone(), vec![name.clone()]));
-            processed.insert(name.clone());
-            continue;
-        }
-
-        // This is a repo-level request - find all variants
-        let all_variants = installed.find_by_repo(repo_name);
-
-        if all_variants.is_empty() {
-            continue;
-        }
-
-        // Apply variant filter if specified
-        let variants: Vec<_> = if let Some(ref filter) = variant_filter {
-            all_variants
-                .into_iter()
-                .filter(|(_, pkg)| pkg.variant.as_deref() == Some(filter.as_str()))
-                .collect()
-        } else {
-            all_variants
-        };
-
-        if variants.is_empty() {
-            // No variants match the filter
-            if let Some(ref filter) = variant_filter {
-                println!(
-                    "  {} No variant '{}' found for package '{}'",
-                    "✗".yellow(),
-                    filter,
-                    name
-                );
-            }
-            continue;
-        }
-
-        // Collect all variant keys
-        let variant_keys: Vec<String> = variants.iter().map(|(key, _)| (*key).clone()).collect();
-
-        for key in &variant_keys {
-            processed.insert(key.clone());
-        }
-
-        packages_to_delete.push((name.clone(), variant_keys));
-    }
 
     // Show packages to delete
     println!("{}", "Packages to delete:".bold());
@@ -681,48 +619,168 @@ rm -f "$0"
     Ok(())
 }
 
+/// Group matched keys into `(label, variant keys)` deletion entries
+///
+/// An input containing `::` that matches a key selects just that variant; any
+/// other match expands to every installed variant of the repo (optionally
+/// narrowed by `variant_filter`). Each key appears in at most one entry.
+fn group_delete_candidates(
+    installed: &crate::core::InstalledSet,
+    names: &[String],
+    matching_packages: &[String],
+    variant_filter: Option<&str>,
+) -> Vec<(String, Vec<String>)> {
+    let mut packages_to_delete: Vec<(String, Vec<String>)> = Vec::new();
+    let mut processed: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for name in matching_packages {
+        if processed.contains(name) {
+            continue;
+        }
+
+        // Get the package to find repo_name
+        let Some(pkg) = installed.get_package(name) else {
+            continue;
+        };
+        let repo_name = &pkg.repo_name;
+
+        // Check if user explicitly requested this specific variant
+        // (i.e., user input contained "::" AND matched this exact key)
+        let is_specific_variant_request = names.iter().any(|user_input| {
+            user_input.contains("::")
+                && (user_input == name
+                    || Pattern::new(user_input)
+                        .map(|p| p.matches(name))
+                        .unwrap_or(false))
+        });
+
+        if is_specific_variant_request {
+            // User explicitly requested this variant - show it individually
+            packages_to_delete.push((name.clone(), vec![name.clone()]));
+            processed.insert(name.clone());
+            continue;
+        }
+
+        // This is a repo-level request - find all variants
+        let all_variants = installed.find_by_repo(repo_name);
+
+        if all_variants.is_empty() {
+            continue;
+        }
+
+        // Apply variant filter if specified
+        let variants: Vec<_> = if let Some(filter) = variant_filter {
+            all_variants
+                .into_iter()
+                .filter(|(_, pkg)| pkg.variant.as_deref() == Some(filter))
+                .collect()
+        } else {
+            all_variants
+        };
+
+        if variants.is_empty() {
+            // No variants match the filter
+            if let Some(filter) = variant_filter {
+                println!(
+                    "  {} No variant '{}' found for package '{}'",
+                    "✗".yellow(),
+                    filter,
+                    name
+                );
+            }
+            continue;
+        }
+
+        // Collect all variant keys
+        let variant_keys: Vec<String> = variants.iter().map(|(key, _)| (*key).clone()).collect();
+
+        for key in &variant_keys {
+            processed.insert(key.clone());
+        }
+
+        packages_to_delete.push((name.clone(), variant_keys));
+    }
+
+    packages_to_delete
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_META_VERSION};
+
+    fn pkg(variant: Option<&str>) -> InstalledPackage {
+        InstalledPackage {
+            meta_version: CURRENT_META_VERSION,
+            repo_name: "opencode".to_string(),
+            variant: variant.map(str::to_string),
+            version: "1.0.0".to_string(),
+            platform: "linux-x86_64".to_string(),
+            installed_at: chrono::Utc::now(),
+            install_path: String::new(),
+            executables: Default::default(),
+            source: PackageSource::Bucket {
+                name: "main".to_string(),
+            },
+            description: String::new(),
+            command_names: vec![],
+            command_name: None,
+            asset_name: String::new(),
+            parent_package: None,
+            download_url: None,
+        }
+    }
+
+    fn set() -> crate::core::InstalledSet {
+        let mut set = crate::core::InstalledSet::default();
+        set.upsert_package("opencode".to_string(), pkg(None));
+        set.upsert_package(
+            "opencode::desktop.app".to_string(),
+            pkg(Some("desktop.app")),
+        );
+        set
+    }
+
     #[test]
     fn test_specific_variant_not_duplicated_in_final_to_delete() {
-        // Simulate the variant resolution logic
-        let names = ["opencode::desktop.app".to_string()];
-        let matching_packages = vec!["opencode::desktop.app".to_string()];
+        let set = set();
+        let key = "opencode::desktop.app".to_string();
+        let groups = group_delete_candidates(
+            &set,
+            std::slice::from_ref(&key),
+            std::slice::from_ref(&key),
+            None,
+        );
+        assert_eq!(groups, vec![(key.clone(), vec![key])]);
+    }
 
-        let mut packages_to_delete: Vec<(String, Vec<String>)> = Vec::new();
-        let mut processed: std::collections::HashSet<String> = std::collections::HashSet::new();
-        let mut final_to_delete: Vec<String> = Vec::new();
+    #[test]
+    fn test_repo_request_expands_to_all_variants_once() {
+        let set = set();
+        let mut matching = vec!["opencode".to_string(), "opencode::desktop.app".to_string()];
+        matching.sort();
+        let groups = group_delete_candidates(&set, &["opencode*".to_string()], &matching, None);
+        assert_eq!(groups.len(), 1);
+        let mut keys = groups[0].1.clone();
+        keys.sort();
+        assert_eq!(keys, matching);
+    }
 
-        for name in &matching_packages {
-            if processed.contains(name) {
-                continue;
-            }
-
-            let is_specific_variant_request = names
-                .iter()
-                .any(|user_input| user_input.contains("::") && user_input == name);
-
-            if is_specific_variant_request {
-                packages_to_delete.push((name.clone(), vec![name.clone()]));
-                // BUG WAS HERE: final_to_delete.push(name.clone());
-                processed.insert(name.clone());
-                continue;
-            }
-        }
-
-        // Simulate the -y flag path
-        for (_repo_name, variants) in &packages_to_delete {
-            final_to_delete.extend(variants.clone());
-        }
-
-        // Should only appear ONCE
+    #[test]
+    fn test_variant_filter_narrows_group() {
+        let set = set();
+        let groups = group_delete_candidates(
+            &set,
+            &["opencode".to_string()],
+            &["opencode".to_string()],
+            Some("desktop.app"),
+        );
         assert_eq!(
-            final_to_delete
-                .iter()
-                .filter(|x| *x == "opencode::desktop.app")
-                .count(),
-            1,
-            "Specific variant should only appear once in final_to_delete"
+            groups,
+            vec![(
+                "opencode".to_string(),
+                vec!["opencode::desktop.app".to_string()]
+            )]
         );
     }
 }
