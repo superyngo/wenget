@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add): URLs are treated as GitHub repos only when the host is github.com; other URLs that
+  merely contain "github.com" are downloaded directly (IM-14).
 - fix(add): "Removed obsolete command" is printed only when removal succeeds; failures now
   show a warning with the reason (IM-10).
 - fix(repair): a directory or dangling symlink at a launcher path is reported instead of
