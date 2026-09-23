@@ -134,16 +134,42 @@ function Install-wenget {
     # Download binary directly
     Write-Info "Downloading $APP_NAME..."
 
+    $sumsAsset = $release.assets | Where-Object { $_.name -eq "SHA256SUMS" }
+    if (-not $sumsAsset) {
+        Write-Error "Release has no SHA256SUMS; refusing to install an unverified binary"
+        exit 1
+    }
+
+    # Download to a temp file and verify it before it replaces anything
+    $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
     $ProgressPreference = 'SilentlyContinue'
     try {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $BIN_PATH -UseBasicParsing
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempPath -UseBasicParsing
+        $sums = (Invoke-WebRequest -Uri $sumsAsset.browser_download_url -UseBasicParsing).Content
+        if ($sums -is [byte[]]) { $sums = [System.Text.Encoding]::UTF8.GetString($sums) }
         $ProgressPreference = 'Continue'
         Write-Success "Downloaded successfully!"
     } catch {
         $ProgressPreference = 'Continue'
+        Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
         Write-Error "Download failed: $_"
         exit 1
     }
+
+    $expected = $null
+    foreach ($line in ($sums -split "`n")) {
+        $parts = $line.Trim() -split '\s+', 2
+        if ($parts.Count -eq 2 -and $parts[1].TrimStart('*') -eq $assetName) { $expected = $parts[0] }
+    }
+    $actual = (Get-FileHash -Path $tempPath -Algorithm SHA256).Hash
+    if (-not $expected -or $actual -ne $expected) {
+        Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
+        Write-Error "Checksum mismatch for $assetName (expected $expected, got $actual)"
+        exit 1
+    }
+    Write-Success "Checksum verified"
+
+    Move-Item -Path $tempPath -Destination $BIN_PATH -Force
 
     Write-Info "Installed to: $INSTALL_DIR"
     Write-Success "Binary installed successfully!"

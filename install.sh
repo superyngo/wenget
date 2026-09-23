@@ -108,6 +108,45 @@ get_latest_release() {
 }
 
 # Download and extract release
+# Verify an asset against the release's published SHA256SUMS; abort on mismatch
+verify_checksum() {
+    local file="$1" name="$2" dir="$3"
+    local sums_url
+    sums_url=$(echo "$RELEASE_DATA" | grep "\"browser_download_url\".*/SHA256SUMS\"" | sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
+    if [ -z "$sums_url" ]; then
+        print_error "Release has no SHA256SUMS; refusing to install an unverified binary"
+        exit 1
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$dir/SHA256SUMS" "$sums_url"
+    else
+        wget -qO "$dir/SHA256SUMS" "$sums_url"
+    fi
+
+    local expected actual
+    expected=$(awk -v n="$name" '$2 == n || $2 == "*"n { print $1 }' "$dir/SHA256SUMS")
+    if [ -z "$expected" ]; then
+        print_error "No checksum for $name in SHA256SUMS"
+        exit 1
+    fi
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual=$(sha256sum "$file" | awk '{ print $1 }')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual=$(shasum -a 256 "$file" | awk '{ print $1 }')
+    else
+        print_error "Neither sha256sum nor shasum is available to verify the download"
+        exit 1
+    fi
+
+    if [ "$expected" != "$actual" ]; then
+        print_error "Checksum mismatch for $name (expected $expected, got $actual)"
+        exit 1
+    fi
+    print_success "Checksum verified"
+}
+
 download_release() {
     local asset_name=""
     local download_url=""
@@ -162,6 +201,8 @@ download_release() {
     fi
 
     print_success "Downloaded successfully!"
+
+    verify_checksum "$archive_path" "$asset_name" "$temp_dir"
 
     # Extract archive
     print_info "Extracting archive..."
