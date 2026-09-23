@@ -151,6 +151,9 @@ wenget delete ripgrep
 - `wenget bucket refresh` - Rebuild package cache
 - `wenget bucket create` - Generate a bucket manifest from source files
 
+`add`, `update` and `info` also send `GITHUB_TOKEN` when it is set, raising the GitHub API limit
+from 60 to 5000 requests per hour.
+
 ### Bucket Manifest Generator
 
 The `bucket create` command generates bucket manifests from GitHub repositories and scripts:

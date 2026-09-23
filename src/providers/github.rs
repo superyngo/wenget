@@ -14,9 +14,13 @@ pub struct GitHubProvider {
 }
 
 impl GitHubProvider {
-    /// Create a new GitHub provider without authentication
+    /// Create a new GitHub provider, authenticated when `GITHUB_TOKEN` is set
     pub fn new() -> Result<Self> {
-        Self::with_token(None)
+        // GITHUB_TOKEN raises the API limit from 60 to 5000 requests/hour
+        let token = std::env::var("GITHUB_TOKEN")
+            .ok()
+            .filter(|t| !t.trim().is_empty());
+        Self::with_token(token)
     }
 
     /// Create a new GitHub provider with optional token for authentication
