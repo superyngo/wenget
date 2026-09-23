@@ -118,5 +118,5 @@ last checked against the tree — not when it was opened.
 | B-10 | Empty `apps/.staging/` left behind after install | df5be2e |
 | T-2 | No end-to-end integration tests (added `tests/lifecycle.rs`, 6 offline scenarios; `update` split into T-3) | 205ab40 |
 | Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | 9fc727e |
-| CL-1 (A-3, Q-3) | Positional flags from `update` into `add` (`InstallOptions` in aca10c9; internals now take `&InstallOptions`, unused `_parent_package` dropped; Installer split moved to CL-8) | COMMIT |
+| CL-1 (A-3, Q-3) | Positional flags from `update` into `add` (`InstallOptions` in aca10c9; internals now take `&InstallOptions`, unused `_parent_package` dropped; Installer split moved to CL-8) | 4583858 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
