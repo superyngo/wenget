@@ -98,15 +98,8 @@ impl BatchReport {
 
 /// Install packages (smart detection: package names from cache or GitHub URLs)
 pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
-    let InstallOptions {
-        yes,
-        script_name,
-        platform,
-        version,
-        variant_filter,
-        no_suffix,
-        update_mode,
-    } = opts;
+    let yes = opts.yes;
+    let script_name = opts.script_name.clone();
     let config = Config::new()?;
     let paths = config.paths().clone();
 
@@ -189,19 +182,7 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
 
     // Handle package installations (existing logic)
     if !package_inputs.is_empty() {
-        failures += install_packages(
-            &config,
-            &paths,
-            &mut installed,
-            package_inputs,
-            yes,
-            script_name.as_deref(),
-            platform.as_deref(),
-            version.as_deref(),
-            variant_filter.as_deref(),
-            no_suffix,
-            update_mode,
-        )?;
+        failures += install_packages(&config, &paths, &mut installed, package_inputs, &opts)?;
     }
 
     if failures > 0 {
@@ -788,20 +769,20 @@ fn select_packages_for_platform(
 }
 
 /// Install packages from cache or GitHub (existing logic)
-#[allow(clippy::too_many_arguments)]
 fn install_packages(
     config: &Config,
     paths: &WenPaths,
     installed: &mut crate::core::InstalledSet,
     names: Vec<&String>,
-    yes: bool,
-    custom_name: Option<&str>,
-    custom_platform: Option<&str>,
-    custom_version: Option<&str>,
-    variant_filter: Option<&str>,
-    no_suffix: bool,
-    update_mode: bool,
+    opts: &InstallOptions,
 ) -> Result<usize> {
+    let yes = opts.yes;
+    let custom_name = opts.script_name.as_deref();
+    let custom_platform = opts.platform.as_deref();
+    let custom_version = opts.version.as_deref();
+    let variant_filter = opts.variant_filter.as_deref();
+    let update_mode = opts.update_mode;
+
     // Get current platform (used for informational messages).
     let current_platform = Platform::current();
 
@@ -1521,8 +1502,6 @@ fn install_packages(
             };
 
         // Install each selected binary
-        let mut parent_key: Option<String> = None;
-
         for (i, &idx) in selected_indices.iter().enumerate() {
             let binary = &filtered_binaries[idx];
 
@@ -1539,14 +1518,6 @@ fn install_packages(
             };
             let installed_key =
                 crate::core::manifest::generate_installed_key(pkg_name, variant.as_deref());
-
-            // Determine parent package (first one is parent, rest are children)
-            let parent_package = if i == 0 {
-                parent_key = Some(installed_key.clone());
-                None
-            } else {
-                parent_key.clone()
-            };
 
             println!("{} {} v{}...", "Installing".cyan(), installed_key, version);
             if using_fallback {
@@ -1568,11 +1539,7 @@ fn install_packages(
                 &version,
                 &resolved.source,
                 &installed_key,
-                parent_package.as_deref(),
-                custom_name,
-                yes,
-                no_suffix,
-                update_mode,
+                opts,
             ) {
                 Ok(inst_pkg) => {
                     if let Err(e) =
@@ -1670,12 +1637,13 @@ fn install_package(
     version: &str,
     source: &PackageSource,
     installed_key: &str,
-    _parent_package: Option<&str>,
-    custom_name: Option<&str>,
-    yes: bool,
-    no_suffix: bool,
-    update_mode: bool,
+    opts: &InstallOptions,
 ) -> Result<InstalledPackage> {
+    let custom_name = opts.script_name.as_deref();
+    let yes = opts.yes;
+    let no_suffix = opts.no_suffix;
+    let update_mode = opts.update_mode;
+
     // Log if using fallback
     if let Some(fallback_type) = &platform_match.fallback_type {
         log::info!(
