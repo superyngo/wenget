@@ -406,6 +406,23 @@ fn setup_path(config: &Config) -> Result<()> {
 
     println!("{}", "Setting up PATH...".cyan());
 
+    // A WENGET_ROOT sandbox must not edit the user's real rc files or registry
+    if config.paths().is_root_override() {
+        println!(
+            "{}",
+            "⚠ WENGET_ROOT is set; not editing shell config or registry PATH".yellow()
+        );
+        #[cfg(windows)]
+        println!("  Add to PATH manually: {}", bin_dir.display());
+        #[cfg(not(windows))]
+        println!(
+            "  Add to PATH manually: export PATH=\"{}:$PATH\"",
+            bin_dir.display()
+        );
+        println!();
+        return Ok(());
+    }
+
     #[cfg(windows)]
     {
         // For system installs, use the internal bin dir (not /usr/local/bin equivalent)

@@ -35,7 +35,7 @@ last checked against the tree — not when it was opened.
 | OP-5 | 2026-09-23 | 2026-09-23 | P3 | Candidate executables opened multiple times for permissions, magic bytes, shebang | `installer/extractor.rs` `find_executable_candidates` | XS | Single file handle and initial buffer read verify magic bytes, shebang, and permissions |
 | B-3 | 2026-09-23 | 2026-09-23 | P3 | `FallbackType` enum variants for libc and Windows compiler are dead code | `core/platform.rs` `FallbackType::MuslOnGnu`, `GnuOnMusl`, `WindowsCompilerVariant` | XS | Unconstructed fallback enum variants removed or wired into platform matching |
 | B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
-| B-7 | 2026-09-23 | 2026-09-23 | P2 | `init` with `WENGET_ROOT` set still edits the real shell rc files (`~/.zshrc`, `~/.profile`; registry on Windows), so sandbox/test roots leak PATH lines into the user profile | `commands/init.rs` `setup_path`, `setup_path_unix` | S | With `WENGET_ROOT` set, `init` prints the PATH line instead of editing rc files/registry (or requires an explicit flag) |
+| B-8 | 2026-09-23 | 2026-09-23 | P3 | `del self` with `WENGET_ROOT` set still deletes the running executable even when it lives outside the root (deleted `target/debug/wenget` during B-7 verification) | `commands/delete.rs` `delete_executable` | XS | Under `WENGET_ROOT`, `del self` removes only files inside the root |
 
 ## Pending verification
 
@@ -116,3 +116,4 @@ last checked against the tree — not when it was opened.
 | SI-11 | Five batch tally/summary blocks in `add.rs` | bae251a |
 | B-2 | `update` restored original script name after `wenget rename` | f16063e |
 | B-4 | `update self` warned "'self' is not installed" | 34a8258 |
+| B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | COMMIT |

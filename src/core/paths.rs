@@ -64,6 +64,8 @@ pub struct WenPaths {
     is_system_install: bool,
     /// Custom bin directory (overrides default)
     custom_bin_dir: Option<PathBuf>,
+    /// Whether the layout came from the `WENGET_ROOT` override
+    root_override: bool,
 }
 
 impl WenPaths {
@@ -91,6 +93,7 @@ impl WenPaths {
         if let Some(root) = std::env::var_os("WENGET_ROOT") {
             if !root.is_empty() {
                 let mut paths = Self::with_root(PathBuf::from(root));
+                paths.root_override = true;
                 if let Some(bin) = custom_bin_dir {
                     paths.custom_bin_dir = Some(bin);
                 }
@@ -110,6 +113,7 @@ impl WenPaths {
             root,
             is_system_install: is_system,
             custom_bin_dir,
+            root_override: false,
         })
     }
 
@@ -122,6 +126,7 @@ impl WenPaths {
             root: Self::user_root_path()?,
             is_system_install: false,
             custom_bin_dir: None,
+            root_override: false,
         })
     }
 
@@ -135,6 +140,7 @@ impl WenPaths {
             custom_bin_dir: Some(root.join("bin")),
             root,
             is_system_install: false,
+            root_override: false,
         }
     }
 
@@ -147,6 +153,7 @@ impl WenPaths {
             root: Self::system_root_path(),
             is_system_install: true,
             custom_bin_dir: None,
+            root_override: false,
         }
     }
 
@@ -180,6 +187,14 @@ impl WenPaths {
     /// Check if this is a system-level installation
     pub fn is_system_install(&self) -> bool {
         self.is_system_install
+    }
+
+    /// Whether the layout came from `WENGET_ROOT`.
+    ///
+    /// Such a root is a sandbox: commands must not touch the user's real shell
+    /// rc files or registry PATH on its behalf.
+    pub fn is_root_override(&self) -> bool {
+        self.root_override
     }
 
     /// Get the root directory
@@ -499,10 +514,13 @@ mod tests {
         let paths = WenPaths::new_with_custom_bin(None).unwrap();
         assert_eq!(paths.root(), tmp.path());
         assert_eq!(paths.bin_dir(), tmp.path().join("bin"));
+        assert!(paths.is_root_override());
+        assert!(!WenPaths::with_root(tmp.path().to_path_buf()).is_root_override());
 
         std::env::remove_var("WENGET_ROOT");
         let default_paths = WenPaths::new_with_custom_bin(None).unwrap();
         assert_ne!(default_paths.root(), tmp.path());
+        assert!(!default_paths.is_root_override());
 
         if let Some(value) = previous {
             std::env::set_var("WENGET_ROOT", value);

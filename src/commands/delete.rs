@@ -422,6 +422,10 @@ fn delete_self(yes: bool) -> Result<()> {
 
 /// Remove wenget bin directory from PATH
 fn remove_from_path(paths: &WenPaths) -> Result<()> {
+    // A WENGET_ROOT sandbox never edited the real rc files or registry PATH
+    if paths.is_root_override() {
+        return Ok(());
+    }
     let bin_dir = paths.bin_dir();
     let bin_dir_str = bin_dir.to_string_lossy();
 
