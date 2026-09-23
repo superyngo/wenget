@@ -3,6 +3,7 @@
 pub mod extractor;
 pub mod input_detector;
 pub mod local;
+pub mod package;
 pub mod script;
 pub mod staging;
 pub mod symlink;

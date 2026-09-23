@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(add): release selection and binary filtering move to headless
+  `installer::package` (`target_package`, `filter_binaries`); the release is chosen once during
+  planning instead of twice, so install time no longer re-queries the GitHub API (CL-8, 1/3).
 - test(update): end-to-end `update` tests against a local HTTP fixture (bucket + GitHub API), with
   the API base overridable via the `WENGET_GITHUB_API` test hook (T-3).
 - refactor(add): `install_packages`/`install_package` take `&InstallOptions` instead of positional

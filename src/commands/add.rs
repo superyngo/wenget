@@ -3,6 +3,7 @@
 use crate::core::manifest::{PackageSource, ScriptType};
 use crate::core::{Config, InstalledPackage, Platform, WenPaths};
 use crate::downloader;
+use crate::installer::package::{filter_binaries, target_package, TargetStatus};
 use crate::installer::{
     create_script_shim, detect_script_type, download_script, extract_archive, extract_script_name,
     find_executable_candidates,
@@ -664,43 +665,6 @@ fn print_available_variants(binaries: &[crate::core::manifest::PlatformBinary], 
     }
 }
 
-/// Normalize an asset filename for template-based matching across versions.
-///
-/// Strips file extensions and version-like segments so that the same binary
-/// across different releases produces the same template string.
-///
-/// # Examples
-/// - `uv-x86_64-unknown-linux-gnu.tar.gz` → `uv-x86-64-unknown-linux-gnu`
-/// - `gh_copilot_1.0.22_linux_amd64.tar.gz` → `gh-copilot-linux-amd64`
-/// - `ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz` → `ripgrep-x86-64-unknown-linux-musl`
-fn normalize_asset_for_matching(asset_name: &str) -> String {
-    let name = asset_name
-        .trim_end_matches(".tar.gz")
-        .trim_end_matches(".zip")
-        .trim_end_matches(".tar.xz")
-        .trim_end_matches(".tgz")
-        .trim_end_matches(".exe")
-        .trim_end_matches(".7z");
-
-    // Split on both - and _, filter out version segments, rejoin
-    name.split(['-', '_'])
-        .filter(|seg| {
-            if seg.is_empty() {
-                return false;
-            }
-            let s = seg.trim_start_matches('v');
-            // A version segment starts with a digit AND contains a dot (e.g. 1.0.22, v0.11.6)
-            !(s.chars()
-                .next()
-                .map(|c| c.is_ascii_digit())
-                .unwrap_or(false)
-                && s.contains('.'))
-        })
-        .collect::<Vec<_>>()
-        .join("-")
-        .to_lowercase()
-}
-
 /// Select packages from a platform that has multiple binaries.
 ///
 /// If only one binary: auto-select.
@@ -766,6 +730,18 @@ fn select_packages_for_platform(
     }
 
     Ok(selections)
+}
+
+/// One package the plan decided to install or upgrade
+struct PlanItem {
+    /// The name as typed (may carry `::variant`)
+    input: String,
+    resolved: ResolvedPackage,
+    platform_match: crate::core::platform::PlatformMatch,
+    /// The installed key being upgraded, if any
+    installed_key: Option<String>,
+    version: String,
+    status: TargetStatus,
 }
 
 /// Install packages from cache or GitHub (existing logic)
@@ -956,92 +932,28 @@ fn install_packages(
         println!("{}", "Packages to install:".bold());
     }
 
-    let mut to_install: Vec<(
-        String,
-        ResolvedPackage,
-        crate::core::platform::PlatformMatch,
-        Option<String>,
-    )> = Vec::new();
-    let mut to_update: Vec<(
-        String,
-        ResolvedPackage,
-        crate::core::platform::PlatformMatch,
-        Option<String>,
-    )> = Vec::new();
+    let mut to_install: Vec<PlanItem> = Vec::new();
+    let mut to_update: Vec<PlanItem> = Vec::new();
 
     for (original_name, mut resolved, _) in packages_to_install {
         let pkg_name = resolved.package.name.clone();
         let repo = &resolved.package.repo;
 
-        let mut target_pkg = resolved.package.clone();
-
-        // Fetch version (either custom, or latest from API, falling back to cache)
-        // IMPORTANT: Always fetch from GitHub API first to ensure accurate version comparison
-        // for update detection. Cached bucket version may be stale.
-        let version = if let Some(custom_ver) = custom_version {
-            // User specified a version
-            let ver = custom_ver.trim_start_matches('v').to_string();
-            if let Some(ref gh) = github {
-                if let Ok(pkg) =
-                    gh.fetch_package(repo, Some(custom_ver), Some((&resolved.package).into()))
-                {
-                    target_pkg = pkg;
-                } else if let Some(derived) =
-                    derive_versioned_package(&resolved.package, custom_ver)
-                {
-                    target_pkg = derived;
-                }
-            } else if let Some(derived) = derive_versioned_package(&resolved.package, custom_ver) {
-                target_pkg = derived;
-            }
-            ver
-        } else if update_mode && matches!(resolved.source, PackageSource::Bucket { .. }) {
-            // In update mode the cache was just refreshed with the latest version by the
-            // update command. Trust it instead of making a redundant API call that may
-            // flake and fall back to stale data.
-            resolved
-                .package
-                .version
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string())
-        } else if matches!(resolved.source, PackageSource::DirectRepo { .. }) {
-            // A GitHub URL was just resolved from its latest release; don't fetch it again.
-            resolved
-                .package
-                .version
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string())
-        } else if let Some(ref gh) = github {
-            // Fetch latest release for accurate comparison and correct URLs; reuse the
-            // bucket's description/license so this costs a single API call.
-            if let Ok(pkg) = gh.fetch_package(repo, None, Some((&resolved.package).into())) {
-                target_pkg = pkg;
-                target_pkg
-                    .version
-                    .clone()
-                    .unwrap_or_else(|| "unknown".to_string())
-            } else {
-                resolved
-                    .package
-                    .version
-                    .clone()
-                    .unwrap_or_else(|| "unknown".to_string())
-            }
-        } else if let Some(ref v) = resolved.package.version {
-            // No GitHub provider available - use cached version
-            v.clone()
-        } else if matches!(resolved.source, PackageSource::DirectRepo { .. }) {
-            // A GitHub URL was just resolved from its latest release; don't fetch it again.
-            resolved
-                .package
-                .version
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string())
-        } else {
-            "unknown".to_string()
-        };
-
-        resolved.package = target_pkg;
+        // Fetch the target release: always ask GitHub first (the cached bucket version
+        // may be stale), except where the cache was just refreshed.
+        let target = target_package(
+            &resolved.package,
+            &resolved.source,
+            custom_version,
+            update_mode,
+            |v| match &github {
+                Some(gh) => gh.fetch_package(repo, v, Some((&resolved.package).into())),
+                None => anyhow::bail!("GitHub provider unavailable"),
+            },
+        );
+        let version = target.version;
+        let status = target.status;
+        resolved.package = target.package;
 
         // Recompute platform match for the new target package platforms
         let matches = if let Some(override_str) = platform_override {
@@ -1092,7 +1004,14 @@ fn install_packages(
                 );
                 if !yes && crate::utils::prompt::confirm_no_default("  Reinstall?")? {
                     // User wants to reinstall
-                    to_install.push((original_name.clone(), resolved, platform_match, None));
+                    to_install.push(PlanItem {
+                        input: original_name.clone(),
+                        resolved,
+                        platform_match,
+                        installed_key: None,
+                        version,
+                        status,
+                    });
                 }
                 // If user says no or --yes flag is used, skip reinstallation
             } else {
@@ -1111,12 +1030,14 @@ fn install_packages(
                         println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
                     }
                 }
-                to_update.push((
-                    original_name.clone(),
+                to_update.push(PlanItem {
+                    input: original_name.clone(),
                     resolved,
                     platform_match,
-                    Some(check_name.to_string()),
-                ));
+                    installed_key: Some(check_name.to_string()),
+                    version,
+                    status,
+                });
             }
         } else {
             // New installation
@@ -1142,7 +1063,14 @@ fn install_packages(
                     println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
                 }
             }
-            to_install.push((original_name.clone(), resolved, platform_match, None));
+            to_install.push(PlanItem {
+                input: original_name.clone(),
+                resolved,
+                platform_match,
+                installed_key: None,
+                version,
+                status,
+            });
         }
     }
 
@@ -1202,9 +1130,16 @@ fn install_packages(
     // Collect packages to update in cache (packages fetched from GitHub API)
     let mut packages_to_cache: Vec<(crate::core::Package, PackageSource)> = Vec::new();
 
-    for (original_input_name, resolved, platform_match, installed_check_name) in all_packages {
+    for item in all_packages {
+        let PlanItem {
+            input: original_input_name,
+            resolved,
+            platform_match,
+            installed_key: installed_check_name,
+            version,
+            status,
+        } = item;
         let pkg_name = &resolved.package.name;
-        let repo_url = &resolved.package.repo;
 
         // Extract variant from input name (e.g., "bun::baseline" -> Some("baseline"))
         // This takes precedence over the global variant_filter parameter
@@ -1241,123 +1176,22 @@ fn install_packages(
         }
         let effective_variant_filter = effective_variant_filter.as_deref();
 
-        // Try to fetch package info from GitHub API (includes download links)
-        // If API rate limit is hit, fallback to cached package info
-        let (pkg_to_install, version, using_fallback) = if let Some(custom_ver) = custom_version {
-            let normalized_custom = custom_ver.trim_start_matches('v');
-            if resolved.package.version.as_deref() == Some(normalized_custom) {
-                // Already resolved in planning phase
-                (
-                    resolved.package.clone(),
-                    normalized_custom.to_string(),
-                    false,
-                )
-            } else if let Some(ref gh) = github {
-                // User specified a version - fetch that specific version
-                match gh.fetch_package(repo_url, Some(custom_ver), Some((&resolved.package).into()))
-                {
-                    Ok(versioned_pkg) => {
-                        // Successfully fetched specific version from GitHub API
-                        let version = custom_ver.trim_start_matches('v').to_string();
-                        (versioned_pkg, version, false)
-                    }
-                    Err(e) => {
-                        // API unavailable / version lookup failed. For bucket packages,
-                        // try to derive the download URL by rewriting the cached URLs with
-                        // the requested version (best-effort, validated by the download).
-                        match (
-                            matches!(resolved.source, PackageSource::Bucket { .. }),
-                            derive_versioned_package(&resolved.package, custom_ver),
-                        ) {
-                            (true, Some(derived)) => {
-                                let version = custom_ver.trim_start_matches('v').to_string();
-                                println!(
-                                    "  {} GitHub API unavailable; trying derived download URL for v{}",
-                                    "⚠".yellow(),
-                                    version
-                                );
-                                (derived, version, true)
-                            }
-                            _ => {
-                                // Not a bucket package or no usable cached version - abort.
-                                println!("  {} {}", "✗".red(), e);
-                                report.fail(pkg_name.to_string());
-                                continue;
-                            }
-                        }
-                    }
-                }
-            } else {
-                match derive_versioned_package(&resolved.package, custom_ver) {
-                    Some(derived) => {
-                        let version = custom_ver.trim_start_matches('v').to_string();
-                        (derived, version, true)
-                    }
-                    None => {
-                        println!(
-                            "  {} No usable cached version to derive {}",
-                            "✗".red(),
-                            custom_ver
-                        );
-                        report.fail(pkg_name.to_string());
-                        continue;
-                    }
-                }
+        // The release was chosen during planning; report how it was obtained
+        let pkg_to_install = &resolved.package;
+        let using_fallback = match status {
+            TargetStatus::Failed(e) => {
+                println!("  {} {}", "✗".red(), e);
+                report.fail(pkg_name.to_string());
+                continue;
             }
-        } else if update_mode && matches!(resolved.source, PackageSource::Bucket { .. }) {
-            // Update mode: the cache holds the latest package info synced by the update
-            // command, so use it directly and skip the redundant install-time API round.
-            let version = resolved
-                .package
-                .version
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string());
-            (resolved.package.clone(), version, false)
-        } else if resolved.package.version.is_some() {
-            // Already resolved in planning phase (e.g. latest version)
-            let version = resolved.package.version.clone().unwrap();
-            (resolved.package.clone(), version, false)
-        } else if let Some(ref gh) = github {
-            // No version specified - fetch latest
-            match gh.fetch_package(repo_url, None, Some((&resolved.package).into())) {
-                Ok(latest_pkg) => {
-                    // Successfully fetched from GitHub API - use latest download links
-                    // Version is now included in the package struct
-                    let version = latest_pkg
-                        .version
-                        .clone()
-                        .unwrap_or_else(|| "unknown".to_string());
-                    (latest_pkg, version, false)
-                }
-                Err(e) => {
-                    // Failed to fetch from GitHub API (likely rate limit) - use cached package info
-                    log::warn!(
-                        "Failed to fetch latest package info from GitHub API for {}: {}",
-                        pkg_name,
-                        e
-                    );
-                    println!(
-                        "  {} Using cached download links (GitHub API unavailable)",
-                        "⚠".yellow()
-                    );
-
-                    // Use version from cached package if available
-                    let version = resolved
-                        .package
-                        .version
-                        .clone()
-                        .unwrap_or_else(|| "unknown".to_string());
-                    (resolved.package.clone(), version, true)
-                }
+            TargetStatus::Cached => {
+                println!(
+                    "  {} Using cached download links (GitHub API unavailable)",
+                    "⚠".yellow()
+                );
+                true
             }
-        } else {
-            // No GitHub provider available, use cached package info
-            let version = resolved
-                .package
-                .version
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string());
-            (resolved.package.clone(), version, true)
+            TargetStatus::Fresh => false,
         };
 
         // Get all binaries for this platform
@@ -1370,88 +1204,21 @@ fn install_packages(
             }
         };
 
-        // Apply variant filter / asset-name matching to narrow the binary candidates.
-        //
-        // In update mode: try asset-name template matching FIRST (most reliable).
-        //   - This handles stale variant strings stored by old code (e.g. "(default)")
-        //   - And cases where extract_variant_from_asset returns false positives (e.g. "64")
-        //   - If asset-name matching succeeds, use it regardless of effective_variant_filter.
-        //   - If it fails, fall back to named variant filter.
-        // In add mode: use named variant filter, or return all binaries.
-        // Precompute, once per binary, the normalized asset name and the variant.
-        // Both normalize_asset_for_matching and extract_variant_from_asset allocate
-        // (lowercase, split, join) and were previously recomputed inside every
-        // filter pass below.
-        let binary_meta: Vec<(
-            usize,
-            &crate::core::manifest::PlatformBinary,
-            String,
-            Option<String>,
-        )> = binaries
-            .iter()
-            .enumerate()
-            .map(|(idx, binary)| {
-                let normalized = normalize_asset_for_matching(&binary.asset_name);
-                let variant =
-                    crate::core::manifest::extract_variant_from_asset(&binary.asset_name, pkg_name);
-                (idx, binary, normalized, variant)
-            })
-            .collect();
-
-        let (filtered_binaries, _original_indices): (Vec<_>, Vec<_>) = if update_mode {
-            // Compute asset-name template from the previously installed package.
-            let stored_template = installed_check_name
+        // In update mode, match the previously installed asset first
+        let stored_asset = if update_mode {
+            installed_check_name
                 .as_ref()
                 .and_then(|k| installed.get_package(k))
-                .map(|p| normalize_asset_for_matching(&p.asset_name));
-
-            if let Some(template) = stored_template {
-                let matched: Vec<_> = binary_meta
-                    .iter()
-                    .filter(|(_, _, normalized, _)| normalized.as_str() == template)
-                    .map(|(idx, binary, _, _)| ((*binary).clone(), *idx))
-                    .collect();
-
-                if !matched.is_empty() {
-                    // Exact asset-name match found — use it directly.
-                    matched.into_iter().unzip()
-                } else if let Some(filter) = effective_variant_filter {
-                    // Asset-name match failed (package renamed its assets?): fall back to
-                    // named variant filter as a secondary attempt.
-                    binary_meta
-                        .iter()
-                        .filter(|(_, _, _, variant)| variant.as_deref() == Some(filter))
-                        .map(|(idx, binary, _, _)| ((*binary).clone(), *idx))
-                        .unzip()
-                } else {
-                    // Neither match succeeded: return all binaries and let
-                    // select_packages_for_platform pick the best one with a warning.
-                    (binaries.clone(), (0..binaries.len()).collect())
-                }
-            } else {
-                // No stored asset_name (package has no record): fall back to
-                // named variant filter or return all binaries.
-                if let Some(filter) = effective_variant_filter {
-                    binary_meta
-                        .iter()
-                        .filter(|(_, _, _, variant)| variant.as_deref() == Some(filter))
-                        .map(|(idx, binary, _, _)| ((*binary).clone(), *idx))
-                        .unzip()
-                } else {
-                    (binaries.clone(), (0..binaries.len()).collect())
-                }
-            }
-        } else if let Some(filter) = effective_variant_filter {
-            // Normal add mode with named variant filter.
-            binary_meta
-                .iter()
-                .filter(|(_, _, _, variant)| variant.as_deref() == Some(filter))
-                .map(|(idx, binary, _, _)| ((*binary).clone(), *idx))
-                .unzip()
+                .map(|p| p.asset_name.clone())
         } else {
-            // Normal add mode, no filter: return all binaries.
-            (binaries.clone(), (0..binaries.len()).collect())
+            None
         };
+        let filtered_binaries = filter_binaries(
+            binaries,
+            pkg_name,
+            stored_asset.as_deref(),
+            effective_variant_filter,
+        );
 
         // Check if any binaries remain after filtering
         if filtered_binaries.is_empty() {
@@ -1533,7 +1300,7 @@ fn install_packages(
             match install_package(
                 installed,
                 paths,
-                &pkg_to_install,
+                pkg_to_install,
                 &platform_match,
                 binary,
                 &version,
@@ -2083,58 +1850,6 @@ fn install_package(
     Ok(inst_pkg)
 }
 
-/// Derive a package for a specific version by rewriting the cached download URLs.
-///
-/// GitHub release assets always live at `.../releases/download/{tag}/{asset_name}`,
-/// so replacing the cached version substring with the requested version yields the URL
-/// for that version. This covers both the version in the tag path and any version
-/// embedded in the asset name, and preserves a `v` prefix because only the numeric
-/// part is swapped (e.g. `v0.8.1/foo` -> `v2.0.0/foo`).
-///
-/// This is a best-effort fallback used only when the GitHub API is unavailable: it
-/// fails (the download later 404s) if the project uses a tag scheme that doesn't
-/// contain the version, or changed its asset naming between versions.
-///
-/// Returns `None` when the cached version can't be used as a substitution anchor.
-fn derive_versioned_package(
-    cached: &crate::core::Package,
-    requested_version: &str,
-) -> Option<crate::core::Package> {
-    let old_ver = cached.version.as_deref()?.trim_start_matches('v');
-    let new_ver = requested_version.trim_start_matches('v');
-
-    if old_ver.is_empty() || old_ver == "unknown" || old_ver == "local" {
-        return None;
-    }
-
-    let platforms = cached
-        .platforms
-        .iter()
-        .map(|(platform_id, binaries)| {
-            let rewritten = binaries
-                .iter()
-                .map(|b| crate::core::manifest::PlatformBinary {
-                    url: b.url.replace(old_ver, new_ver),
-                    size: 0,        // unknown for a derived URL
-                    checksum: None, // cached checksum is for a different version
-                    asset_name: b.asset_name.replace(old_ver, new_ver),
-                })
-                .collect();
-            (platform_id.clone(), rewritten)
-        })
-        .collect();
-
-    Some(crate::core::Package {
-        name: cached.name.clone(),
-        description: cached.description.clone(),
-        repo: cached.repo.clone(),
-        homepage: cached.homepage.clone(),
-        license: cached.license.clone(),
-        version: Some(new_ver.to_string()),
-        platforms,
-    })
-}
-
 /// Update manifest cache with latest package info from GitHub API
 fn update_cache_with_packages(
     config: &Config,
@@ -2296,119 +2011,6 @@ mod tests {
         assert!(result.is_err());
         // The files are on disk, so the name stays taken for this run.
         assert!(installed.get_package("hello").is_some());
-    }
-
-    fn cached_pkg(version: &str, url: &str, asset_name: &str) -> crate::core::Package {
-        let mut platforms = HashMap::new();
-        platforms.insert(
-            "linux-armv7".to_string(),
-            vec![crate::core::manifest::PlatformBinary {
-                url: url.to_string(),
-                size: 123,
-                checksum: Some("abc".to_string()),
-                asset_name: asset_name.to_string(),
-            }],
-        );
-        crate::core::Package {
-            name: "sshi".to_string(),
-            description: "desc".to_string(),
-            repo: "https://github.com/superyngo/sshi".to_string(),
-            homepage: None,
-            license: None,
-            version: Some(version.to_string()),
-            platforms,
-        }
-    }
-
-    #[test]
-    fn test_derive_versioned_package_version_in_tag_only() {
-        // sshi-style: version only in the tag path, not the asset name.
-        let cached = cached_pkg(
-            "1.2.0",
-            "https://github.com/superyngo/sshi/releases/download/v1.2.0/sshi-linux-armv7.tar.gz",
-            "sshi-linux-armv7.tar.gz",
-        );
-        let derived = derive_versioned_package(&cached, "1.3.0").unwrap();
-        let bin = &derived.platforms["linux-armv7"][0];
-        assert_eq!(
-            bin.url,
-            "https://github.com/superyngo/sshi/releases/download/v1.3.0/sshi-linux-armv7.tar.gz"
-        );
-        assert_eq!(bin.asset_name, "sshi-linux-armv7.tar.gz");
-        assert_eq!(derived.version.as_deref(), Some("1.3.0"));
-        assert!(bin.checksum.is_none());
-    }
-
-    #[test]
-    fn test_derive_versioned_package_version_in_asset_name() {
-        // Nexus-style: version in both the tag and the asset name.
-        let cached = cached_pkg(
-            "0.8.1",
-            "https://github.com/x/y/releases/download/v0.8.1/Setup_0.8.1.exe",
-            "Setup_0.8.1.exe",
-        );
-        let derived = derive_versioned_package(&cached, "v2.0.0").unwrap();
-        let bin = &derived.platforms["linux-armv7"][0];
-        assert_eq!(
-            bin.url,
-            "https://github.com/x/y/releases/download/v2.0.0/Setup_2.0.0.exe"
-        );
-        assert_eq!(bin.asset_name, "Setup_2.0.0.exe");
-    }
-
-    #[test]
-    fn test_derive_versioned_package_rejects_unusable_version() {
-        let cached = cached_pkg(
-            "local",
-            "https://github.com/x/y/releases/download/v1/y.tar.gz",
-            "y.tar.gz",
-        );
-        assert!(derive_versioned_package(&cached, "1.0.0").is_none());
-
-        let mut no_version = cached_pkg(
-            "1.0.0",
-            "https://github.com/x/y/releases/download/v1.0.0/y.tar.gz",
-            "y.tar.gz",
-        );
-        no_version.version = None;
-        assert!(derive_versioned_package(&no_version, "1.0.0").is_none());
-    }
-
-    #[test]
-    fn test_normalize_asset_for_matching() {
-        // Same binary across versions should produce identical templates
-        assert_eq!(
-            normalize_asset_for_matching("uv-x86_64-unknown-linux-gnu.tar.gz"),
-            "uv-x86-64-unknown-linux-gnu"
-        );
-        assert_eq!(
-            normalize_asset_for_matching("gh_copilot_1.0.21_linux_amd64.tar.gz"),
-            normalize_asset_for_matching("gh_copilot_1.0.22_linux_amd64.tar.gz")
-        );
-        assert_eq!(
-            normalize_asset_for_matching("ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz"),
-            normalize_asset_for_matching("ripgrep-14.1.2-x86_64-unknown-linux-musl.tar.gz")
-        );
-        // Same asset produces same template
-        assert_eq!(
-            normalize_asset_for_matching("uv-x86_64-unknown-linux-gnu.tar.gz"),
-            normalize_asset_for_matching("uv-x86_64-unknown-linux-gnu.tar.gz")
-        );
-        // Different arch should NOT match
-        assert_ne!(
-            normalize_asset_for_matching("uv-x86_64-unknown-linux-gnu.tar.gz"),
-            normalize_asset_for_matching("uv-aarch64-unknown-linux-gnu.tar.gz")
-        );
-        // zip extension
-        assert_eq!(
-            normalize_asset_for_matching("bun-linux-x64.zip"),
-            "bun-linux-x64"
-        );
-        // apple stays — template matching uses full normalized name for comparison
-        assert_eq!(
-            normalize_asset_for_matching("uv-aarch64-apple-darwin.tar.gz"),
-            normalize_asset_for_matching("uv-aarch64-apple-darwin.tar.gz")
-        );
     }
 
     #[test]
