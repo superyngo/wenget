@@ -117,5 +117,5 @@ last checked against the tree — not when it was opened.
 | B-4 | `update self` warned "'self' is not installed" | 34a8258 |
 | B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | 248afa2 |
 | B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | 33315ef |
-| B-10 | Empty `apps/.staging/` left behind after install | COMMIT |
+| B-10 | Empty `apps/.staging/` left behind after install | df5be2e |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
