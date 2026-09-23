@@ -1,5 +1,5 @@
 # Implementation, Clarity, Simplicity & Optimization Audit — 2026-09-23
-Status: In progress — fixed: IM-1–IM-5, OP-1, SI-1, SI-2, CL-1 (narrow: InstallOptions); CL-1 installer split and the rest open
+Status: In progress
 Scope: `wenget` v3.9.0 at commit `529bfe2`, all of `src/` (19,036 LOC: 14,935 production, 4,101
 test, 44 files). A follow-up to [2026-09-03-full-codebase-audit.md](2026-09-03-full-codebase-audit.md):
 this pass re-checks that audit's findings and focuses on **implementation correctness, clarity,

@@ -6,6 +6,8 @@ Current behavior lives in [`../reference/`](../reference/README.md).
 
 ## In progress
 
+Open findings from every audit are tracked in [`../plan/BACKLOG.md`](../plan/BACKLOG.md).
+
 - **[2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md)** — two-pass
   documentation sweep (structure + accuracy against the code). 13 structural, 22 accuracy findings.
 - **[2026-09-23-search-evaluation.md](2026-09-23-search-evaluation.md)** — evaluation of

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs: add `docs/plan/BACKLOG.md`, the one living tracker of open work, seeded with every
+  still-open finding from the 2026-09-03 and 2026-09-23 audits (documentation audit DS-1).
+
 - docs: the 0.x, 1.x and 2.x changelog series move verbatim to `docs/reference/changelog/`;
   the root file keeps `[Unreleased]` and 3.x. A stray empty `[Unreleased]` heading and broken
   compare links are fixed (documentation audit DS-11, DS-12).
