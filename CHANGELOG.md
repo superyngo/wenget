@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the new package record is still written, and the install then fails with the list of launchers
   that could not be created (audit IM-5).
 
+- fix(add): a GitHub URL that cannot be fetched now reports the real cause (network error, HTTP
+  404, …) instead of "Not found", and an exhausted GitHub API rate limit is named as such with its
+  reset time: `GitHub API rate limit exceeded (resets at HH:MM)`.
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

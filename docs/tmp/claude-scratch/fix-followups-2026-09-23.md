@@ -13,12 +13,14 @@
 
 ## Pending verification
 
-- IM-5 error-message wording on the real binary (blocked by the rate limit at 16:44; the resets
-  17:11 CST). Behavior was verified: `update` exits 1, record kept at the new version, and
-  `del` + `add` recovers. Repro: install fd `--ver v10.1.0` in a `WENGET_ROOT` sandbox, replace
-  `bin/fd` with a directory, run `update fd -y`.
+- Rate limit reported as "Not found": fixed (URL inputs now print the resolver error chain; 403/429
+  with `x-ratelimit-remaining: 0` names the rate limit). `GITHUB_TOKEN` support for `add`/`update`
+  still open as a feature proposal.
 
-## Incident
+- ~~IM-5 error-message wording on the real binary~~ — verified 17:36: `✗ Installed fd but could
+  not create its launcher(s): …/bin/fd: Failed to remove existing symlink: …: Operation not
+  permitted (os error 1). Fix the path, then run `wenget del fd` and `wenget add` again`, exit 1,
+  record kept at 10.5.0.
 
 - During IM-5 verification, one shell step ran without `WENGET_ROOT` and touched the real
   `~/.wenget`: `del fd`, `add https://github.com/sharkdp/fd --ver v10.1.0`, `update fd`. End state

@@ -923,6 +923,11 @@ fn install_packages(
                     ));
                 }
             }
+            Err(e) if matches!(input, PackageInput::DirectUrl(_)) => {
+                // A URL never falls back to cache lookups: report the real cause
+                eprintln!("{} {}: {:#}", "Error".red().bold(), original_name, e);
+                resolve_failures += 1;
+            }
             Err(_) => {
                 // If not found as package, check if it's a script in cache
                 if let Some(cached_script) = cache.find_script(original_name) {
