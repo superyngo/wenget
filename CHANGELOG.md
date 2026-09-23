@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(add): `install_package` becomes `installer::package::PackageInstaller::install`, taking
+  an `InstallRequest`; executable selection is its own method with scripted-UI tests (CL-8, 3/3).
 - refactor(add): the install flow asks and reports through an `InstallUi` trait
   (`utils::prompt::TerminalUi` in the terminal), so its prompts can be scripted in tests (CL-8, 2/3).
 - refactor(add): release selection and binary filtering move to headless

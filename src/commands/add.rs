@@ -3,14 +3,15 @@
 use crate::core::manifest::{PackageSource, ScriptType};
 use crate::core::{Config, InstalledPackage, Platform, WenPaths};
 use crate::downloader;
-use crate::installer::package::{filter_binaries, target_package, InstallUi, TargetStatus};
+use crate::installer::package::{
+    filter_binaries, target_package, InstallRequest, InstallUi, PackageInstaller, TargetStatus,
+};
 use crate::installer::{
-    create_script_shim, detect_script_type, download_script, extract_archive, extract_script_name,
-    find_executable_candidates,
+    create_script_shim, detect_script_type, download_script, extract_script_name,
     input_detector::{detect_input_type, InputType},
     install_script,
     local::install_local_file,
-    normalize_command_name, read_local_script,
+    read_local_script,
 };
 use crate::package_resolver::{PackageInput, PackageResolver, ResolvedPackage};
 use crate::providers::GitHubProvider;
@@ -20,12 +21,6 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-
-#[cfg(windows)]
-use crate::installer::create_shim;
-
-#[cfg(unix)]
-use crate::installer::create_symlink;
 
 /// Options for `add::run`, shared by the `add` command and `update`
 #[derive(Debug, Clone, Default)]
@@ -198,86 +193,6 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Resolve command name to avoid conflicts
-///
-/// Priority:
-/// 1. If variant exists, use base_name-{variant}
-/// 2. Otherwise, use base_name
-/// 3. If name is taken, try base_name-{number}
-/// 4. If is_custom is true, skip variant suffix appending and go directly to conflict checking
-///
-/// `taken` is the precomputed set of command names already in use (excluding the
-/// package being resolved). Callers build it once via
-/// `InstalledSet::command_name_set` rather than scanning all packages for
-/// every candidate suffix here.
-fn resolve_command_name(
-    base_name: &str,
-    variant: Option<&str>,
-    taken: &std::collections::HashSet<String>,
-    is_custom: bool,
-) -> String {
-    // 1. A custom name skips the variant suffix
-    if is_custom {
-        return first_free(base_name, taken);
-    }
-
-    // 2. If it's a variant, construct the desired command name
-    if let Some(var) = variant {
-        // Check if base_name already ends with the variant suffix
-        // This handles cases where the binary itself contains the variant name
-        // e.g., base_name="bun-profile", variant="profile" -> keep as "bun-profile"
-        // e.g., base_name="bun-profile", variant="baseline-profile" -> change to "bun-baseline-profile"
-
-        let desired_name = if base_name.ends_with(&format!("-{}", var)) {
-            // Base name already ends with variant, use as-is
-            base_name.to_string()
-        } else if let Some(base_stripped) = extract_repo_name_from_command(base_name, var) {
-            // Base name contains part of the variant, reconstruct with full variant
-            // e.g., "bun-profile" with variant "baseline-profile" -> "bun-baseline-profile"
-            format!("{}-{}", base_stripped, var)
-        } else {
-            // Normal case: append variant to base name
-            format!("{}-{}", base_name, var)
-        };
-
-        return first_free(&desired_name, taken);
-    }
-
-    // 3. No variant
-    first_free(base_name, taken)
-}
-
-/// `base` if free, else the first free `base-1` .. `base-99`, else `base`
-fn first_free(base: &str, taken: &std::collections::HashSet<String>) -> String {
-    if !taken.contains(base) {
-        return base.to_string();
-    }
-    (1..=99)
-        .map(|i| format!("{}-{}", base, i))
-        .find(|numbered| !taken.contains(numbered))
-        .unwrap_or_else(|| base.to_string())
-}
-
-/// Extract repo name from a command name that may contain partial variant info
-/// e.g., "bun-profile" with variant "baseline-profile" -> Some("bun")
-/// e.g., "bun" with variant "baseline" -> None
-fn extract_repo_name_from_command(command_name: &str, variant: &str) -> Option<String> {
-    // Split variant by '-' to get all parts
-    let variant_parts: Vec<&str> = variant.split('-').collect();
-
-    // Check if command_name ends with any part of the variant
-    for part in &variant_parts {
-        if command_name.ends_with(&format!("-{}", part)) {
-            // Strip this part and return the base
-            if let Some(stripped) = command_name.strip_suffix(&format!("-{}", part)) {
-                return Some(stripped.to_string());
-            }
-        }
-    }
-
-    None
 }
 
 /// Install scripts from local paths or URLs
@@ -766,6 +681,14 @@ fn install_packages(
     let custom_version = opts.version.as_deref();
     let variant_filter = opts.variant_filter.as_deref();
     let update_mode = opts.update_mode;
+    let installer = PackageInstaller {
+        paths,
+        ui,
+        command_name: custom_name,
+        yes,
+        no_suffix: opts.no_suffix,
+        update_mode,
+    };
 
     // Get current platform (used for informational messages).
     let current_platform = Platform::current();
@@ -1310,18 +1233,15 @@ fn install_packages(
                 println!("  {} From: {}", "ℹ".cyan(), binary.asset_name.dimmed());
             }
 
-            match install_package(
-                installed,
-                paths,
-                pkg_to_install,
-                &platform_match,
+            let request = InstallRequest {
+                package: pkg_to_install,
+                platform_match: &platform_match,
                 binary,
-                &version,
-                &resolved.source,
-                &installed_key,
-                opts,
-                ui,
-            ) {
+                version: &version,
+                source: &resolved.source,
+                installed_key: &installed_key,
+            };
+            match installer.install(installed, &request) {
                 Ok(inst_pkg) => {
                     if let Err(e) =
                         record_installed(paths, installed, installed_key.clone(), inst_pkg)
@@ -1400,475 +1320,6 @@ fn install_packages(
     script_report.print();
 
     Ok(resolve_failures + report.failures() + script_report.failures())
-}
-
-/// Install a single package
-///
-/// `installed` is the in-memory snapshot of the installed set held by the caller
-/// (`install_packages`). It is used for executable reuse in update mode and for
-/// command-name conflict resolution. It must NOT be re-read from disk here: the
-/// caller holds the authoritative in-memory copy and persists it after install.
-#[allow(clippy::too_many_arguments)]
-fn install_package(
-    installed: &crate::core::InstalledSet,
-    paths: &WenPaths,
-    pkg: &crate::core::Package,
-    platform_match: &crate::core::platform::PlatformMatch,
-    binary: &crate::core::manifest::PlatformBinary,
-    version: &str,
-    source: &PackageSource,
-    installed_key: &str,
-    opts: &InstallOptions,
-    ui: &dyn InstallUi,
-) -> Result<InstalledPackage> {
-    let custom_name = opts.script_name.as_deref();
-    let yes = opts.yes;
-    let no_suffix = opts.no_suffix;
-    let update_mode = opts.update_mode;
-
-    // Log if using fallback
-    if let Some(fallback_type) = &platform_match.fallback_type {
-        log::info!(
-            "Using fallback platform {} ({})",
-            platform_match.platform_id,
-            fallback_type.description()
-        );
-    }
-
-    // Download binary
-    ui.line(&format!("  Downloading from {}...", binary.url));
-
-    let download_dir = paths.downloads_dir();
-    fs::create_dir_all(&download_dir)?;
-
-    // Determine file extension from URL
-    let filename = binary
-        .url
-        .split('/')
-        .next_back()
-        .context("Invalid download URL")?;
-
-    let download_path = download_dir.join(filename);
-
-    // Removes the archive on every exit path, including errors below
-    let _download_guard = downloader::CleanupGuard::new(&download_path);
-    downloader::download_file(&binary.url, &download_path)?;
-
-    crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)?;
-
-    // Sanitized directory names are lossy, so a different package may already
-    // own the directory this key maps to.
-    crate::core::InstalledStore::new(paths.clone()).ensure_dir_available(installed_key)?;
-
-    // Stage the extraction beside the app directory and swap it in on success, so
-    // a failed install leaves the previous install and its record untouched.
-    let staged = crate::installer::StagedInstall::begin(paths, installed_key)?;
-    let app_dir = staged.target().to_path_buf();
-
-    ui.line(&format!("  Extracting to {}...", app_dir.display()));
-
-    let extracted_files = extract_archive(&download_path, staged.path())?;
-
-    // Find executable candidates (pass the staging dir for Unix permission checks)
-    let candidates = find_executable_candidates(&extracted_files, &pkg.name, Some(staged.path()));
-
-    if candidates.is_empty() {
-        anyhow::bail!(
-            "Failed to find executable in archive. Extracted files:\n{}",
-            extracted_files.join("\n")
-        );
-    }
-
-    // Select executables
-    let selected_executables = if candidates.len() == 1 {
-        // Single candidate - auto-select
-        let selected = &candidates[0];
-        ui.line(&format!(
-            "  Found executable: {} ({})",
-            selected.path, selected.reason
-        ));
-        vec![candidates[0].path.clone()]
-    } else if update_mode {
-        // Update mode: keep previously installed executables, ignore new ones,
-        // prompt for replacement when old executables disappear
-        let old_exes = installed
-            .get_package(installed_key)
-            .map(|p| p.executables.clone());
-
-        if let Some(ref old) = old_exes {
-            let old_paths: std::collections::HashSet<_> = old.keys().cloned().collect();
-
-            // Separate: previously installed vs new candidates
-            let mut kept: Vec<&crate::installer::extractor::ExecutableCandidate> = Vec::new();
-            let mut new_candidates: Vec<&crate::installer::extractor::ExecutableCandidate> =
-                Vec::new();
-
-            for c in &candidates {
-                if old_paths.contains(&c.path) {
-                    kept.push(c);
-                } else if c.score > 0 {
-                    new_candidates.push(c);
-                }
-            }
-
-            if kept.is_empty() && new_candidates.is_empty() {
-                ui.line(&format!(
-                    "  {} No matching executables found for update, skipping {}",
-                    "⚠".yellow(),
-                    installed_key
-                ));
-                anyhow::bail!(
-                    "No matching executables found for update of {}",
-                    installed_key
-                );
-            }
-
-            let mut selected: Vec<String> = kept.iter().map(|c| c.path.clone()).collect();
-
-            // Detect disappeared executables: old paths not found in any candidate
-            let disappeared: Vec<(&String, &String)> = old
-                .iter()
-                .filter(|(path, _)| !kept.iter().any(|c| &c.path == *path))
-                .collect();
-
-            if !disappeared.is_empty() {
-                for (old_path, old_cmd) in &disappeared {
-                    let old_filename = Path::new(old_path).file_name().and_then(|s| s.to_str());
-
-                    // Try auto-match by filename in new candidates
-                    let auto_match = old_filename.and_then(|old_fname| {
-                        new_candidates.iter().find(|c| {
-                            Path::new(&c.path)
-                                .file_name()
-                                .and_then(|s| s.to_str())
-                                .map(|f| f == old_fname)
-                                .unwrap_or(false)
-                        })
-                    });
-
-                    if let Some(matched) = auto_match {
-                        // Auto-matched by filename — select silently
-                        if !selected.contains(&matched.path) {
-                            ui.line(&format!(
-                                "  {} Executable '{}' relocated to '{}' (auto-matched)",
-                                "ℹ".cyan(),
-                                old_path,
-                                matched.path
-                            ));
-                            selected.push(matched.path.clone());
-                        }
-                    } else if !new_candidates.is_empty() && !yes {
-                        // No auto-match — prompt user to pick a replacement
-                        ui.line(&format!(
-                            "  {} Executable '{}' (command: {}) is no longer available in this release",
-                            "⚠".yellow(),
-                            old_path,
-                            old_cmd
-                        ));
-
-                        let mut items: Vec<String> = new_candidates
-                            .iter()
-                            .filter(|c| !selected.contains(&c.path))
-                            .map(|c| format!("{} ({})", c.path, c.reason))
-                            .collect();
-                        items.push("Skip (remove this command)".to_string());
-
-                        let selection = ui.select(
-                            &format!("    Select replacement for '{}'", old_cmd),
-                            &items,
-                            items.len() - 1,
-                        )?;
-
-                        if selection < items.len() - 1 {
-                            // User picked a replacement from new candidates
-                            let available: Vec<_> = new_candidates
-                                .iter()
-                                .filter(|c| !selected.contains(&c.path))
-                                .collect();
-                            if selection < available.len() {
-                                selected.push(available[selection].path.clone());
-                            }
-                        }
-                        // else: user chose "Skip" — old command will be cleaned up
-                    } else {
-                        // --yes mode or no new candidates: warn and auto-cleanup
-                        ui.line(&format!(
-                            "  {} Executable '{}' (command: {}) no longer available, will be removed",
-                            "⚠".yellow(),
-                            old_path,
-                            old_cmd
-                        ));
-                    }
-                }
-            }
-
-            // New executables not in old install are silently ignored during updates
-
-            ui.line(&format!(
-                "  Found {} executables (update mode):",
-                selected.len()
-            ));
-            for s in &selected {
-                let reason = candidates
-                    .iter()
-                    .find(|c| c.path == *s)
-                    .map(|c| c.reason.as_str())
-                    .unwrap_or("matched");
-                ui.line(&format!("    {} ({})", s, reason));
-            }
-            selected
-        } else {
-            // No old executables — fall through to normal auto-select
-            let auto_select: Vec<_> = candidates.iter().filter(|c| c.score > 0).collect();
-            ui.line(&format!("  Found {} executables:", auto_select.len()));
-            for c in &auto_select {
-                ui.line(&format!("    {} ({})", c.path, c.reason));
-            }
-            auto_select.into_iter().map(|c| c.path.clone()).collect()
-        }
-    } else {
-        // Multiple candidates - select all with valid scores (exec permission or name match)
-        // On Unix, exec permission gives +35 score, name match gives +50
-        // Files without any match get score 0 and should be filtered out
-        let auto_select: Vec<_> = candidates
-            .iter()
-            .filter(|c| c.score > 0) // All valid candidates
-            .collect();
-
-        if auto_select.len() <= 3 || yes {
-            // Auto-select if reasonable count (<=3) or --yes flag
-            ui.line(&format!("  Found {} executables:", auto_select.len()));
-            for c in &auto_select {
-                ui.line(&format!("    {} ({})", c.path, c.reason));
-            }
-            auto_select.into_iter().map(|c| c.path.clone()).collect()
-        } else {
-            // Too many candidates - show interactive selection
-            ui.line(&format!(
-                "  Found {} possible executables:",
-                candidates.len()
-            ));
-
-            let items: Vec<String> = candidates
-                .iter()
-                .map(|c| format!("{} (score: {}, {})", c.path, c.score, c.reason))
-                .collect();
-
-            let selections = ui.multi_select(
-                "Select executables to install (Space to select, Enter to confirm)",
-                &items,
-            )?;
-
-            if selections.is_empty() {
-                anyhow::bail!("No executables selected");
-            }
-
-            selections
-                .into_iter()
-                .map(|i| candidates[i].path.clone())
-                .collect()
-        }
-    };
-
-    // Install all selected executables
-    let mut executables: HashMap<String, String> = HashMap::new();
-
-    // Extract repo_name and variant from installed_key for resolve_command_name
-    // installed_key format: "repo_name" or "repo_name::variant"
-    let (_, variant_opt) = if let Some(pos) = installed_key.find("::") {
-        (
-            installed_key[..pos].to_string(),
-            if no_suffix {
-                None
-            } else {
-                Some(installed_key[pos + 2..].to_string())
-            },
-        )
-    } else {
-        (installed_key.to_string(), None)
-    };
-
-    // If this package is already installed, grab old executables for command name reuse
-    let old_executables = installed
-        .get_package(installed_key)
-        .map(|p| p.executables.clone());
-
-    // Precompute the set of command names already in use (excluding this package)
-    // so per-executable conflict checks are O(1) instead of scanning all packages
-    // for every candidate suffix in `resolve_command_name`.
-    let mut taken_names = installed.command_name_set(Some(installed_key));
-
-    // Resolve every command name before the swap: anything that can fail here must
-    // fail while the previous install and its record are still in place.
-    let mut launchers: Vec<(String, String)> = Vec::new(); // (exe_relative, command name)
-    for exe_relative in selected_executables {
-        let staged_exe = staged.path().join(&exe_relative);
-
-        if !staged_exe.exists() {
-            anyhow::bail!("Executable not found: {}", exe_relative);
-        }
-
-        // When updating, try to reuse old command names
-        let reused_name = if update_mode {
-            if let Some(old_exes) = &old_executables {
-                let filename = staged_exe
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("");
-
-                // Try path match first, then filename match
-                old_exes.get(&exe_relative).cloned().or_else(|| {
-                    old_exes
-                        .iter()
-                        .find(|(old_path, _)| {
-                            std::path::Path::new(old_path.as_str())
-                                .file_name()
-                                .and_then(|s| s.to_str())
-                                == Some(filename)
-                        })
-                        .map(|(_, name)| name.clone())
-                })
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        let resolved_name = if let Some(reused) = reused_name {
-            ui.line(&format!("  Reusing command name: {}", reused));
-            reused
-        } else {
-            // Extract the actual command name from the executable path
-            let (base_name, is_custom) = if let Some(custom) = custom_name {
-                // Use custom name if provided (only for first executable)
-                if launchers.is_empty() {
-                    (custom.to_string(), true)
-                } else {
-                    // For additional executables, use auto-detected name
-                    let raw_name = staged_exe
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .context("Failed to extract command name")?;
-                    (normalize_command_name(raw_name), false)
-                }
-            } else {
-                // Auto-detect and normalize command name
-                let raw_name = staged_exe
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .context("Failed to extract command name")?;
-
-                // Apply smart normalization to remove platform suffixes
-                (normalize_command_name(raw_name), false)
-            };
-
-            // Resolve command name with variant to avoid conflicts
-            resolve_command_name(&base_name, variant_opt.as_deref(), &taken_names, is_custom)
-        };
-
-        ui.line(&format!(
-            "  Command will be available as: {}",
-            resolved_name
-        ));
-
-        // Record the name as taken so subsequent executables in the same package
-        // don't resolve to a colliding name.
-        taken_names.insert(resolved_name.clone());
-        launchers.push((exe_relative, resolved_name));
-    }
-
-    // Every remaining step reads from the final location: swap now, so the
-    // launchers point at the app directory rather than the staging path.
-    let app_dir = staged.commit()?;
-
-    // From here on the previous install is gone, so a launcher failure must not skip
-    // writing the new record: collect failures and report them after saving it.
-    let mut launcher_errors: Vec<String> = Vec::new();
-    for (exe_relative, resolved_name) in launchers {
-        let exe_path = app_dir.join(&exe_relative);
-        let bin_path = paths.bin_shim_path(&resolved_name);
-
-        ui.line(&format!("  Creating launcher at {}...", bin_path.display()));
-
-        #[cfg(unix)]
-        let created = create_symlink(&exe_path, &bin_path);
-
-        #[cfg(windows)]
-        let created = create_shim(&exe_path, &bin_path, &resolved_name);
-
-        if let Err(e) = created {
-            launcher_errors.push(format!("{}: {:#}", bin_path.display(), e));
-        }
-
-        executables.insert(exe_relative, resolved_name);
-    }
-
-    // Clean up symlinks/shims for old executables that no longer exist in the new version
-    if let Some(ref old_exes) = old_executables {
-        for old_cmd in old_exes.values() {
-            if !executables.values().any(|n| n == old_cmd) {
-                let old_bin = paths.bin_shim_path(old_cmd);
-                if old_bin.exists() {
-                    match fs::remove_file(&old_bin) {
-                        Ok(()) => ui.line(&format!("  Removed obsolete command: {}", old_cmd)),
-                        Err(e) => ui.line(&format!(
-                            "  {} Could not remove obsolete command {}: {}",
-                            "⚠".yellow(),
-                            old_cmd,
-                            e
-                        )),
-                    }
-                }
-            }
-        }
-    }
-
-    // Extract repo_name and variant from installed_key
-    // installed_key format: "repo_name" or "repo_name::variant"
-    let (repo_name, variant) = if let Some(pos) = installed_key.find("::") {
-        (
-            installed_key[..pos].to_string(),
-            Some(installed_key[pos + 2..].to_string()),
-        )
-    } else {
-        (installed_key.to_string(), None)
-    };
-
-    // Create installed package info
-    let inst_pkg = InstalledPackage {
-        meta_version: crate::core::manifest::CURRENT_META_VERSION,
-        repo_name,
-        variant,
-        version: version.to_string(),
-        platform: platform_match.platform_id.clone(),
-        installed_at: Utc::now(),
-        install_path: app_dir.to_string_lossy().to_string(),
-        executables,
-        source: source.clone(),
-        description: pkg.description.clone(),
-        command_names: vec![],
-        command_name: None,
-        asset_name: binary.asset_name.clone(),
-        parent_package: None, // Deprecated field
-        download_url: None,
-    };
-
-    if !launcher_errors.is_empty() {
-        // Keep the package tracked; `wenget repair` reports the missing launchers
-        crate::core::InstalledStore::new(paths.clone())
-            .save_package(installed_key, &inst_pkg)
-            .with_context(|| format!("Failed to save the package record for {}", installed_key))?;
-        anyhow::bail!(
-            "Installed {} but could not create its launcher(s): {}. Fix the path, then run \
-             `wenget del {}` and `wenget add` again",
-            installed_key,
-            launcher_errors.join("; "),
-            installed_key
-        );
-    }
-
-    Ok(inst_pkg)
 }
 
 /// Update manifest cache with latest package info from GitHub API
@@ -2032,56 +1483,5 @@ mod tests {
         assert!(result.is_err());
         // The files are on disk, so the name stays taken for this run.
         assert!(installed.get_package("hello").is_some());
-    }
-
-    #[test]
-    fn test_resolve_command_name_no_conflict() {
-        let taken = std::collections::HashSet::new();
-        // No variant, name free -> base name returned as-is.
-        assert_eq!(resolve_command_name("rg", None, &taken, false), "rg");
-    }
-
-    #[test]
-    fn test_resolve_command_name_numeric_suffix_on_conflict() {
-        let mut taken = std::collections::HashSet::new();
-        taken.insert("rg".to_string());
-
-        // "rg" taken -> "rg-1"
-        assert_eq!(resolve_command_name("rg", None, &taken, false), "rg-1");
-
-        // "rg" and "rg-1" taken -> "rg-2"
-        taken.insert("rg-1".to_string());
-        assert_eq!(resolve_command_name("rg", None, &taken, false), "rg-2");
-    }
-
-    #[test]
-    fn test_resolve_command_name_with_variant() {
-        let taken = std::collections::HashSet::new();
-        // Variant appends "-variant" when base doesn't already end with it.
-        assert_eq!(
-            resolve_command_name("bun", Some("baseline"), &taken, false),
-            "bun-baseline"
-        );
-    }
-
-    #[test]
-    fn test_resolve_command_name_variant_already_suffixed() {
-        let taken = std::collections::HashSet::new();
-        // Base already ends with "-profile" variant -> kept as-is.
-        assert_eq!(
-            resolve_command_name("bun-profile", Some("profile"), &taken, false),
-            "bun-profile"
-        );
-    }
-
-    #[test]
-    fn test_resolve_command_name_custom_takes_numeric_suffix() {
-        let mut taken = std::collections::HashSet::new();
-        taken.insert("mytool".to_string());
-        // Custom name that conflicts falls through to numeric suffix.
-        assert_eq!(
-            resolve_command_name("mytool", None, &taken, true),
-            "mytool-1"
-        );
     }
 }
