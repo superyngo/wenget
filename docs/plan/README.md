@@ -6,7 +6,7 @@ frozen once shipped, dated by when it was written, never rewritten. Current beha
 
 ## In progress
 
-None.
+- [2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md) — fixes for the 2026-09-23 documentation audit — `Draft`
 
 ## Landed
 
