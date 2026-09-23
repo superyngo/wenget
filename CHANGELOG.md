@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add,update): downloaded archives and the self-update scratch directory are removed on every
+  error path, not only after success (IM-9).
 - fix(update): the GitHub API update path and self-update only offer strictly newer numeric
   versions, matching the cache path; they no longer offer downgrades (IM-8).
 - fix(windows): user PATH is edited in the registry instead of generated PowerShell source, so

@@ -1804,14 +1804,11 @@ fn install_package(
 
     let download_path = download_dir.join(filename);
 
+    // Removes the archive on every exit path, including errors below
+    let _download_guard = downloader::CleanupGuard::new(&download_path);
     downloader::download_file(&binary.url, &download_path)?;
 
-    if let Err(e) =
-        crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)
-    {
-        fs::remove_file(&download_path).ok();
-        return Err(e);
-    }
+    crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)?;
 
     // Sanitized directory names are lossy, so a different package may already
     // own the directory this key maps to.
@@ -2173,11 +2170,6 @@ fn install_package(
                 }
             }
         }
-    }
-
-    // Clean up download
-    if let Err(e) = fs::remove_file(&download_path) {
-        log::warn!("Could not remove {}: {}", download_path.display(), e);
     }
 
     // Extract repo_name and variant from installed_key

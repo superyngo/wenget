@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 fn shared_client() -> &'static reqwest::blocking::Client {
@@ -15,6 +15,33 @@ fn shared_client() -> &'static reqwest::blocking::Client {
             .build()
             .expect("Failed to create HTTP client")
     })
+}
+
+/// Removes a downloaded file or scratch directory when dropped
+///
+/// Bind it right after choosing the download path so every early return
+/// (failed checksum, extraction error, ...) still cleans up.
+pub struct CleanupGuard(PathBuf);
+
+impl CleanupGuard {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self(path.into())
+    }
+}
+
+impl Drop for CleanupGuard {
+    fn drop(&mut self) {
+        let result = if self.0.is_dir() {
+            std::fs::remove_dir_all(&self.0)
+        } else if self.0.exists() {
+            std::fs::remove_file(&self.0)
+        } else {
+            return;
+        };
+        if let Err(e) = result {
+            log::warn!("Failed to clean up {}: {}", self.0.display(), e);
+        }
+    }
 }
 
 /// Download a file from URL to a local path with progress bar
@@ -88,6 +115,21 @@ pub fn download_file(url: &str, dest: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_cleanup_guard_removes_file_and_dir() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let file = tmp.path().join("a.tar.gz");
+        let dir = tmp.path().join("scratch");
+        std::fs::write(&file, b"x").unwrap();
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        {
+            let _f = super::CleanupGuard::new(&file);
+            let _d = super::CleanupGuard::new(&dir);
+        }
+        assert!(!file.exists());
+        assert!(!dir.exists());
+    }
+
     use super::*;
     use tempfile::TempDir;
 

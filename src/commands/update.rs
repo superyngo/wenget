@@ -818,16 +818,13 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
     let paths = WenPaths::new()?;
     let temp_dir = paths.cache_dir().join("self-upgrade");
     fs::create_dir_all(&temp_dir)?;
+    // Removes the scratch directory on every exit path, including errors below
+    let _temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
 
     let download_path = temp_dir.join(filename);
     download_file(&binary.url, &download_path)?;
 
-    if let Err(e) =
-        crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)
-    {
-        fs::remove_file(&download_path).ok();
-        return Err(e);
-    }
+    crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)?;
 
     // Extract archive
     let extract_dir = temp_dir.join("extracted");
@@ -860,15 +857,6 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
     #[cfg(not(windows))]
     {
         replace_exe_unix(&current_exe, &new_exe_path)?;
-    }
-
-    // Clean up temporary files
-    if let Err(e) = fs::remove_dir_all(&temp_dir) {
-        log::warn!(
-            "Failed to cleanup temp directory: {}: {}",
-            temp_dir.display(),
-            e
-        );
     }
 
     println!();
