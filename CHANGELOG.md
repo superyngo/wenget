@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs(backlog): close 20 rows from waves A–D (Windows fixes S-4/S-6/S-8/SI-5/S-10 sit in
+  Pending verification until tested on real Windows); open B-7 (`init` edits real rc files under
+  `WENGET_ROOT`). CI workflow re-enabled on GitHub.
 - chore(deps): `zip` 0.6 → 8.6 (deflate, bzip2, zstd), `bzip2` 0.5 → 0.6 (one copy in the tree),
   and the unmaintained `is_elevated` replaced by a `windows-sys` token check (M-5).
 - test(extractor): zip extraction (contents, exec bit, `../` rejection) and corrupt/truncated
