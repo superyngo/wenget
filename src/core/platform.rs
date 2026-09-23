@@ -913,20 +913,23 @@ pub struct BinaryAsset {
 pub struct BinarySelector;
 
 impl BinarySelector {
-    /// Select the best binary asset for a given platform
+    /// Select the best binary asset for a given platform.
     ///
-    /// # Arguments
-    /// * `assets` - List of available assets
-    /// * `platform` - Target platform
-    ///
-    /// # Returns
-    /// The best matching asset, or None if no suitable asset found
-    #[allow(dead_code)] // Kept for backward compatibility and future use
+    /// Test-only: scores through `score_parsed`, the same path `extract_platforms` uses in
+    /// production, so the selection tests exercise real behavior.
+    #[cfg(test)]
     pub fn select_for_platform(assets: &[BinaryAsset], platform: Platform) -> Option<BinaryAsset> {
         let mut scored_assets: Vec<(usize, &BinaryAsset)> = assets
             .iter()
             .filter_map(|asset| {
-                let score = Self::score_asset(&asset.name, platform)?;
+                let lower = asset.name.to_lowercase();
+                let score = Self::score_parsed(
+                    &ParsedAsset::from_filename(&asset.name),
+                    Self::should_exclude(&lower),
+                    ParsedAsset::contains_unsupported_arch(&lower),
+                    ParsedAsset::contains_unknown_arch_pattern(&asset.name),
+                    platform,
+                )?;
                 Some((score, asset))
             })
             .collect();
@@ -935,146 +938,6 @@ impl BinarySelector {
         scored_assets.sort_by(|a, b| b.0.cmp(&a.0));
 
         scored_assets.first().map(|(_, asset)| (*asset).clone())
-    }
-
-    /// Select ALL matching binary assets for a given platform, with scores
-    ///
-    /// Returns a vector of (score, BinaryAsset, Compiler) tuples, sorted by score descending.
-    /// Unlike `select_for_platform()`, this returns ALL matching assets, not just the best.
-    ///
-    /// # Arguments
-    /// * `assets` - List of available assets
-    /// * `platform` - Target platform
-    ///
-    /// # Returns
-    /// Vector of (score, asset, compiler_variant) sorted by score (highest first)
-    #[allow(dead_code)] // extract_platforms now inlines this logic to parse each asset once; kept as a public helper.
-    pub fn select_all_for_platform(
-        assets: &[BinaryAsset],
-        platform: Platform,
-    ) -> Vec<(usize, BinaryAsset, Option<Compiler>)> {
-        let mut scored_assets: Vec<(usize, BinaryAsset, Option<Compiler>)> = assets
-            .iter()
-            .filter_map(|asset| {
-                let score = Self::score_asset(&asset.name, platform)?;
-                let compiler = Self::detect_compiler_from_filename(&asset.name);
-                Some((score, asset.clone(), compiler))
-            })
-            .collect();
-
-        // Sort by score (highest first)
-        scored_assets.sort_by(|a, b| b.0.cmp(&a.0));
-        scored_assets
-    }
-
-    /// Extract compiler from filename (helper method)
-    ///
-    /// # Arguments
-    /// * `filename` - The asset filename to analyze
-    ///
-    /// # Returns
-    /// The detected compiler variant, or None if not detected
-    #[allow(dead_code)] // only used by select_all_for_platform; kept alongside it.
-    fn detect_compiler_from_filename(filename: &str) -> Option<Compiler> {
-        let lower = filename.to_lowercase();
-        if lower.contains("musl") {
-            Some(Compiler::Musl)
-        } else if lower.contains("msvc") {
-            Some(Compiler::Msvc)
-        } else if lower.contains("gnu") || lower.contains("glibc") {
-            Some(Compiler::Gnu)
-        } else {
-            None
-        }
-    }
-
-    /// Score an asset filename based on how well it matches the platform
-    ///
-    /// New 4-component scoring algorithm:
-    /// - OS match: +100 (mandatory)
-    /// - Explicit arch match: +50
-    /// - Default arch match: +25
-    /// - Compiler priority: +10/20/30 based on OS preference
-    /// - File format: +2 to +5
-    ///
-    /// Returns None if the asset should be excluded
-    fn score_asset(filename: &str, platform: Platform) -> Option<usize> {
-        let filename_lower = filename.to_lowercase();
-
-        // Exclude certain files
-        if Self::should_exclude(&filename_lower) {
-            return None;
-        }
-
-        // Filter out unsupported architectures
-        if ParsedAsset::contains_unsupported_arch(&filename_lower) {
-            return None;
-        }
-
-        // Parse the asset filename
-        let parsed = ParsedAsset::from_filename(filename);
-
-        // Skip if extension is unsupported
-        if parsed.extension == FileExtension::Unsupported {
-            return None;
-        }
-
-        let mut score = 0;
-
-        // OS matching (mandatory)
-        let os_matches = match parsed.os {
-            Some(os) => os == platform.os,
-            None => false,
-        };
-
-        if !os_matches {
-            return None;
-        }
-        score += 100;
-
-        // Architecture matching
-        match parsed.arch {
-            Some(arch) if arch == platform.arch => {
-                // Explicit architecture match
-                score += 50;
-            }
-            Some(_) => {
-                // Explicit architecture mismatch - exclude
-                return None;
-            }
-            None => {
-                // No explicit architecture detected.
-                // Unsupported arch keywords were already filtered above (line ~975),
-                // so only the unknown-arch-pattern check remains here: it catches
-                // arch-like strings (e.g. "powerpc64") that aren't in UNSUPPORTED_ARCHS.
-                if ParsedAsset::contains_unknown_arch_pattern(filename) {
-                    return None;
-                }
-
-                // Fall back to OS default arch
-                if let Some(default_arch) = platform.os.default_arch() {
-                    if platform.arch == default_arch {
-                        // Use default architecture (lower score than explicit)
-                        score += 25;
-                    }
-                    // If platform arch doesn't match default, still allow but no arch bonus
-                } else {
-                    // OS has no default (FreeBSD) - require explicit arch
-                    return None;
-                }
-            }
-        }
-
-        // Compiler scoring based on OS-specific priority
-        if let Some(compiler) = parsed.compiler {
-            let priority = compiler.priority(platform.os);
-            score += (priority as usize) * 10;
-        }
-
-        // File format preference
-        score += parsed.extension.format_score();
-
-        Some(score)
     }
 
     /// Check if a filename should be excluded from selection
@@ -1110,13 +973,10 @@ impl BinarySelector {
     pub fn extract_platforms(assets: &[BinaryAsset]) -> HashMap<String, Vec<BinaryAsset>> {
         let mut platforms: HashMap<String, Vec<BinaryAsset>> = HashMap::new();
 
-        // Parse each asset once and cache the data that scoring needs.
-        // The previous implementation re-parsed every asset 11 times (once per
-        // test platform) via score_asset -> ParsedAsset::from_filename.
+        // Parse each asset once (not once per test platform) and cache what scoring needs.
         struct Preparsed<'a> {
             asset: &'a BinaryAsset,
             parsed: ParsedAsset,
-            filename_lower: String,
             excluded: bool,
             unsupported_arch: bool,
             unknown_arch_pattern: bool,
@@ -1132,7 +992,6 @@ impl BinarySelector {
                     unsupported_arch: ParsedAsset::contains_unsupported_arch(&filename_lower),
                     unknown_arch_pattern: ParsedAsset::contains_unknown_arch_pattern(&asset.name),
                     parsed,
-                    filename_lower,
                     asset,
                 }
             })
@@ -1159,12 +1018,10 @@ impl BinarySelector {
 
         for platform in test_platforms {
             // Score every asset against this platform using the cached parse.
-            // Mirrors score_asset + select_all_for_platform, but without re-parsing.
             let mut scored: Vec<(usize, &BinaryAsset, Option<Compiler>)> = Vec::new();
             for p in &preparsed {
                 let Some(score) = Self::score_parsed(
                     &p.parsed,
-                    &p.filename_lower,
                     p.excluded,
                     p.unsupported_arch,
                     p.unknown_arch_pattern,
@@ -1174,7 +1031,7 @@ impl BinarySelector {
                 };
                 scored.push((score, p.asset, p.parsed.compiler));
             }
-            // Sort by score (highest first) — matches select_all_for_platform ordering.
+            // Sort by score (highest first)
             scored.sort_by(|a, b| b.0.cmp(&a.0));
 
             for (_score, asset, compiler) in scored {
@@ -1195,15 +1052,21 @@ impl BinarySelector {
         platforms
     }
 
-    /// Score a pre-parsed asset against a platform.
+    /// Score a pre-parsed asset against a platform (the one scoring engine).
     ///
-    /// This is the parse-once form of `score_asset`: callers precompute the
-    /// `ParsedAsset`, lowercased filename, and the exclude/unsupported-arch flags
-    /// once per asset, then this pure-scoring function runs in O(1) per
-    /// (asset, platform) pair. Behavior is identical to `score_asset`.
+    /// Callers precompute the `ParsedAsset` and the exclude/unsupported-arch flags once per
+    /// asset, so this runs in O(1) per (asset, platform) pair.
+    ///
+    /// New 4-component scoring algorithm:
+    /// - OS match: +100 (mandatory)
+    /// - Explicit arch match: +50
+    /// - Default arch match: +25
+    /// - Compiler priority: +10/20/30 based on OS preference
+    /// - File format: +2 to +5
+    ///
+    /// Returns None if the asset should be excluded
     fn score_parsed(
         parsed: &ParsedAsset,
-        filename_lower: &str,
         excluded: bool,
         unsupported_arch: bool,
         unknown_arch_pattern: bool,
@@ -1278,11 +1141,6 @@ impl BinarySelector {
 
         // File format preference
         score += parsed.extension.format_score();
-
-        // Suppress unused-variable warning for filename_lower: it is computed by
-        // callers to drive the exclude/unsupported-arch flags above, and kept as a
-        // parameter so the signature mirrors score_asset's inputs.
-        let _ = filename_lower;
 
         Some(score)
     }

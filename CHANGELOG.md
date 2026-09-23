@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fetch_package` and `fetch_package_by_version` are merged, and the single-implementor
   `SourceProvider` trait is removed (SI-2).
 
+- refactor(platform): one asset-scoring engine (audit SI-1). The unused `score_asset`,
+  `select_all_for_platform` and `detect_compiler_from_filename` are removed; the test helper
+  `select_for_platform` now scores through production's `score_parsed`, and every existing
+  platform test passes unchanged against it.
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,
