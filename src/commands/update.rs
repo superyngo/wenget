@@ -112,6 +112,24 @@ fn is_newer_version(old: &str, new: &str) -> bool {
     false
 }
 
+/// Decide whether `latest` should replace `installed`
+///
+/// Numeric versions must be strictly newer, so a stale or rolled-back "latest"
+/// release never downgrades. Tags with no numeric parts (e.g. `nightly`) fall
+/// back to "differs".
+fn should_update(installed: &str, latest: &str) -> bool {
+    let has_numeric = |v: &str| {
+        v.trim_start_matches('v')
+            .split('.')
+            .any(|s| s.parse::<u64>().is_ok())
+    };
+    if has_numeric(installed) && has_numeric(latest) {
+        is_newer_version(installed, latest)
+    } else {
+        installed != latest
+    }
+}
+
 /// Upgrade installed packages
 pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()> {
     // Check for wenget updates first
@@ -446,7 +464,7 @@ fn find_upgradeable(
                     cache.add_package(latest_pkg, source.clone());
                 }
 
-                if inst_version != latest_version {
+                if should_update(&inst_version, &latest_version) {
                     upgradeable.push((repo_name, inst_version, latest_version));
                 }
             }
@@ -610,7 +628,7 @@ fn check_and_upgrade_self(yes: bool) -> Result<bool> {
         }
     };
 
-    if current_version == latest_version {
+    if !should_update(current_version, &latest_version) {
         return Ok(false);
     }
 
@@ -1025,6 +1043,15 @@ mod tests {
         assert!(!is_installed_via_winget(std::path::Path::new(
             r"C:\Program Files\wenget\wenget.exe"
         )));
+    }
+
+    #[test]
+    fn test_should_update() {
+        assert!(should_update("1.0.0", "2.0.0"));
+        assert!(!should_update("2.0.0", "1.0.0"));
+        assert!(!should_update("v1.2.0", "1.2.0"));
+        assert!(should_update("nightly-1", "nightly-2"));
+        assert!(!should_update("nightly", "nightly"));
     }
 
     #[test]

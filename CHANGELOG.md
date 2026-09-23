@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(update): the GitHub API update path and self-update only offer strictly newer numeric
+  versions, matching the cache path; they no longer offer downgrades (IM-8).
 - fix(windows): user PATH is edited in the registry instead of generated PowerShell source, so
   usernames containing `'` work and entries match exactly; PATH changes are broadcast
   (`WM_SETTINGCHANGE`); `del self` also removes the system PATH entry for system installs
