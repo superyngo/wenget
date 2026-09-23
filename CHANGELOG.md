@@ -5,7 +5,19 @@ All notable changes to wenget will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [Unreleased]
+
+### 2026-09-23
+
+- feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
+  prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
+  tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,
+  `burntsushi`). Terms containing `*`, `?`, or `[` keep glob matching, now case-insensitive.
+  Results are sorted by relevance instead of random order, and the output reports how many
+  matches are hidden because they are unavailable on this platform.
+- feat(add): an unknown name now prints `Did you mean: …?` suggestions from bucket packages and
+  scripts.
+- fix(search): truncating descriptions no longer panics on multi-byte (CJK/emoji) text.
 
 ## [3.9.0] - 2026-09-21
 

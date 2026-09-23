@@ -16,7 +16,7 @@ wenget simplifies the installation and management of command-line tools and appl
 - **📜 Script Support**: Install and manage PowerShell, Bash, and Python scripts from buckets
 - **🌐 Cross-platform**: Windows, macOS, Linux (multiple architectures)
 - **📁 Organized Storage**: All packages in `~/.wenget/` with proper structure
-- **🔍 Smart Search**: Search packages and scripts across all configured buckets
+- **🔍 Smart Search**: Fuzzy, ranked search across all configured buckets — prefixes, typos, abbreviations (`rgp` → ripgrep), and description keywords
 - **⚡ Fast Downloads**: Multi-threaded downloads with caching
 - **🎯 Platform Detection**: Automatically selects the correct binary for your system
 - **🔧 Smart Command Naming**: Automatically removes platform suffixes from executable names
@@ -138,7 +138,7 @@ wenget delete ripgrep
   - `wenget del self` - Uninstall wenget itself
 - `wenget list` - List installed packages (with source and description)
   - `wenget list --all` - Show all available packages from buckets
-- `wenget search <keyword>` - Search available packages
+- `wenget search <keyword>` - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs still supported)
 - `wenget update [name]` - Update installed packages
   - `wenget update self` - Upgrade wenget itself to the latest version
   - `wenget update [name] -p <target>` - Update for a specific platform (overrides `preferred_platform`)

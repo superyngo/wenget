@@ -2,6 +2,7 @@
 
 pub mod checksum;
 pub mod config;
+pub mod fuzzy;
 pub mod manifest;
 pub mod paths;
 pub mod platform;

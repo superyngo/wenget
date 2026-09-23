@@ -1,9 +1,8 @@
 //! Search command implementation
 
-use crate::core::{Config, Platform};
+use crate::core::{fuzzy, Config, Platform};
 use anyhow::Result;
 use colored::Colorize;
-use glob::Pattern;
 
 /// Search for packages and scripts
 pub fn run(patterns: Vec<String>) -> Result<()> {
@@ -28,53 +27,75 @@ pub fn run(patterns: Vec<String>) -> Result<()> {
     let platform = Platform::current();
     let platform_ids = platform.possible_identifiers();
 
-    // Compile glob patterns
-    let glob_patterns: Vec<Pattern> = patterns
-        .iter()
-        .map(|p| Pattern::new(p))
-        .collect::<Result<_, _>>()?;
+    // Best score across all terms (terms are OR'ed)
+    let best_score = |name: &str, description: &str, repo: &str| {
+        patterns
+            .iter()
+            .filter_map(|p| fuzzy::score(p, name, description, repo))
+            .max()
+    };
 
-    // Filter packages
-    let matching_packages: Vec<_> = cache
+    let mut hidden_by_platform = 0usize;
+
+    // Score packages
+    let mut matching_packages: Vec<_> = cache
         .packages
         .values()
-        .filter(|cached_pkg| {
+        .filter_map(|cached_pkg| {
             let pkg = &cached_pkg.package;
-            // Check if name matches any pattern
-            let name_matches = glob_patterns
-                .iter()
-                .any(|pattern| pattern.matches(&pkg.name));
-
-            // Check if supports current platform
-            let platform_matches = platform_ids.iter().any(|id| pkg.platforms.contains_key(id));
-
-            name_matches && platform_matches
+            let score = best_score(&pkg.name, &pkg.description, &pkg.repo)?;
+            if !platform_ids.iter().any(|id| pkg.platforms.contains_key(id)) {
+                hidden_by_platform += 1;
+                return None;
+            }
+            Some((score, cached_pkg))
         })
         .collect();
+    matching_packages.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1.package.name.cmp(&b.1.package.name))
+    });
+    let matching_packages: Vec<_> = matching_packages.into_iter().map(|(_, p)| p).collect();
 
-    // Filter scripts
-    let matching_scripts: Vec<_> = cache
+    // Score scripts
+    let mut matching_scripts: Vec<_> = cache
         .scripts
         .values()
-        .filter(|cached_script| {
+        .filter_map(|cached_script| {
             let script = &cached_script.script;
-            // Check if name matches any pattern
-            let name_matches = glob_patterns
-                .iter()
-                .any(|pattern| pattern.matches(&script.name));
-
-            // Check if supports current platform
-            let platform_matches = script.is_compatible_with_current_platform();
-
-            name_matches && platform_matches
+            let score = best_score(&script.name, &script.description, &script.repo)?;
+            if !script.is_compatible_with_current_platform() {
+                hidden_by_platform += 1;
+                return None;
+            }
+            Some((score, cached_script))
         })
         .collect();
+    matching_scripts.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1.script.name.cmp(&b.1.script.name))
+    });
+    let matching_scripts: Vec<_> = matching_scripts.into_iter().map(|(_, s)| s).collect();
+
+    let print_hidden = || {
+        if hidden_by_platform > 0 {
+            println!(
+                "{}",
+                format!(
+                    "{} more match(es) not available for this platform",
+                    hidden_by_platform
+                )
+                .dimmed()
+            );
+        }
+    };
 
     if matching_packages.is_empty() && matching_scripts.is_empty() {
         println!(
             "{}",
             format!("No packages or scripts found matching: {:?}", patterns).yellow()
         );
+        print_hidden();
         return Ok(());
     }
 
@@ -148,15 +169,31 @@ pub fn run(patterns: Vec<String>) -> Result<()> {
         matching_packages.len(),
         matching_scripts.len()
     );
+    print_hidden();
 
     Ok(())
 }
 
-/// Truncate string to max length
+/// Truncate string to at most `max_len` characters (char-safe)
 fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+    if s.chars().count() <= max_len {
         s.to_string()
     } else {
-        format!("{}...", &s[..max_len - 3])
+        let head: String = s.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", head)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_multibyte() {
+        let s = "中文描述".repeat(20);
+        let t = truncate(&s, 50);
+        assert_eq!(t.chars().count(), 50);
+        assert!(t.ends_with("..."));
+        assert_eq!(truncate("short", 50), "short");
     }
 }

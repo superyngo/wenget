@@ -84,7 +84,7 @@ pub enum Commands {
     /// Search for packages in buckets
     #[command(visible_alias = "s")]
     Search {
-        /// Package names to search (supports wildcards *)
+        /// Search terms: fuzzy name match (prefix, substring, typos) plus description keywords; `*` for glob
         names: Vec<String>,
     },
 

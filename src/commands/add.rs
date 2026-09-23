@@ -936,7 +936,26 @@ fn install_packages(
                         );
                     }
                 } else {
-                    eprintln!("{} {}: Not found", "Error".red().bold(), original_name);
+                    let base = original_name.split("::").next().unwrap_or(original_name);
+                    let suggestions = crate::core::fuzzy::suggest(
+                        base,
+                        cache
+                            .packages
+                            .values()
+                            .map(|c| c.package.name.as_str())
+                            .chain(cache.scripts.values().map(|c| c.script.name.as_str())),
+                        3,
+                    );
+                    if suggestions.is_empty() || crate::core::fuzzy::is_glob(base) {
+                        eprintln!("{} {}: Not found", "Error".red().bold(), original_name);
+                    } else {
+                        eprintln!(
+                            "{} {}: Not found. Did you mean: {}?",
+                            "Error".red().bold(),
+                            original_name,
+                            suggestions.join(", ")
+                        );
+                    }
                 }
             }
         }

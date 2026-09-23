@@ -182,11 +182,27 @@ impl<'a> PackageResolver<'a> {
                 cache_pkg_count
             ))
         } else {
-            Err(anyhow!(
-                "Package '{}' not found. Use 'wenget search {}' to find similar packages.",
-                name,
-                name
-            ))
+            let suggestions = crate::core::fuzzy::suggest(
+                base_name,
+                self.cache
+                    .packages
+                    .values()
+                    .map(|c| c.package.name.as_str()),
+                3,
+            );
+            if suggestions.is_empty() {
+                Err(anyhow!(
+                    "Package '{}' not found. Use 'wenget search {}' to find similar packages.",
+                    name,
+                    name
+                ))
+            } else {
+                Err(anyhow!(
+                    "Package '{}' not found. Did you mean: {}?",
+                    name,
+                    suggestions.join(", ")
+                ))
+            }
         }
     }
 

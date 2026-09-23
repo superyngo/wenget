@@ -65,6 +65,7 @@ src/
 ├── core/                # Core data structures & utilities
 │   ├── checksum.rs      # SHA-256 asset verification
 │   ├── config.rs        # Config file management
+│   ├── fuzzy.rs         # Search scoring & "did you mean" suggestions
 │   ├── manifest.rs      # Package/script manifest structs
 │   ├── paths.rs         # Directory path management
 │   ├── platform.rs      # OS/arch detection & matching
