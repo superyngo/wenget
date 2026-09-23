@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- test: add `tests/lifecycle.rs`, offline end-to-end tests that run the real binary in a
+  `WENGET_ROOT` sandbox (script and archive install, rename, repair, failed install, reinstall,
+  delete); `assert_cmd` dev-dependency (T-2; T-3 narrowed to `update`).
 - fix(staging): remove the empty `apps/.staging/` root after an install commits or aborts (B-10).
 - fix(add): local archives strip their extension when naming the app, and the record is keyed by the app dir, so `repair`/`del` see one package (B-9).
 - fix(delete): `del self` under `WENGET_ROOT` keeps an executable that lives outside the root (B-8).
