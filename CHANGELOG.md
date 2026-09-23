@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(windows): admin `init` keeps the system `Path` value type (`REG_EXPAND_SZ`) when adding to
+  PATH, so `%SystemRoot%`-style entries keep expanding (S-6).
 - docs(backlog): close B-5; open B-6 (`del self` PATH cleanup with `custom_bin_path`).
 - fix(add,delete): `add` and `delete` honor `custom_bin_path`, creating and removing launchers in
   the configured bin directory like `repair`/`rename`/`init` (B-5).
