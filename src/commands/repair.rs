@@ -118,10 +118,16 @@ pub fn run(force: bool) -> Result<()> {
         issues += 1;
     }
     for (command, path) in &missing {
+        let problem = if path.is_dir() {
+            "launcher path is blocked by a directory:"
+        } else {
+            "recorded command has no launcher at"
+        };
         println!(
-            "  {} {} - recorded command has no launcher at {}",
+            "  {} {} - {} {}",
             "!".yellow(),
             command,
+            problem,
             path.display()
         );
         issues += 1;
@@ -295,13 +301,16 @@ fn normalize_lexically(path: &Path) -> PathBuf {
     out
 }
 
-/// Packages whose recorded command has no launcher in `bin_dir`
+/// Packages whose recorded command has no usable launcher in `bin_dir`
+///
+/// A launcher is usable when it resolves to a file; a directory or a dangling
+/// symlink at the launcher path counts as missing.
 pub fn missing_shims(paths: &WenPaths, set: &InstalledSet) -> Vec<(String, PathBuf)> {
     let mut missing = Vec::new();
     for package in set.packages.values() {
         for command in package.executables.values() {
             let shim = paths.bin_shim_path(command);
-            if !shim.exists() {
+            if !shim.is_file() {
                 missing.push((command.clone(), shim));
             }
         }
@@ -492,6 +501,22 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let paths = WenPaths::with_root(tmp.path().to_path_buf());
         std::fs::create_dir_all(paths.bin_dir()).unwrap();
+        let store = InstalledStore::new(paths.clone());
+        store
+            .save_package("tool", &package_with_command("tool"))
+            .unwrap();
+
+        let set = store.load().unwrap();
+        let missing = missing_shims(&paths, &set);
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0].0, "tool");
+    }
+
+    #[test]
+    fn test_directory_at_launcher_path_is_reported() {
+        let tmp = TempDir::new().unwrap();
+        let paths = WenPaths::with_root(tmp.path().to_path_buf());
+        std::fs::create_dir_all(paths.bin_shim_path("tool")).unwrap();
         let store = InstalledStore::new(paths.clone());
         store
             .save_package("tool", &package_with_command("tool"))

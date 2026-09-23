@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(repair): a directory or dangling symlink at a launcher path is reported instead of
+  counting as a healthy launcher (B-1).
 - fix(add): a failed package-record save now counts the install as failed (non-zero exit)
   instead of reporting success (IM-6).
 - fix(config): invalid `config.toml` preferences now really fall back to defaults instead of
