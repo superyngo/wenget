@@ -116,4 +116,4 @@ last checked against the tree — not when it was opened.
 | SI-11 | Five batch tally/summary blocks in `add.rs` | bae251a |
 | B-2 | `update` restored original script name after `wenget rename` | f16063e |
 | B-4 | `update self` warned "'self' is not installed" | 34a8258 |
-| B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | COMMIT |
+| B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | 248afa2 |
