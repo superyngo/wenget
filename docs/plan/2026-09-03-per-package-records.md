@@ -1,5 +1,4 @@
 # Per-Package Records Implementation Plan
-
 Status: Shipped (2026-09-03)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `subagent-driven-development` (recommended) or
@@ -19,7 +18,7 @@ reports drift between records, app directories, and `bin_dir`.
 **Tech Stack:** Rust 2021, `anyhow`, `serde`/`serde_json`, `chrono`, `colored`, `tempfile` (dev).
 No new dependencies.
 
-**Spec:** [`docs/spec/2026-09-03-per-package-meta-design.md`](../spec/2026-09-03-per-package-meta-design.md)
+**Spec:** [`docs/spec/2026-09-03-per-package-records.md`](../spec/2026-09-03-per-package-records.md)
 — read it before starting. Decision recorded in
 [`docs/adr/0001-no-global-installed-index.md`](../adr/0001-no-global-installed-index.md).
 
@@ -2535,7 +2534,7 @@ The spec requires the glossary to land with the code, not before (spec §Files T
 **Files:**
 - Modify: `docs/reference/glossary.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`,
   `src/core/paths.rs:1-16` (module doc listing `installed.json`)
-- Modify: `docs/spec/2026-09-03-per-package-meta-design.md` (Status line)
+- Modify: `docs/spec/2026-09-03-per-package-records.md` (Status line)
 
 **Interfaces:**
 - Consumes: the shipped behavior from Tasks 1-10.

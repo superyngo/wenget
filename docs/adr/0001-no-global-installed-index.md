@@ -1,6 +1,5 @@
 # No global installed-package index
-
-Status: accepted (2026-09-03)
+Status: Implemented (2026-09-03)
 
 wenget kept every installed-package record in one file, `{root}/installed.json`, rewritten in full
 and non-atomically by every mutating command. That made the whole set of installed packages
@@ -42,4 +41,4 @@ else is what allowed both total loss and drift between records and the directori
   disagreeing with the filesystem.
 
 The file format, migration path, staging protocol, and failure handling are specified in
-[`docs/spec/2026-09-03-per-package-meta-design.md`](../spec/2026-09-03-per-package-meta-design.md).
+[`docs/spec/2026-09-03-per-package-records.md`](../spec/2026-09-03-per-package-records.md).

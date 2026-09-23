@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs: records put `Status:` on line 2 with values from the fixed set; ADR 0001 is
+  `Implemented`; spec/plan pairs share a basename (`2026-03-18-update-scripts-and-self-check`,
+  `2026-04-10-update-default-binary-asset-matching`, `2026-09-03-per-package-records`);
+  `CONTEXT.md` lists `docs/tmp/` and the backlog (documentation audit DS-2–DS-6, DS-10).
+
 - docs(audit): add the 2026-09-23 documentation audit and its fix plan.
 
 - fix(cli): error messages now include the full cause chain (e.g. `Failed to create wenget root
@@ -129,7 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by absolute-path substring match: both the Windows `.cmd` shim and the Unix symlink store the
   target relative to the bin directory (`%~dp0..\apps\...`), so the planned absolute match would
   have detected nothing and left orphan detection silently dead (2026-09-03).
-- docs(plan): add `docs/plan/2026-09-03-per-package-records-implementation.md` — an eleven-task,
+- docs(plan): add `docs/plan/2026-09-03-per-package-records.md` — an eleven-task,
   TDD, commit-per-task plan implementing the per-package-records spec. Ordering is forced by two
   constraints found while planning: `WENGET_ROOT` lands first because nothing else can be verified
   on the release binary without it, and stage-and-swap lands before the record becomes
@@ -182,7 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/.wenget/installed.json` via non-injectable paths in `core/config.rs:307-331`; and the
   absence of any CI workflow running `cargo test`/`clippy`/`fmt`. Indexed in
   `docs/audit/README.md` (2026-09-03).
-- docs: add `docs/spec/2026-09-03-per-package-meta-design.md` (Draft) — design record for removing
+- docs: add `docs/spec/2026-09-03-per-package-records.md` (Draft) — design record for removing
   `installed.json` and storing each package's record in `{install_path}/.wenget/package.json`.
   Motivated by audit findings A-1 (non-atomic whole-registry writes from seven call sites) and
   T-1 (a test wiping the real registry): both have a blast radius of every installed package

@@ -6,4 +6,4 @@ Current behavior lives in [`../reference/`](../reference/README.md).
 
 | # | Decision | Status |
 |---|---|---|
-| [0001](0001-no-global-installed-index.md) | No global installed-package index | accepted |
+| [0001](0001-no-global-installed-index.md) | No global installed-package index | Implemented (2026-09-03) |
