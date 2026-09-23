@@ -1,4 +1,4 @@
-# Plan: remaining audit fixes (2026-09-23), awaiting approval
+# Plan: remaining audit fixes (2026-09-23) — done: d787223, 3f56915, 6e5279a, aca10c9
 
 Order: A → B → C → D, one commit each, with the usual gates, a CHANGELOG entry, and a sandboxed real-binary check.
 
