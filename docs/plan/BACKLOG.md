@@ -116,4 +116,4 @@ last checked against the tree — not when it was opened.
 | B-2 | `update` restored original script name after `wenget rename` | f16063e |
 | B-4 | `update self` warned "'self' is not installed" | 34a8258 |
 | B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | 248afa2 |
-| B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | COMMIT |
+| B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | 33315ef |
