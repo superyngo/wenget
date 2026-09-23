@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add): package name patterns use `glob::Pattern` like `del`, so `?` and `[...]` work
+  (`add 'f[d]'`) (SI-3).
 - fix: 7z extraction records `/`-separated paths on Windows like tar/zip; tests fixed for Windows
   paths; code updated for the latest clippy lints (CI green on all platforms).
 - fix(add,update): downloaded archives and the self-update scratch directory are removed on every

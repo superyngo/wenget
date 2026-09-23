@@ -122,7 +122,7 @@ impl<'a> PackageResolver<'a> {
         };
 
         // Filter packages by name pattern
-        let matches: Vec<_> = if base_name.contains('*') {
+        let matches: Vec<_> = if is_glob(base_name) {
             // Glob pattern matching
             self.cache
                 .packages
@@ -148,7 +148,7 @@ impl<'a> PackageResolver<'a> {
 
         // Not found in cache - check if it's an installed package from direct URL
         // Note: Only check for exact name match, not glob patterns
-        if !name.contains('*') {
+        if !is_glob(name) {
             let installed = self.config.get_or_create_installed()?;
             if let Some(inst_pkg) = installed.get_package(name) {
                 // Check if it's a DirectRepo source
@@ -175,7 +175,7 @@ impl<'a> PackageResolver<'a> {
                     name
                 ))
             }
-        } else if name.contains('*') {
+        } else if is_glob(name) {
             Err(anyhow!(
                 "No packages found matching pattern '{}'. {} packages available in cache.",
                 name,
@@ -226,7 +226,7 @@ impl<'a> PackageResolver<'a> {
     }
 }
 
-/// Simple glob pattern matching (supports * wildcard)
+/// Glob pattern matching (`*`, `?`, `[...]`) via `glob::Pattern`
 ///
 /// Examples:
 /// - `glob_match("ripgrep", "rip*")` -> true
@@ -235,59 +235,16 @@ impl<'a> PackageResolver<'a> {
 /// - `glob_match("ripgrep", "*")` -> true
 /// - `glob_match("ab", "a*b*")` -> true
 fn glob_match(text: &str, pattern: &str) -> bool {
-    // Split pattern by '*'
-    let parts: Vec<&str> = pattern.split('*').collect();
-
-    if parts.len() == 1 {
-        // No wildcard, exact match
-        return text == pattern;
+    // Same matcher as `wenget del`, so `?` and `[...]` work too
+    match glob::Pattern::new(pattern) {
+        Ok(p) => p.matches(text),
+        Err(_) => text == pattern,
     }
+}
 
-    let mut pos = 0;
-    let mut first_non_empty = true;
-
-    for (i, part) in parts.iter().enumerate() {
-        if part.is_empty() {
-            continue;
-        }
-
-        let is_last = i == parts.len() - 1;
-        let is_first_match = first_non_empty;
-        first_non_empty = false;
-
-        if is_first_match && !pattern.starts_with('*') {
-            // First non-empty part and pattern doesn't start with '*'
-            // -> must match at the start
-            if !text.starts_with(part) {
-                return false;
-            }
-            pos = part.len();
-        } else if is_last && !pattern.ends_with('*') {
-            // Last non-empty part and pattern doesn't end with '*'
-            // -> must match at the end
-            if !text[pos..].ends_with(part) {
-                return false;
-            }
-            // Also check that the part can be found after current position
-            if let Some(found_pos) = text[pos..].rfind(part) {
-                // Ensure the found position allows the suffix match
-                if pos + found_pos + part.len() != text.len() {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        } else {
-            // Middle parts or parts with trailing wildcard - just need to exist in order
-            if let Some(found_pos) = text[pos..].find(part) {
-                pos += found_pos + part.len();
-            } else {
-                return false;
-            }
-        }
-    }
-
-    true
+/// Whether `name` uses glob syntax (`*`, `?` or `[...]`)
+fn is_glob(name: &str) -> bool {
+    name.contains(['*', '?', '['])
 }
 
 #[cfg(test)]
@@ -386,6 +343,12 @@ mod tests {
         assert!(glob_match("ab", "a*b*"));
         assert!(glob_match("abc", "a*b*c"));
         assert!(glob_match("aXbYc", "a*b*c"));
+
+        // Character classes and single-char wildcards (as in `wenget del`)
+        assert!(glob_match("x1tool", "x[12]*"));
+        assert!(!glob_match("x3tool", "x[12]*"));
+        assert!(glob_match("bat", "b?t"));
+        assert!(is_glob("x[12]*") && is_glob("b?t") && !is_glob("ripgrep"));
 
         // Match all
         assert!(glob_match("ripgrep", "*"));
