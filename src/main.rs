@@ -76,13 +76,15 @@ fn main() {
             no_suffix,
         } => commands::run_add(
             names,
-            yes,
-            script_name,
-            platform,
-            pkg_version,
-            variant,
-            no_suffix,
-            false,
+            commands::add::InstallOptions {
+                yes,
+                script_name,
+                platform,
+                version: pkg_version,
+                variant_filter: variant,
+                no_suffix,
+                update_mode: false,
+            },
         ),
 
         Commands::List { all } => commands::run_list(all),

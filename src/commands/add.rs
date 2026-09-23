@@ -26,18 +26,36 @@ use crate::installer::create_shim;
 #[cfg(unix)]
 use crate::installer::create_symlink;
 
+/// Options for `add::run`, shared by the `add` command and `update`
+#[derive(Debug, Clone, Default)]
+pub struct InstallOptions {
+    /// Skip confirmation prompts
+    pub yes: bool,
+    /// Custom command name for the installed launcher
+    pub script_name: Option<String>,
+    /// Platform override (e.g. `linux-x64`)
+    pub platform: Option<String>,
+    /// Install this version instead of the latest
+    pub version: Option<String>,
+    /// Only consider binaries of this variant
+    pub variant_filter: Option<String>,
+    /// Don't append a variant suffix to command names
+    pub no_suffix: bool,
+    /// Set by `update`: reinstall already-installed packages, keeping their variant
+    pub update_mode: bool,
+}
+
 /// Install packages (smart detection: package names from cache or GitHub URLs)
-#[allow(clippy::too_many_arguments)]
-pub fn run(
-    names: Vec<String>,
-    yes: bool,
-    script_name: Option<String>,
-    platform: Option<String>,
-    version: Option<String>,
-    variant_filter: Option<String>,
-    no_suffix: bool,
-    update_mode: bool,
-) -> Result<()> {
+pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
+    let InstallOptions {
+        yes,
+        script_name,
+        platform,
+        version,
+        variant_filter,
+        no_suffix,
+        update_mode,
+    } = opts;
     let config = Config::new()?;
     let paths = WenPaths::new()?;
 
@@ -1043,6 +1061,13 @@ fn install_packages(
             // In update mode the cache was just refreshed with the latest version by the
             // update command. Trust it instead of making a redundant API call that may
             // flake and fall back to stale data.
+            resolved
+                .package
+                .version
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string())
+        } else if matches!(resolved.source, PackageSource::DirectRepo { .. }) {
+            // A GitHub URL was just resolved from its latest release; don't fetch it again.
             resolved
                 .package
                 .version

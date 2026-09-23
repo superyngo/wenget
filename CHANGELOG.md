@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `select_for_platform` now scores through production's `score_parsed`, and every existing
   platform test passes unchanged against it.
 
+- refactor(add): `add::run` takes an `InstallOptions` struct instead of seven positional flags
+  (audit CL-1, narrow part).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

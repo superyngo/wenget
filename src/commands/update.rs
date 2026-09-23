@@ -287,7 +287,15 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
     // Use add command to upgrade (reinstall). The platform override (if any)
     // is threaded through so updates honor an explicit `-p` target; when None,
     // the add path falls back to the `preferred_platform` config setting.
-    add::run(to_run, yes, None, platform, None, None, false, true)
+    add::run(
+        to_run,
+        add::InstallOptions {
+            yes,
+            platform,
+            update_mode: true,
+            ..Default::default()
+        },
+    )
 }
 
 /// Find upgradeable packages by checking their sources
