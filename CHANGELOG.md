@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previously overridden by a hard-coded Info filter. Default level is now Warn, so INFO lines that
   duplicated normal output are no longer printed (audit IM-3).
 
+- fix(add): `add` and `update` now exit 1 when any install fails, including inputs that are not
+  found or do not support the platform. All inputs in a batch are still attempted before the
+  failure is reported; a user cancellation or "already up to date" still exits 0 (audit IM-1).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

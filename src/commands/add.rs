@@ -79,9 +79,12 @@ pub fn run(
         }
     }
 
+    // Each installer returns its failure count; run them all before reporting failure
+    let mut failures = 0;
+
     // Handle script installations
     if !script_inputs.is_empty() {
-        install_scripts(
+        failures += install_scripts(
             &config,
             &paths,
             &mut installed,
@@ -93,7 +96,7 @@ pub fn run(
 
     // Handle local file installations
     if !local_inputs.is_empty() {
-        install_local_files(
+        failures += install_local_files(
             &config,
             &paths,
             &mut installed,
@@ -105,7 +108,7 @@ pub fn run(
 
     // Handle direct URL installations
     if !url_inputs.is_empty() {
-        install_from_urls(
+        failures += install_from_urls(
             &config,
             &paths,
             &mut installed,
@@ -117,7 +120,7 @@ pub fn run(
 
     // Handle package installations (existing logic)
     if !package_inputs.is_empty() {
-        install_packages(
+        failures += install_packages(
             &config,
             &paths,
             &mut installed,
@@ -130,6 +133,10 @@ pub fn run(
             no_suffix,
             update_mode,
         )?;
+    }
+
+    if failures > 0 {
+        anyhow::bail!("{} install(s) failed", failures);
     }
 
     Ok(())
@@ -244,10 +251,11 @@ fn install_scripts(
     script_inputs: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
-) -> Result<()> {
+) -> Result<usize> {
     println!("{}", "Scripts to install:".bold());
 
     let mut scripts_to_install: Vec<(String, String, ScriptType, String)> = Vec::new(); // (name, content, type, origin)
+    let mut resolve_failures = 0;
 
     for input in script_inputs {
         // Determine if local or remote
@@ -259,6 +267,7 @@ fn install_scripts(
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("{} Failed to download {}: {}", "✗".red(), input, e);
+                    resolve_failures += 1;
                     continue;
                 }
             }
@@ -268,6 +277,7 @@ fn install_scripts(
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("{} Failed to read {}: {}", "✗".red(), input, e);
+                    resolve_failures += 1;
                     continue;
                 }
             }
@@ -278,6 +288,7 @@ fn install_scripts(
             Some(t) => t,
             None => {
                 eprintln!("{} Cannot detect script type for: {}", "✗".red(), input);
+                resolve_failures += 1;
                 continue;
             }
         };
@@ -291,6 +302,7 @@ fn install_scripts(
                 script_type.display_name(),
                 "not supported on this platform".yellow()
             );
+            resolve_failures += 1;
             continue;
         }
 
@@ -302,6 +314,7 @@ fn install_scripts(
                 Some(n) => n,
                 None => {
                     eprintln!("{} Cannot extract name from: {}", "✗".red(), input);
+                    resolve_failures += 1;
                     continue;
                 }
             }
@@ -331,7 +344,7 @@ fn install_scripts(
 
     if scripts_to_install.is_empty() {
         println!("{}", "No scripts to install".yellow());
-        return Ok(());
+        return Ok(resolve_failures);
     }
 
     // Show security warning
@@ -346,7 +359,7 @@ fn install_scripts(
     // Confirm installation
     if !yes && !crate::utils::confirm("\nProceed with installation?")? {
         println!("Installation cancelled");
-        return Ok(());
+        return Ok(resolve_failures);
     }
 
     println!();
@@ -398,7 +411,7 @@ fn install_scripts(
         );
     }
 
-    Ok(())
+    Ok(resolve_failures + fail_count)
 }
 
 /// Install a single script
@@ -462,7 +475,7 @@ fn install_local_files(
     files: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
-) -> Result<()> {
+) -> Result<usize> {
     println!("{}", "Local files to install:".bold());
 
     for file in &files {
@@ -471,7 +484,7 @@ fn install_local_files(
 
     if !yes && !crate::utils::confirm("\nProceed with installation?")? {
         println!("Installation cancelled");
-        return Ok(());
+        return Ok(0);
     }
 
     println!();
@@ -538,7 +551,7 @@ fn install_local_files(
         );
     }
 
-    Ok(())
+    Ok(fail_count)
 }
 
 /// Install binary or archive from direct URLs
@@ -549,7 +562,7 @@ fn install_from_urls(
     urls: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
-) -> Result<()> {
+) -> Result<usize> {
     println!("{}", "URLs to install:".bold());
 
     for url in &urls {
@@ -558,7 +571,7 @@ fn install_from_urls(
 
     if !yes && !crate::utils::confirm("\nProceed with installation?")? {
         println!("Installation cancelled");
-        return Ok(());
+        return Ok(0);
     }
 
     println!();
@@ -679,7 +692,7 @@ fn install_from_urls(
         );
     }
 
-    Ok(())
+    Ok(fail_count)
 }
 
 /// Print available variant names for a package's binaries
@@ -813,7 +826,7 @@ fn install_packages(
     variant_filter: Option<&str>,
     no_suffix: bool,
     update_mode: bool,
-) -> Result<()> {
+) -> Result<usize> {
     // Get current platform (used for informational messages).
     let current_platform = Platform::current();
 
@@ -834,6 +847,7 @@ fn install_packages(
         crate::core::platform::PlatformMatch,
     )> = Vec::new();
     let mut scripts_to_install: Vec<(String, String, ScriptType, String)> = Vec::new(); // (name, url, type, origin)
+    let mut resolve_failures = 0;
 
     for original_name in &names {
         let input = PackageInput::parse(original_name);
@@ -869,6 +883,7 @@ fn install_packages(
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         );
+                        resolve_failures += 1;
                         continue;
                     }
 
@@ -934,6 +949,7 @@ fn install_packages(
                             script.name,
                             script.platforms_display()
                         );
+                        resolve_failures += 1;
                     }
                 } else {
                     let base = original_name.split("::").next().unwrap_or(original_name);
@@ -956,6 +972,7 @@ fn install_packages(
                             suggestions.join(", ")
                         );
                     }
+                    resolve_failures += 1;
                 }
             }
         }
@@ -963,7 +980,7 @@ fn install_packages(
 
     if packages_to_install.is_empty() && scripts_to_install.is_empty() {
         println!("{}", "No packages or scripts to install".yellow());
-        return Ok(());
+        return Ok(resolve_failures);
     }
 
     // Create GitHub provider to fetch versions (for packages)
@@ -1066,6 +1083,7 @@ fn install_packages(
                 version,
                 target
             );
+            resolve_failures += 1;
             continue;
         }
         let platform_match = matches[0].clone();
@@ -1186,13 +1204,13 @@ fn install_packages(
             "{}",
             "All packages and scripts are already up to date".green()
         );
-        return Ok(());
+        return Ok(resolve_failures);
     }
 
     // Confirm installation
     if !yes && !crate::utils::confirm("\nProceed with installation?")? {
         println!("Installation cancelled");
-        return Ok(());
+        return Ok(resolve_failures);
     }
 
     println!();
@@ -1671,7 +1689,7 @@ fn install_packages(
         );
     }
 
-    Ok(())
+    Ok(resolve_failures + fail_count + script_fail_count)
 }
 
 /// Install a single package
