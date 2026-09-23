@@ -118,5 +118,5 @@ last checked against the tree — not when it was opened.
 | Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | 9fc727e |
 | CL-1 (A-3, Q-3) | Positional flags from `update` into `add` (`InstallOptions` in aca10c9; internals now take `&InstallOptions`, unused `_parent_package` dropped; Installer split moved to CL-8) | 4583858 |
 | T-3 | `update` untested end to end (`tests/update.rs` runs it against a local HTTP fixture via the `WENGET_GITHUB_API` test hook: upgrade, up-to-date, API-failure fallback) | f7f809e |
-| CL-8 | No headless `Installer` (`installer::package`: `target_package`, `filter_binaries`, `PackageInstaller::install` + `select_executables` behind the `InstallUi` trait; `install_package` and its 9-param allow gone; the plan/render phase of `install_packages` stays in CL-6) | COMMIT |
+| CL-8 | No headless `Installer` (`installer::package`: `target_package`, `filter_binaries`, `PackageInstaller::install` + `select_executables` behind the `InstallUi` trait; `install_package` and its 9-param allow gone; the plan/render phase of `install_packages` stays in CL-6) | b94e499 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
