@@ -118,5 +118,5 @@ last checked against the tree — not when it was opened.
 | T-2 | No end-to-end integration tests (added `tests/lifecycle.rs`, 6 offline scenarios; `update` split into T-3) | 205ab40 |
 | Q-6 | `bin_dir()` `expect` on missing home (unreachable in practice; user bin dir now resolved at construction) | 9fc727e |
 | CL-1 (A-3, Q-3) | Positional flags from `update` into `add` (`InstallOptions` in aca10c9; internals now take `&InstallOptions`, unused `_parent_package` dropped; Installer split moved to CL-8) | 4583858 |
-| T-3 | `update` untested end to end (`tests/update.rs` runs it against a local HTTP fixture via the `WENGET_GITHUB_API` test hook: upgrade, up-to-date, API-failure fallback) | COMMIT |
+| T-3 | `update` untested end to end (`tests/update.rs` runs it against a local HTTP fixture via the `WENGET_GITHUB_API` test hook: upgrade, up-to-date, API-failure fallback) | f7f809e |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
