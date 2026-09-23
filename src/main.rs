@@ -12,7 +12,7 @@ mod providers;
 mod utils;
 
 use clap::CommandFactory;
-use cli::{BucketCommands, Cli, Commands};
+use cli::{Cli, Commands};
 use colored::Colorize;
 
 fn main() {
@@ -39,32 +39,7 @@ fn main() {
     let result = match command {
         Commands::Init { yes } => commands::run_init(yes),
 
-        Commands::Bucket { command } => {
-            let bucket_cmd = match command {
-                BucketCommands::Add { name, url } => {
-                    commands::bucket::BucketCommand::Add { name, url }
-                }
-                BucketCommands::Del { names } => commands::bucket::BucketCommand::Del { names },
-                BucketCommands::List => commands::bucket::BucketCommand::List,
-                BucketCommands::Refresh => commands::bucket::BucketCommand::Refresh,
-                BucketCommands::Create {
-                    repos_src,
-                    scripts_src,
-                    direct,
-                    output,
-                    token,
-                    update_mode,
-                } => commands::bucket::BucketCommand::Create {
-                    repos_src,
-                    scripts_src,
-                    direct,
-                    output,
-                    token,
-                    update_mode,
-                },
-            };
-            commands::run_bucket(bucket_cmd)
-        }
+        Commands::Bucket { command } => commands::run_bucket(command),
 
         Commands::Add {
             names,

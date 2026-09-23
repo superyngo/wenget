@@ -1,7 +1,7 @@
 //! Bucket command implementation
 
 use crate::bucket::Bucket;
-use crate::cli::UpdateMode;
+use crate::cli::{BucketCommands, UpdateMode};
 use crate::core::manifest::{Package, ScriptItem, ScriptPlatform, ScriptType};
 use crate::core::Config;
 use crate::providers::{GitHubProvider, GitHubRepo};
@@ -15,35 +15,14 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
-/// Bucket subcommands
-pub enum BucketCommand {
-    Add {
-        name: String,
-        url: String,
-    },
-    Del {
-        names: Vec<String>,
-    },
-    List,
-    Refresh,
-    Create {
-        repos_src: Vec<String>,
-        scripts_src: Vec<String>,
-        direct: Vec<String>,
-        output: Option<String>,
-        token: Option<String>,
-        update_mode: Option<UpdateMode>,
-    },
-}
-
 /// Run bucket command
-pub fn run(cmd: BucketCommand) -> Result<()> {
+pub fn run(cmd: BucketCommands) -> Result<()> {
     match cmd {
-        BucketCommand::Add { name, url } => run_add(name, url),
-        BucketCommand::Del { names } => run_del(names),
-        BucketCommand::List => run_list(),
-        BucketCommand::Refresh => run_refresh(),
-        BucketCommand::Create {
+        BucketCommands::Add { name, url } => run_add(name, url),
+        BucketCommands::Del { names } => run_del(names),
+        BucketCommands::List => run_list(),
+        BucketCommands::Refresh => run_refresh(),
+        BucketCommands::Create {
             repos_src,
             scripts_src,
             direct,

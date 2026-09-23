@@ -361,34 +361,6 @@ fn create_wenget_shim(target: &Path, shim: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Create wenget symlink (Unix)
-#[cfg(unix)]
-fn create_wenget_symlink(target: &PathBuf, link: &PathBuf) -> Result<()> {
-    use std::os::unix::fs::symlink;
-
-    log::debug!(
-        "Creating wenget symlink: {} -> {}",
-        link.display(),
-        target.display()
-    );
-
-    // Remove existing symlink if it exists
-    if link.exists() || link.is_symlink() {
-        std::fs::remove_file(link)
-            .with_context(|| format!("Failed to remove existing symlink: {}", link.display()))?;
-    }
-
-    // Create parent directory
-    if let Some(parent) = link.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
-    symlink(target, link)
-        .with_context(|| format!("Failed to create symlink: {}", link.display()))?;
-
-    Ok(())
-}
-
 /// Setup wenget executable itself in bin directory
 fn setup_wenget_executable(config: &Config) -> Result<()> {
     let current_exe = env::current_exe().context("Failed to get current executable path")?;
@@ -413,7 +385,7 @@ fn setup_wenget_executable(config: &Config) -> Result<()> {
     {
         let symlink_path = bin_dir.join("wenget");
 
-        match create_wenget_symlink(&current_exe, &symlink_path) {
+        match crate::installer::create_symlink(&current_exe, &symlink_path) {
             Ok(_) => {
                 println!("{}", "✓ Created wenget symlink in bin directory".green());
             }

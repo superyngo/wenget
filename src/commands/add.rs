@@ -178,19 +178,9 @@ fn resolve_command_name(
     taken: &std::collections::HashSet<String>,
     is_custom: bool,
 ) -> String {
-    // 1. If custom name provided, skip variant suffix - just check for conflicts
+    // 1. A custom name skips the variant suffix
     if is_custom {
-        if !taken.contains(base_name) {
-            return base_name.to_string();
-        }
-        // Custom name taken, try numeric suffixes
-        for i in 1..=99 {
-            let numbered = format!("{}-{}", base_name, i);
-            if !taken.contains(&numbered) {
-                return numbered;
-            }
-        }
-        return base_name.to_string();
+        return first_free(base_name, taken);
     }
 
     // 2. If it's a variant, construct the desired command name
@@ -212,33 +202,22 @@ fn resolve_command_name(
             format!("{}-{}", base_name, var)
         };
 
-        if !taken.contains(&desired_name) {
-            return desired_name;
-        }
-        // Desired name taken, try numeric suffixes
-        for i in 1..=99 {
-            let numbered = format!("{}-{}", desired_name, i);
-            if !taken.contains(&numbered) {
-                return numbered;
-            }
-        }
-        return desired_name;
+        return first_free(&desired_name, taken);
     }
 
-    // 3. No variant - try base_name first
-    if !taken.contains(base_name) {
-        return base_name.to_string();
-    }
+    // 3. No variant
+    first_free(base_name, taken)
+}
 
-    // 4. Try numeric suffixes for non-variant
-    for i in 1..=99 {
-        let numbered = format!("{}-{}", base_name, i);
-        if !taken.contains(&numbered) {
-            return numbered;
-        }
+/// `base` if free, else the first free `base-1` .. `base-99`, else `base`
+fn first_free(base: &str, taken: &std::collections::HashSet<String>) -> String {
+    if !taken.contains(base) {
+        return base.to_string();
     }
-
-    base_name.to_string()
+    (1..=99)
+        .map(|i| format!("{}-{}", base, i))
+        .find(|numbered| !taken.contains(numbered))
+        .unwrap_or_else(|| base.to_string())
 }
 
 /// Extract repo name from a command name that may contain partial variant info
