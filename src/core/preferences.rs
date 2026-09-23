@@ -20,7 +20,7 @@ pub struct Preferences {
     /// Custom bin directory path
     ///
     /// When set, symlinks/shims will be created here instead of the default location.
-    /// Useful for custom PATH setups or when ~/.wenget/bin cannot be added to PATH.
+    /// Useful for custom PATH setups or when ~/.local/bin cannot be added to PATH.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_bin_path: Option<PathBuf>,
 }
@@ -97,7 +97,7 @@ impl Preferences {
 # Custom bin directory (overrides default)
 #
 # When set, symlinks/shims will be created in this directory instead of:
-# - User install: ~/.wenget/bin
+# - User install: ~/.local/bin
 # - System install: /usr/local/bin (Linux) or C:\Program Files\wenget\bin (Windows)
 #
 # Useful if you want to use a custom location that's already in your PATH.
