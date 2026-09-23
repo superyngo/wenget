@@ -214,12 +214,14 @@ pub fn install_script(
         .with_context(|| format!("Failed to write script: {}", staged_script.display()))?;
 
     let app_dir = staged.commit()?;
-    let script_path = app_dir.join(&script_filename);
+    #[cfg(not(unix))]
+    let _ = app_dir;
 
     // Make script executable on Unix
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
+        let script_path = app_dir.join(&script_filename);
         let mut perms = fs::metadata(&script_path)?.permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&script_path, perms)?;

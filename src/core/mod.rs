@@ -25,7 +25,5 @@ pub use preferences::Preferences;
 pub use privilege::is_elevated;
 #[allow(unused_imports)]
 pub use registry::{add_to_system_path, remove_from_system_path};
-#[cfg(windows)]
-pub use registry::{add_to_user_path, remove_from_user_path};
 #[allow(unused_imports)]
 pub use store::InstalledStore;

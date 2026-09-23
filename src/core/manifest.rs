@@ -1264,7 +1264,8 @@ mod tests {
                 }}
             }}
         }}"#,
-            app_dir.display()
+            // JSON-escape the path (Windows backslashes), minus the quotes
+            serde_json::to_string(&app_dir).unwrap().trim_matches('"')
         );
 
         let mut manifest: InstalledSet = serde_json::from_str(&json).unwrap();

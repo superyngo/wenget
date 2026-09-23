@@ -218,7 +218,8 @@ fn collect_files_recursively(
         } else if path.is_file() {
             // Get relative path from base directory
             if let Ok(relative) = path.strip_prefix(base_dir) {
-                files.push(relative.to_string_lossy().to_string());
+                // Use `/` like the tar and zip paths, so records look the same on Windows
+                files.push(relative.to_string_lossy().replace('\\', "/"));
             }
         }
     }
@@ -727,7 +728,7 @@ pub fn find_executable_candidates(
     }
 
     // Sort by score (highest first)
-    candidates.sort_by(|a, b| b.score.cmp(&a.score));
+    candidates.sort_by_key(|a| std::cmp::Reverse(a.score));
 
     candidates
 }

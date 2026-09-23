@@ -794,7 +794,7 @@ impl Platform {
         }
 
         // Sort by score descending
-        matches.sort_by(|a, b| b.score.cmp(&a.score));
+        matches.sort_by_key(|a| std::cmp::Reverse(a.score));
         matches
     }
 
@@ -935,7 +935,7 @@ impl BinarySelector {
             .collect();
 
         // Sort by score (highest first)
-        scored_assets.sort_by(|a, b| b.0.cmp(&a.0));
+        scored_assets.sort_by_key(|a| std::cmp::Reverse(a.0));
 
         scored_assets.first().map(|(_, asset)| (*asset).clone())
     }
@@ -1032,7 +1032,7 @@ impl BinarySelector {
                 scored.push((score, p.asset, p.parsed.compiler));
             }
             // Sort by score (highest first)
-            scored.sort_by(|a, b| b.0.cmp(&a.0));
+            scored.sort_by_key(|a| std::cmp::Reverse(a.0));
 
             for (_score, asset, compiler) in scored {
                 // Build platform identifier with compiler variant
@@ -1119,17 +1119,14 @@ impl BinarySelector {
                     return None;
                 }
 
-                // Fall back to OS default arch
-                if let Some(default_arch) = platform.os.default_arch() {
-                    if platform.arch == default_arch {
-                        // Use default architecture (lower score than explicit)
-                        score += 25;
-                    }
-                    // If platform arch doesn't match default, still allow but no arch bonus
-                } else {
-                    // OS has no default (FreeBSD) - require explicit arch
-                    return None;
+                // Fall back to OS default arch; an OS without one (FreeBSD)
+                // requires an explicit arch
+                let default_arch = platform.os.default_arch()?;
+                if platform.arch == default_arch {
+                    // Use default architecture (lower score than explicit)
+                    score += 25;
                 }
+                // If platform arch doesn't match default, still allow but no arch bonus
             }
         }
 

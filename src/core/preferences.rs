@@ -194,7 +194,8 @@ mod tests {
     fn test_validate_valid() {
         let prefs = Preferences {
             preferred_platform: Some("x86_64-unknown-linux-gnu".to_string()),
-            custom_bin_path: Some(PathBuf::from("/usr/local/bin")),
+            // Absolute on every platform (`/usr/local/bin` is not absolute on Windows)
+            custom_bin_path: Some(std::env::temp_dir()),
         };
         assert!(prefs.validate().is_ok());
     }
