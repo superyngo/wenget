@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(delete): `del self` under `WENGET_ROOT` keeps an executable that lives outside the root (B-8).
 - fix(init): with `WENGET_ROOT` set, `init` no longer edits the real shell rc files or registry
   PATH (prints the PATH line instead), and `del self` no longer strips PATH entries (B-7).
 - docs(backlog): close 20 rows from waves A–D (Windows fixes S-4/S-6/S-8/SI-5/S-10 sit in

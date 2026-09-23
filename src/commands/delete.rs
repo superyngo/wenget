@@ -406,7 +406,16 @@ fn delete_self(yes: bool) -> Result<()> {
             "{} Deleting wenget executable...",
             format!("{}.", step_num).bold()
         );
-        delete_executable(&exe_path, exe_in_wenget, paths.root())?;
+        // A WENGET_ROOT sandbox must not delete an executable living outside it
+        if paths.is_root_override() && !exe_in_wenget {
+            println!(
+                "   {} WENGET_ROOT is set; keeping executable outside the root: {}",
+                "⚠".yellow(),
+                exe_path.display()
+            );
+        } else {
+            delete_executable(&exe_path, exe_in_wenget, paths.root())?;
+        }
     }
 
     println!();
