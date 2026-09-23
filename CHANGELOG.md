@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add,delete): `add` and `delete` honor `custom_bin_path`, creating and removing launchers in
+  the configured bin directory like `repair`/`rename`/`init` (B-5).
 - docs(backlog): close IM-6/IM-7/IM-10/IM-13/IM-14/B-1/CL-2/CL-4/CL-7; open B-5 (`add`/`delete`
   ignore `custom_bin_path`).
 - chore: drop unused `thiserror` dependency and stale `#[allow(dead_code)]` on live items

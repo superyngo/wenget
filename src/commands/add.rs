@@ -57,7 +57,7 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
         update_mode,
     } = opts;
     let config = Config::new()?;
-    let paths = WenPaths::new()?;
+    let paths = config.paths().clone();
 
     // Ensure initialized
     if !config.is_initialized() {

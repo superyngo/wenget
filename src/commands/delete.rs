@@ -21,7 +21,7 @@ pub fn run(
     }
 
     let config = Config::new()?;
-    let paths = WenPaths::new()?;
+    let paths = config.paths().clone();
 
     // Load the installed set
     let mut installed = config.get_or_create_installed()?;
