@@ -48,6 +48,38 @@ pub fn confirm_no_default(message: &str) -> Result<bool> {
     Ok(response == "y" || response == "yes")
 }
 
+/// Terminal front end for installs: stdout lines, stdin confirms, dialoguer pickers
+pub struct TerminalUi;
+
+impl crate::installer::package::InstallUi for TerminalUi {
+    fn line(&self, msg: &str) {
+        println!("{}", msg);
+    }
+
+    fn confirm(&self, prompt: &str, default: bool) -> Result<bool> {
+        if default {
+            confirm(prompt)
+        } else {
+            confirm_no_default(prompt)
+        }
+    }
+
+    fn select(&self, prompt: &str, items: &[String], default: usize) -> Result<usize> {
+        Ok(dialoguer::Select::new()
+            .with_prompt(prompt)
+            .items(items)
+            .default(default)
+            .interact()?)
+    }
+
+    fn multi_select(&self, prompt: &str, items: &[String]) -> Result<Vec<usize>> {
+        Ok(dialoguer::MultiSelect::new()
+            .with_prompt(prompt)
+            .items(items)
+            .interact()?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Note: These tests are for documentation purposes.

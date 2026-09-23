@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(add): the install flow asks and reports through an `InstallUi` trait
+  (`utils::prompt::TerminalUi` in the terminal), so its prompts can be scripted in tests (CL-8, 2/3).
 - refactor(add): release selection and binary filtering move to headless
   `installer::package` (`target_package`, `filter_binaries`); the release is chosen once during
   planning instead of twice, so install time no longer re-queries the GitHub API (CL-8, 1/3).

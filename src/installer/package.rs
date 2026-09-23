@@ -8,6 +8,21 @@ use anyhow::Result;
 use crate::core::manifest::{PackageSource, PlatformBinary};
 use crate::core::Package;
 
+/// The interaction an install needs from its front end.
+///
+/// The terminal implementation lives in `utils::prompt::TerminalUi`; tests script
+/// the answers.
+pub trait InstallUi {
+    /// Show one progress or status line
+    fn line(&self, msg: &str);
+    /// Ask a yes/no question; `default` is the answer on empty input
+    fn confirm(&self, prompt: &str, default: bool) -> Result<bool>;
+    /// Pick one of `items`
+    fn select(&self, prompt: &str, items: &[String], default: usize) -> Result<usize>;
+    /// Pick any number of `items`
+    fn multi_select(&self, prompt: &str, items: &[String]) -> Result<Vec<usize>>;
+}
+
 /// How the target release was obtained
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TargetStatus {

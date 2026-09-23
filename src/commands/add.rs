@@ -3,7 +3,7 @@
 use crate::core::manifest::{PackageSource, ScriptType};
 use crate::core::{Config, InstalledPackage, Platform, WenPaths};
 use crate::downloader;
-use crate::installer::package::{filter_binaries, target_package, TargetStatus};
+use crate::installer::package::{filter_binaries, target_package, InstallUi, TargetStatus};
 use crate::installer::{
     create_script_shim, detect_script_type, download_script, extract_archive, extract_script_name,
     find_executable_candidates,
@@ -183,7 +183,14 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
 
     // Handle package installations (existing logic)
     if !package_inputs.is_empty() {
-        failures += install_packages(&config, &paths, &mut installed, package_inputs, &opts)?;
+        failures += install_packages(
+            &config,
+            &paths,
+            &mut installed,
+            package_inputs,
+            &opts,
+            &crate::utils::prompt::TerminalUi,
+        )?;
     }
 
     if failures > 0 {
@@ -676,6 +683,7 @@ fn select_packages_for_platform(
     binaries: &[crate::core::manifest::PlatformBinary],
     yes: bool,
     update_mode: bool,
+    ui: &dyn InstallUi,
 ) -> Result<Vec<usize>> {
     if binaries.len() == 1 {
         // Single package: auto-select
@@ -706,7 +714,6 @@ fn select_packages_for_platform(
     }
 
     // Multiple packages: show selection dialog
-    use dialoguer::MultiSelect;
 
     println!(
         "\n  {} Found {} packages for {}:",
@@ -720,10 +727,10 @@ fn select_packages_for_platform(
         .map(|b| format!("{} ({:.2} MB)", b.asset_name, b.size as f64 / 1_048_576.0))
         .collect();
 
-    let selections = MultiSelect::new()
-        .with_prompt("Select packages to install (Space to select, Enter to confirm)")
-        .items(&items)
-        .interact()?;
+    let selections = ui.multi_select(
+        "Select packages to install (Space to select, Enter to confirm)",
+        &items,
+    )?;
 
     if selections.is_empty() {
         anyhow::bail!("No packages selected");
@@ -751,6 +758,7 @@ fn install_packages(
     installed: &mut crate::core::InstalledSet,
     names: Vec<&String>,
     opts: &InstallOptions,
+    ui: &dyn InstallUi,
 ) -> Result<usize> {
     let yes = opts.yes;
     let custom_name = opts.script_name.as_deref();
@@ -833,7 +841,7 @@ fn install_packages(
                             );
                             println!("  This is a fallback: {}", fallback_type.description());
 
-                            if !crate::utils::prompt::confirm_no_default("  Install anyway?")? {
+                            if !ui.confirm("  Install anyway?", false)? {
                                 println!("  Skipped");
                                 continue;
                             }
@@ -1002,7 +1010,7 @@ fn install_packages(
                     version,
                     "(already installed, same version)".dimmed()
                 );
-                if !yes && crate::utils::prompt::confirm_no_default("  Reinstall?")? {
+                if !yes && ui.confirm("  Reinstall?", false)? {
                     // User wants to reinstall
                     to_install.push(PlanItem {
                         input: original_name.clone(),
@@ -1114,7 +1122,7 @@ fn install_packages(
     }
 
     // Confirm installation
-    if !yes && !crate::utils::confirm("\nProceed with installation?")? {
+    if !yes && !ui.confirm("\nProceed with installation?", true)? {
         println!("Installation cancelled");
         return Ok(resolve_failures);
     }
@@ -1258,15 +1266,20 @@ fn install_packages(
         }
 
         // Select which packages to install (single, all, or user selection)
-        let selected_indices =
-            match select_packages_for_platform(pkg_name, &filtered_binaries, yes, update_mode) {
-                Ok(indices) => indices,
-                Err(e) => {
-                    println!("  {} {}", "✗".red(), e);
-                    report.fail(pkg_name.to_string());
-                    continue;
-                }
-            };
+        let selected_indices = match select_packages_for_platform(
+            pkg_name,
+            &filtered_binaries,
+            yes,
+            update_mode,
+            ui,
+        ) {
+            Ok(indices) => indices,
+            Err(e) => {
+                println!("  {} {}", "✗".red(), e);
+                report.fail(pkg_name.to_string());
+                continue;
+            }
+        };
 
         // Install each selected binary
         for (i, &idx) in selected_indices.iter().enumerate() {
@@ -1307,6 +1320,7 @@ fn install_packages(
                 &resolved.source,
                 &installed_key,
                 opts,
+                ui,
             ) {
                 Ok(inst_pkg) => {
                     if let Err(e) =
@@ -1405,6 +1419,7 @@ fn install_package(
     source: &PackageSource,
     installed_key: &str,
     opts: &InstallOptions,
+    ui: &dyn InstallUi,
 ) -> Result<InstalledPackage> {
     let custom_name = opts.script_name.as_deref();
     let yes = opts.yes;
@@ -1421,7 +1436,7 @@ fn install_package(
     }
 
     // Download binary
-    println!("  Downloading from {}...", binary.url);
+    ui.line(&format!("  Downloading from {}...", binary.url));
 
     let download_dir = paths.downloads_dir();
     fs::create_dir_all(&download_dir)?;
@@ -1450,7 +1465,7 @@ fn install_package(
     let staged = crate::installer::StagedInstall::begin(paths, installed_key)?;
     let app_dir = staged.target().to_path_buf();
 
-    println!("  Extracting to {}...", app_dir.display());
+    ui.line(&format!("  Extracting to {}...", app_dir.display()));
 
     let extracted_files = extract_archive(&download_path, staged.path())?;
 
@@ -1468,10 +1483,10 @@ fn install_package(
     let selected_executables = if candidates.len() == 1 {
         // Single candidate - auto-select
         let selected = &candidates[0];
-        println!(
+        ui.line(&format!(
             "  Found executable: {} ({})",
             selected.path, selected.reason
-        );
+        ));
         vec![candidates[0].path.clone()]
     } else if update_mode {
         // Update mode: keep previously installed executables, ignore new ones,
@@ -1497,11 +1512,11 @@ fn install_package(
             }
 
             if kept.is_empty() && new_candidates.is_empty() {
-                println!(
+                ui.line(&format!(
                     "  {} No matching executables found for update, skipping {}",
                     "⚠".yellow(),
                     installed_key
-                );
+                ));
                 anyhow::bail!(
                     "No matching executables found for update of {}",
                     installed_key
@@ -1534,24 +1549,23 @@ fn install_package(
                     if let Some(matched) = auto_match {
                         // Auto-matched by filename — select silently
                         if !selected.contains(&matched.path) {
-                            println!(
+                            ui.line(&format!(
                                 "  {} Executable '{}' relocated to '{}' (auto-matched)",
                                 "ℹ".cyan(),
                                 old_path,
                                 matched.path
-                            );
+                            ));
                             selected.push(matched.path.clone());
                         }
                     } else if !new_candidates.is_empty() && !yes {
                         // No auto-match — prompt user to pick a replacement
-                        println!(
+                        ui.line(&format!(
                             "  {} Executable '{}' (command: {}) is no longer available in this release",
                             "⚠".yellow(),
                             old_path,
                             old_cmd
-                        );
+                        ));
 
-                        use dialoguer::Select;
                         let mut items: Vec<String> = new_candidates
                             .iter()
                             .filter(|c| !selected.contains(&c.path))
@@ -1559,11 +1573,11 @@ fn install_package(
                             .collect();
                         items.push("Skip (remove this command)".to_string());
 
-                        let selection = Select::new()
-                            .with_prompt(format!("    Select replacement for '{}'", old_cmd))
-                            .items(&items)
-                            .default(items.len() - 1)
-                            .interact()?;
+                        let selection = ui.select(
+                            &format!("    Select replacement for '{}'", old_cmd),
+                            &items,
+                            items.len() - 1,
+                        )?;
 
                         if selection < items.len() - 1 {
                             // User picked a replacement from new candidates
@@ -1578,34 +1592,37 @@ fn install_package(
                         // else: user chose "Skip" — old command will be cleaned up
                     } else {
                         // --yes mode or no new candidates: warn and auto-cleanup
-                        println!(
+                        ui.line(&format!(
                             "  {} Executable '{}' (command: {}) no longer available, will be removed",
                             "⚠".yellow(),
                             old_path,
                             old_cmd
-                        );
+                        ));
                     }
                 }
             }
 
             // New executables not in old install are silently ignored during updates
 
-            println!("  Found {} executables (update mode):", selected.len());
+            ui.line(&format!(
+                "  Found {} executables (update mode):",
+                selected.len()
+            ));
             for s in &selected {
                 let reason = candidates
                     .iter()
                     .find(|c| c.path == *s)
                     .map(|c| c.reason.as_str())
                     .unwrap_or("matched");
-                println!("    {} ({})", s, reason);
+                ui.line(&format!("    {} ({})", s, reason));
             }
             selected
         } else {
             // No old executables — fall through to normal auto-select
             let auto_select: Vec<_> = candidates.iter().filter(|c| c.score > 0).collect();
-            println!("  Found {} executables:", auto_select.len());
+            ui.line(&format!("  Found {} executables:", auto_select.len()));
             for c in &auto_select {
-                println!("    {} ({})", c.path, c.reason);
+                ui.line(&format!("    {} ({})", c.path, c.reason));
             }
             auto_select.into_iter().map(|c| c.path.clone()).collect()
         }
@@ -1620,26 +1637,27 @@ fn install_package(
 
         if auto_select.len() <= 3 || yes {
             // Auto-select if reasonable count (<=3) or --yes flag
-            println!("  Found {} executables:", auto_select.len());
+            ui.line(&format!("  Found {} executables:", auto_select.len()));
             for c in &auto_select {
-                println!("    {} ({})", c.path, c.reason);
+                ui.line(&format!("    {} ({})", c.path, c.reason));
             }
             auto_select.into_iter().map(|c| c.path.clone()).collect()
         } else {
             // Too many candidates - show interactive selection
-            use dialoguer::MultiSelect;
-
-            println!("  Found {} possible executables:", candidates.len());
+            ui.line(&format!(
+                "  Found {} possible executables:",
+                candidates.len()
+            ));
 
             let items: Vec<String> = candidates
                 .iter()
                 .map(|c| format!("{} (score: {}, {})", c.path, c.score, c.reason))
                 .collect();
 
-            let selections = MultiSelect::new()
-                .with_prompt("Select executables to install (Space to select, Enter to confirm)")
-                .items(&items)
-                .interact()?;
+            let selections = ui.multi_select(
+                "Select executables to install (Space to select, Enter to confirm)",
+                &items,
+            )?;
 
             if selections.is_empty() {
                 anyhow::bail!("No executables selected");
@@ -1718,7 +1736,7 @@ fn install_package(
         };
 
         let resolved_name = if let Some(reused) = reused_name {
-            println!("  Reusing command name: {}", reused);
+            ui.line(&format!("  Reusing command name: {}", reused));
             reused
         } else {
             // Extract the actual command name from the executable path
@@ -1749,7 +1767,10 @@ fn install_package(
             resolve_command_name(&base_name, variant_opt.as_deref(), &taken_names, is_custom)
         };
 
-        println!("  Command will be available as: {}", resolved_name);
+        ui.line(&format!(
+            "  Command will be available as: {}",
+            resolved_name
+        ));
 
         // Record the name as taken so subsequent executables in the same package
         // don't resolve to a colliding name.
@@ -1768,7 +1789,7 @@ fn install_package(
         let exe_path = app_dir.join(&exe_relative);
         let bin_path = paths.bin_shim_path(&resolved_name);
 
-        println!("  Creating launcher at {}...", bin_path.display());
+        ui.line(&format!("  Creating launcher at {}...", bin_path.display()));
 
         #[cfg(unix)]
         let created = create_symlink(&exe_path, &bin_path);
@@ -1790,13 +1811,13 @@ fn install_package(
                 let old_bin = paths.bin_shim_path(old_cmd);
                 if old_bin.exists() {
                     match fs::remove_file(&old_bin) {
-                        Ok(()) => println!("  Removed obsolete command: {}", old_cmd),
-                        Err(e) => println!(
+                        Ok(()) => ui.line(&format!("  Removed obsolete command: {}", old_cmd)),
+                        Err(e) => ui.line(&format!(
                             "  {} Could not remove obsolete command {}: {}",
                             "⚠".yellow(),
                             old_cmd,
                             e
-                        ),
+                        )),
                     }
                 }
             }
