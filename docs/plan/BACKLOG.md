@@ -35,6 +35,7 @@ last checked against the tree — not when it was opened.
 | OP-5 | 2026-09-23 | 2026-09-23 | P3 | Candidate executables opened multiple times for permissions, magic bytes, shebang | `installer/extractor.rs` `find_executable_candidates` | XS | Single file handle and initial buffer read verify magic bytes, shebang, and permissions |
 | B-3 | 2026-09-23 | 2026-09-23 | P3 | `FallbackType` enum variants for libc and Windows compiler are dead code | `core/platform.rs` `FallbackType::MuslOnGnu`, `GnuOnMusl`, `WindowsCompilerVariant` | XS | Unconstructed fallback enum variants removed or wired into platform matching |
 | B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
+| B-10 | 2026-09-23 | 2026-09-23 | P3 | Empty `apps/.staging/` left behind after reinstall | `installer/staging.rs` `StagedInstall` | XS | No `.staging` dir remains after a successful install |
 
 ## Pending verification
 
@@ -117,3 +118,4 @@ last checked against the tree — not when it was opened.
 | B-4 | `update self` warned "'self' is not installed" | 34a8258 |
 | B-7 | `init`/`del self` under `WENGET_ROOT` edited the real rc files/registry PATH | 248afa2 |
 | B-8 | `del self` under `WENGET_ROOT` deleted an executable outside the root | 33315ef |
+| B-9 | Local archive without platform keywords split payload and record across two app dirs | COMMIT |

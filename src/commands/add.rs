@@ -529,19 +529,8 @@ fn install_local_files(
 
         match install_local_file(paths, path, custom_name, None) {
             Ok(inst_pkg) => {
-                // Use first command name as package name
-                let command_names = inst_pkg.get_command_names();
-                let name = match command_names.first() {
-                    Some(n) => n.to_string(),
-                    None => {
-                        println!(
-                            "  {} No command names found in installed package",
-                            "✗".red()
-                        );
-                        report.fail(file.to_string());
-                        continue;
-                    }
-                };
+                // Key the record by the app dir the installer created
+                let name = inst_pkg.repo_name.clone();
                 let display_names = inst_pkg.get_command_names().join(", ");
                 if let Err(e) = record_installed(paths, installed, name.clone(), inst_pkg) {
                     println!("  {} {:#}", "✗".red(), e);
@@ -632,19 +621,8 @@ fn install_from_urls(
                         Some(url.to_string()),
                     ) {
                         Ok(inst_pkg) => {
-                            // Use first command name as package name
-                            let command_names = inst_pkg.get_command_names();
-                            let name = match command_names.first() {
-                                Some(n) => n.to_string(),
-                                None => {
-                                    println!(
-                                        "  {} No command names found in installed package",
-                                        "✗".red()
-                                    );
-                                    report.fail(filename.to_string());
-                                    continue;
-                                }
-                            };
+                            // Key the record by the app dir the installer created
+                            let name = inst_pkg.repo_name.clone();
                             let display_names = inst_pkg.get_command_names().join(", ");
                             if let Err(e) =
                                 record_installed(paths, installed, name.clone(), inst_pkg)

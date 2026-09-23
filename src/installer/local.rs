@@ -15,6 +15,21 @@ use crate::installer::{extract_archive, find_executable_candidates, normalize_co
 #[cfg(windows)]
 use crate::installer::create_shim;
 
+/// Archive extensions stripped when deriving a package name from a filename
+const ARCHIVE_EXTENSIONS: &[&str] = &[
+    ".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".tbz2", ".txz", ".tar", ".zip", ".7z",
+    ".gz", ".xz", ".bz2", ".zst",
+];
+
+/// Drop a trailing archive extension (case-insensitive), e.g. `tool.tar.gz` -> `tool`
+fn strip_archive_extension(filename: &str) -> &str {
+    let lower = filename.to_ascii_lowercase();
+    ARCHIVE_EXTENSIONS
+        .iter()
+        .find(|ext| lower.ends_with(*ext) && lower.len() > ext.len())
+        .map_or(filename, |ext| &filename[..filename.len() - ext.len()])
+}
+
 /// Install a local file (archive or binary)
 pub fn install_local_file(
     paths: &WenPaths,
@@ -32,7 +47,7 @@ pub fn install_local_file(
         custom.to_string()
     } else {
         // Extract name from filename (remove extension, versions, etc.)
-        normalize_command_name(filename)
+        normalize_command_name(strip_archive_extension(filename))
     };
 
     crate::core::InstalledStore::new(paths.clone()).ensure_dir_available(&name)?;
@@ -149,4 +164,21 @@ pub fn install_local_file(
         parent_package: None,
         download_url: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_archive_extension() {
+        assert_eq!(strip_archive_extension("mytool.tar.gz"), "mytool");
+        assert_eq!(strip_archive_extension("MyTool.ZIP"), "MyTool");
+        assert_eq!(
+            strip_archive_extension("tool-1.0-linux.tgz"),
+            "tool-1.0-linux"
+        );
+        assert_eq!(strip_archive_extension("tool.exe"), "tool.exe");
+        assert_eq!(strip_archive_extension(".zip"), ".zip");
+    }
 }

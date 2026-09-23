@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(add): local archives strip their extension when naming the app, and the record is keyed by the app dir, so `repair`/`del` see one package (B-9).
 - fix(delete): `del self` under `WENGET_ROOT` keeps an executable that lives outside the root (B-8).
 - fix(init): with `WENGET_ROOT` set, `init` no longer edits the real shell rc files or registry
   PATH (prints the PATH line instead), and `del self` no longer strips PATH entries (B-7).
