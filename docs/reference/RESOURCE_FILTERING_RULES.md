@@ -4,7 +4,7 @@
 > 未來新增或修改任何資源分析／篩選規則時，須先更新本文件，再修改對應程式碼。
 > 每條規則均以 `檔案:函式`（含行號僅供參考，以函式名為準）標註實作位置。
 
-分析流程分為兩大階段，另有數個輔助分類機制：
+分析流程分為三大階段，另有數個輔助分類機制：
 
 | 階段 | 內容 | 主要程式位置 |
 |------|------|-------------|
@@ -13,10 +13,8 @@
 | **階段三** | 解壓後檔案 → 選定可執行檔 | `src/installer/extractor.rs` — `find_executable_candidates` |
 | **輔助** | Release 取得、變體（variant）抽取、命令名正規化、glob 比對等 | 見第 5 節 |
 
-> ⚠️ **實際運行路徑**：階段一的評分邏輯由 `score_parsed`（parse-once 版本）執行；
-> `score_asset` / `select_for_platform` / `select_all_for_platform` 為演算法相同的
-> `#[allow(dead_code)]` 相容版本（測試與向後相容用）。**修改規則時必須同步修改兩者**，
-> 或以 `score_parsed` 為準。
+> **評分引擎架構**：階段一的所有資產評分均由單一評分引擎 `BinarySelector::score_parsed`
+> 執行；`select_for_platform` 為包裝其上的測試專用輔助函式（`#[cfg(test)]`）。
 
 ---
 
@@ -26,7 +24,7 @@
 |---|------|---------|
 | 0.1 | 只取 `/releases/latest`，**自動排除 draft 與 prerelease**（GitHub API 行為） | `src/providers/github.rs` — `GitHubProvider::fetch_latest_release` |
 | 0.2 | 指定版本時，tag 依序嘗試「加 `v` 前綴」與「去 `v` 前綴」兩種形式 | `src/providers/github.rs` — `fetch_release_by_tag` |
-| 0.3 | Release 無任何 assets → 直接報錯 | `src/providers/github.rs` — `fetch_package` / `fetch_package_by_version` |
+| 0.3 | Release 無任何 assets → 直接報錯 | `src/providers/github.rs` — `fetch_package` |
 | 0.4 | 階段一結束後平台 map 為空 → 直接報錯（無任何平台可安裝） | 同上 |
 
 ---
@@ -39,7 +37,7 @@
 
 ### 1.1 汰除規則（Gates，**依序執行**，任一命中即淘汰該 asset）
 
-實作：`BinarySelector::score_parsed`（與 `score_asset` 相同）。
+實作：`BinarySelector::score_parsed`。
 
 | 順序 | 規則 | 實作位置 |
 |------|------|---------|
@@ -113,20 +111,19 @@
 
 ### 2.2 匹配流程（`Platform::find_best_match`）
 
-1. **Phase 1 精確匹配**：依 2.1 順序查 platform map，命中即得分 `1000 - 優先序索引`。
-2. **Phase 2 fallback**（僅在 Phase 1 全部落空時執行，`fallback_identifiers`）：
+1. **Phase 1 精確匹配**：libc 與編譯器變體（`-gnu` / `-musl` / `-msvc`）均在此階段處理。由 `Platform::possible_identifiers` 依執行時期偵測之 libc 依序產生精確識別碼（分數為 `1000 - 優先序索引`，即 1000、999、998），逐一比對 platform map。
+2. **Phase 2 相容 fallback**（僅在 Phase 1 全部落空時執行，由 `Platform::fallback_identifiers` 產生）：
 
 | 目前平台 | Fallback 目標 | 類型 | 分數 | 需使用者確認 |
 |----------|--------------|------|------|:---:|
-| Linux x86_64 | `linux-i686[-musl/-gnu]` | Arch32On64 | 300 | ✅ |
+| Linux x86_64 | `linux-i686`、`linux-i686-musl`、`linux-i686-gnu` | Arch32On64 | 300 | ✅ |
 | macOS aarch64 | `macos-x86_64`（Rosetta 2） | X64OnArm | 200 | ✅ |
-| Windows x86_64 | `windows-i686[-msvc/-gnu]` | Arch32On64 | 300 | ✅ |
-| Windows aarch64 | `windows-x86_64[-msvc]`、`windows-i686` | X64OnArm | 200 | ✅ |
-| （通用）musl 頂替 gnu | — | MuslOnGnu | 500 | ❌ |
-| （通用）gnu 頂替 musl | — | GnuOnMusl | 400 | ✅ |
-| （通用）Windows 編譯器變體 | — | WindowsCompilerVariant | 450 | ❌ |
+| Windows x86_64 | `windows-i686`、`windows-i686-msvc`、`windows-i686-gnu` | Arch32On64 | 300 | ✅ |
+| Windows aarch64 | `windows-x86_64`、`windows-x86_64-msvc`、`windows-i686` | X64OnArm | 200 | ✅ |
 
 需否確認見 `FallbackType::requires_confirmation`。最終依分數由高至低排序。
+
+> 註：`FallbackType` 列舉中的 `MuslOnGnu`、`GnuOnMusl` 與 `WindowsCompilerVariant` 目前未由 `fallback_identifiers` 產生（追蹤於 `docs/plan/BACKLOG.md`）。
 
 ### 2.3 使用者覆寫（`Platform::match_override`，`-p/--platform` 旗標或 `preferred_platform` 設定）
 
@@ -140,8 +137,11 @@
 
 ## 3. 階段三：解壓後檔案 → 可執行檔選定
 
-進入點：`find_executable_candidates`（`src/installer/extractor.rs`）；
-`find_executable` 取排序後第一名。
+進入點：`find_executable_candidates`（`src/installer/extractor.rs`）。
+套件安裝（`src/commands/add.rs`）使用 `find_executable_candidates`，並可能同時選定多個可執行檔：
+- 單一候選：自動選定。
+- 多個候選（`score > 0`）：候選 ≤ 3 個或帶 `--yes` 時自動全數選定；> 3 個且未帶 `--yes` 時以 `MultiSelect` 互動選取；更新模式下保留既有執行檔。
+`find_executable` 僅取評分最高的第一名，專供自身更新（`src/commands/update.rs` 之 `upgrade_self_with_provider`）使用。
 
 ### 3.1 汰除規則（Gates，**依序執行**，任一命中即跳過該檔案）
 
@@ -213,7 +213,7 @@
   3. Cache 未命中且非 glob → 查已安裝套件（各套件記錄 `package.json`）中 DirectRepo 來源者，改走 URL 解析
   4. 皆未命中 → 依情境報錯；非 glob 名稱會以 `core::fuzzy::suggest` 附上「Did you mean」建議（`add` 同時涵蓋套件與腳本名稱）
 
-`wenget search` 不走此路徑，而是用 `core::fuzzy::score` 評分排序（不分大小寫）：glob（含 `* ? [`）／完全相符 > 前綴 > 字詞邊界子字串 > 子字串 > 子序列（跨度 ≤ 3× 字數，≥3 字）> 錯字容錯（4–5 字距離 ≤1、6+ 字 ≤2）> 描述／repo 的字首比對（≥3 字）。
+`wenget search` 不走此路徑，而是用 `core::fuzzy::score` 評分排序（不分大小寫）：glob（含 `* ? [`）／完全相符 > 前綴 > 字詞邊界子字串 > 子字串 > 子序列（跨度 ≤ 3× 字數，≥3 字）> 錯字容錯（4–5 字距離 ≤1、6+ 字 ≤2）> 描述／repo 的單字字首比對（word-prefix，≥3 字）。
 
 ### 5.3 安裝後命令名衝突解決（僅供參照，非資源篩選）
 
@@ -224,7 +224,6 @@
 ## 6. 修改規則時的檢查清單
 
 - [ ] 先更新本文件對應章節，再改程式碼
-- [ ] 階段一評分改動：`score_parsed` 與 `score_asset` **兩處同步**
 - [ ] 三份排除清單（1.3 裸執行檔排除、1.1 G1、3.1 G1）**各自獨立**，確認改到正確的一份
 - [ ] 順序敏感規則（1.3 OS 偵測順序、4 平台樣式移除順序、3.1 gates 順序）改動時，確認既有測試涵蓋順序行為
 - [ ] 執行 `cargo test`（platform、extractor、manifest 模組均有行為測試）

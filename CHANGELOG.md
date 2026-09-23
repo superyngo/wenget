@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs(reference): `RESOURCE_FILTERING_RULES.md` describes the single scoring engine
+  `score_parsed`, the fallbacks `fallback_identifiers` actually produces, and multi-executable
+  selection; the glossary drops the removed `SourceProvider`, fixes **Manifest**, and adds
+  **Launcher**, **Staging** and **Manifest cache** (documentation audit DA-11–DA-18).
+
 - docs: `CLAUDE.md` is now a pointer that imports `AGENTS.md`; `AGENTS.md` drops its project
   tree and the removed `SourceProvider` example, adds a Gotchas section, and its release steps
   match the `[Unreleased]` convention, the `v*.*.*` tag trigger and the changelog archive rule
