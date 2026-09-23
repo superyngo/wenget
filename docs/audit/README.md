@@ -8,6 +8,9 @@ Current behavior lives in [`../reference/`](../reference/README.md).
 
 - **[2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md)** — two-pass
   documentation sweep (structure + accuracy against the code). 13 structural, 22 accuracy findings.
+- **[2026-09-23-search-evaluation.md](2026-09-23-search-evaluation.md)** — evaluation of
+  `wenget search` (glob, case-sensitive, unranked) with the evidence behind the fuzzy ranked search
+  shipped in `529bfe2`. Resolved (2026-09-23); listed here until the Landed table is written in step 9.
 - **[2026-09-23-implementation-simplicity-audit.md](2026-09-23-implementation-simplicity-audit.md)**
   — implementation, clarity, simplicity, and optimization sweep of v3.9.0, plus a status re-check
   of every 2026-09-03 finding. 7 High among 39 new findings. Headlines: failed installs exit 0,

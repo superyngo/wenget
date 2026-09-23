@@ -16,7 +16,7 @@ code in the tree.
 
 The problems now sit at the **edges of the command layer**: what the user sees when something
 fails, and how `add`/`update` are wired together. Four were reproduced on the real binary
-(scripts in `docs/tmp/claude-scratch/audit-2026-09-23-repros.sh`):
+(scripts in [`2026-09-23-implementation-simplicity-audit/repros.sh`](2026-09-23-implementation-simplicity-audit/repros.sh)):
 
 - a failed install exits **0** (IM-1);
 - every error message drops its root cause, so users see `Failed to create wenget root directory`
@@ -585,5 +585,5 @@ Four parallel read-only scouts each covered one slice (add/update, engine, state
 commands/installers). Every finding above was re-read against the source by the lead auditor, or
 reproduced on the debug binary. Reproduced findings are marked. Reproductions run in a
 `WENGET_ROOT` sandbox (bin directory included) and live in
-`docs/tmp/claude-scratch/audit-2026-09-23-repros.sh`. Dead code was measured by compiling a copy
+[`2026-09-23-implementation-simplicity-audit/repros.sh`](2026-09-23-implementation-simplicity-audit/repros.sh). Dead code was measured by compiling a copy
 of `src/` in `/tmp` with the allow attributes stripped; the working tree was not modified.

@@ -1,6 +1,7 @@
 # `wenget search` evaluation (2026-09-23)
+Status: Resolved (2026-09-23)
 
-Status: implemented in commit 529bfe2 (2026-09-23). Deviations: subsequence span cap 3x; typo tolerance only for 4+ chars; description/repo use word-prefix match (not raw substring) to avoid noise like rip→JavaScript.
+Implemented in commit 529bfe2 (2026-09-23). Deviations: subsequence span cap 3x; typo tolerance only for 4+ chars; description/repo use word-prefix match (not raw substring) to avoid noise like rip→JavaScript.
 
 ## Current implementation (`src/commands/search.rs`)
 

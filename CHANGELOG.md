@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- docs: the 2026-09-23 audit's repro script moves beside its audit, the `search` evaluation
+  becomes `docs/audit/2026-09-23-search-evaluation.md`, the rest of `docs/tmp/claude-scratch/`
+  is archived to `docs/tmp/archive/2026-09.tar.gz`, and `docs/tmp/*-scratch/` is gitignored
+  (documentation audit DS-7–DS-9).
+
 - docs: records put `Status:` on line 2 with values from the fixed set; ADR 0001 is
   `Implemented`; spec/plan pairs share a basename (`2026-03-18-update-scripts-and-self-check`,
   `2026-04-10-update-default-binary-asset-matching`, `2026-09-03-per-package-records`);
