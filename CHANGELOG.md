@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   found or do not support the platform. All inputs in a batch are still attempted before the
   failure is reported; a user cancellation or "already up to date" still exits 0 (audit IM-1).
 
+- fix(rename): renaming a Python/PowerShell script package no longer fails with "Failed to read
+  symlink" on Unix; script launchers are rebuilt from the package record. The new launcher is now
+  created before the old one is removed, so a failed rename keeps the old command (audit IM-4).
+
 - feat(search): fuzzy, ranked, case-insensitive search. Terms match names by tier (exact >
   prefix > word-boundary substring > substring > subsequence such as `rgp` → ripgrep > typo
   tolerance for 4+ char terms), then word prefixes in descriptions and repo URLs (e.g. `json`,

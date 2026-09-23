@@ -12,8 +12,8 @@ pub use extractor::{
     extract_archive, find_executable, find_executable_candidates, normalize_command_name,
 };
 pub use script::{
-    create_script_shim, detect_script_type, download_script, extract_script_name, install_script,
-    read_local_script,
+    create_script_launcher, create_script_shim, detect_script_type, download_script,
+    extract_script_name, install_script, read_local_script,
 };
 pub use staging::StagedInstall;
 

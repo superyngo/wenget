@@ -232,16 +232,24 @@ pub fn install_script(
 pub fn create_script_shim(paths: &WenPaths, name: &str, script_type: &ScriptType) -> Result<()> {
     let app_dir = paths.app_dir(name);
     let script_filename = format!("{}.{}", name, script_type.extension());
-    let script_path = app_dir.join(&script_filename);
+    create_script_launcher(paths, name, &app_dir.join(&script_filename), script_type)
+}
 
+/// Create a launcher named `cmd_name` for the script at `script_path`
+pub fn create_script_launcher(
+    paths: &WenPaths,
+    cmd_name: &str,
+    script_path: &Path,
+    script_type: &ScriptType,
+) -> Result<()> {
     #[cfg(windows)]
     {
-        create_script_shim_windows(paths, name, &script_path, script_type)?;
+        create_script_shim_windows(paths, cmd_name, script_path, script_type)?;
     }
 
     #[cfg(unix)]
     {
-        create_script_shim_unix(paths, name, &script_path, script_type)?;
+        create_script_shim_unix(paths, cmd_name, script_path, script_type)?;
     }
 
     Ok(())

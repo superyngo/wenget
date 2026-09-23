@@ -231,7 +231,7 @@ fn rename_command(
         .context("Package not found in manifest")?;
 
     // Find the executable path for the old command name
-    let _exe_path_key = package
+    let exe_path_key = package
         .get_exe_path_for_command(old_cmd)
         .map(|s| s.to_string())
         .or_else(|| {
@@ -250,51 +250,59 @@ fn rename_command(
         anyhow::bail!("Install path does not exist: {}", install_path.display());
     }
 
-    // Read the target of the old symlink/shim before removing it
     let old_shim = paths.bin_shim_path(old_cmd);
 
-    #[cfg(unix)]
-    let target_binary = if old_shim.exists() {
-        // Read symlink target
-        fs::read_link(&old_shim)
-            .with_context(|| format!("Failed to read symlink: {}", old_shim.display()))?
+    // Create the new launcher before removing the old one, so a failure leaves the old one working
+    if let crate::core::manifest::PackageSource::Script { script_type, .. } = &package.source {
+        // Script launchers are wrappers, not links to read back: rebuild from the record
+        installer::create_script_launcher(
+            paths,
+            new_cmd,
+            &install_path.join(&exe_path_key),
+            script_type,
+        )
+        .context("Failed to create new launcher")?;
     } else {
-        anyhow::bail!("Old symlink does not exist: {}", old_shim.display());
-    };
+        #[cfg(unix)]
+        let target_binary = if old_shim.exists() {
+            fs::read_link(&old_shim)
+                .with_context(|| format!("Failed to read symlink: {}", old_shim.display()))?
+        } else {
+            anyhow::bail!("Old symlink does not exist: {}", old_shim.display());
+        };
 
-    #[cfg(windows)]
-    let target_binary = if old_shim.exists() {
-        // Read shim target from .cmd file
-        read_shim_target(&old_shim)?
-    } else {
-        anyhow::bail!("Old shim does not exist: {}", old_shim.display());
-    };
+        #[cfg(windows)]
+        let target_binary = if old_shim.exists() {
+            read_shim_target(&old_shim)?
+        } else {
+            anyhow::bail!("Old shim does not exist: {}", old_shim.display());
+        };
 
-    // Remove old symlink/shim
-    if old_shim.exists() {
+        #[cfg(unix)]
+        {
+            installer::create_symlink(&target_binary, &paths.bin_dir().join(new_cmd))
+                .context("Failed to create new symlink")?;
+        }
+
+        #[cfg(windows)]
+        {
+            installer::create_shim(
+                &target_binary,
+                &paths.bin_dir().join(format!("{}.cmd", new_cmd)),
+                new_cmd,
+            )
+            .context("Failed to create new shim")?;
+        }
+    }
+
+    log::info!("Created new shim/symlink: {}", new_cmd);
+
+    // Remove old symlink/shim (symlink_metadata also catches a dangling symlink)
+    if fs::symlink_metadata(&old_shim).is_ok() {
         fs::remove_file(&old_shim)
             .with_context(|| format!("Failed to remove old shim: {}", old_shim.display()))?;
         log::info!("Removed old shim: {}", old_shim.display());
     }
-
-    // Create new symlink/shim pointing to the same target
-    #[cfg(unix)]
-    {
-        installer::create_symlink(&target_binary, &paths.bin_dir().join(new_cmd))
-            .context("Failed to create new symlink")?;
-    }
-
-    #[cfg(windows)]
-    {
-        installer::create_shim(
-            &target_binary,
-            &paths.bin_dir().join(format!("{}.cmd", new_cmd)),
-            new_cmd,
-        )
-        .context("Failed to create new shim")?;
-    }
-
-    log::info!("Created new shim/symlink: {}", new_cmd);
 
     // Update executables map in the package
     let package_mut = installed
@@ -358,6 +366,58 @@ fn read_shim_target(shim_path: &Path) -> Result<std::path::PathBuf> {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    /// A Python script's Unix launcher is a wrapper file, not a symlink (audit IM-4)
+    #[cfg(unix)]
+    #[test]
+    fn test_rename_script_package_recreates_wrapper() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = crate::core::WenPaths::with_root(tmp.path().to_path_buf());
+        let script_type = crate::core::manifest::ScriptType::Python;
+
+        let app_dir = paths.app_dir("hello");
+        fs::create_dir_all(&app_dir).unwrap();
+        fs::write(app_dir.join("hello.py"), "print('hi')\n").unwrap();
+        fs::create_dir_all(paths.bin_dir()).unwrap();
+        installer::create_script_shim(&paths, "hello", &script_type).unwrap();
+
+        let mut exes = HashMap::new();
+        exes.insert("hello.py".to_string(), "hello".to_string());
+        let mut installed = InstalledSet::new();
+        installed.packages.insert(
+            "hello".to_string(),
+            InstalledPackage {
+                meta_version: crate::core::manifest::CURRENT_META_VERSION,
+                repo_name: "hello".to_string(),
+                variant: None,
+                version: "script".to_string(),
+                platform: "python-script".to_string(),
+                installed_at: chrono::Utc::now(),
+                install_path: app_dir.to_string_lossy().to_string(),
+                executables: exes,
+                source: crate::core::manifest::PackageSource::Script {
+                    origin: "hello.py".to_string(),
+                    script_type,
+                },
+                description: String::new(),
+                command_names: vec![],
+                command_name: None,
+                asset_name: "hello.py".to_string(),
+                parent_package: None,
+                download_url: None,
+            },
+        );
+
+        rename_command(&paths, &mut installed, "hello", "hello", "hey").unwrap();
+
+        assert!(!paths.bin_shim_path("hello").exists());
+        let wrapper = fs::read_to_string(paths.bin_shim_path("hey")).unwrap();
+        assert!(wrapper.contains("hello.py"));
+        assert_eq!(
+            installed.packages["hello"].executables["hello.py"],
+            "hey".to_string()
+        );
+    }
 
     #[test]
     fn test_validate_new_name_success() {
