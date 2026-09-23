@@ -178,6 +178,7 @@ pub fn extract_script_name(input: &str) -> Option<String> {
 pub fn download_script(url: &str) -> Result<String> {
     use crate::utils::HttpClient;
 
+    crate::downloader::warn_if_plaintext(url);
     let client = HttpClient::new()?;
     let content = client
         .get_text(url)

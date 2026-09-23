@@ -1,6 +1,7 @@
 //! Downloader module for wenget
 
 use anyhow::{Context, Result};
+use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs::File;
 use std::io::Write;
@@ -44,8 +45,28 @@ impl Drop for CleanupGuard {
     }
 }
 
+/// Warn when `url` is plaintext `http://`
+///
+/// The content can be altered in transit, and unless the release publishes a
+/// checksum nothing downstream would notice.
+pub fn warn_if_plaintext(url: &str) {
+    if is_plaintext_http(url) {
+        eprintln!(
+            "  {} downloading over plain http (not encrypted, can be tampered with): {}",
+            "Warning:".yellow(),
+            url
+        );
+    }
+}
+
+fn is_plaintext_http(url: &str) -> bool {
+    url.get(..7)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("http://"))
+}
+
 /// Download a file from URL to a local path with progress bar
 pub fn download_file(url: &str, dest: &Path) -> Result<()> {
+    warn_if_plaintext(url);
     log::info!("Downloading: {}", url);
     log::debug!("Destination: {}", dest.display());
 
@@ -115,6 +136,14 @@ pub fn download_file(url: &str, dest: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_is_plaintext_http() {
+        assert!(super::is_plaintext_http("http://example.com/a.tar.gz"));
+        assert!(super::is_plaintext_http("HTTP://example.com/a"));
+        assert!(!super::is_plaintext_http("https://example.com/a"));
+        assert!(!super::is_plaintext_http("./http"));
+    }
+
     #[test]
     fn test_cleanup_guard_removes_file_and_dir() {
         let tmp = tempfile::TempDir::new().unwrap();

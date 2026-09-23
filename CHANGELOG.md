@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- feat(add): downloads over plain `http://` print a warning (S-9; the cheap "warn" variant, not a
+  hard reject).
 - fix(update): `wenget update self` no longer warns "'self' is not installed"; it says wenget is
   checked on every update (B-4).
 - fix: legacy record migration writes `/`-separated executable keys on Windows too.
