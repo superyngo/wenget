@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(deps): bump locked crates past security advisories — `tar` 0.4.46, `rustls` 0.23.45,
+  `rustls-webpki` 0.103.15, `quinn-proto` 0.11.18 (`rand` 0.10.3), `anyhow` 1.0.104. Closes
+  Dependabot alerts #1–#10 and RUSTSEC-2026-0285/-0190.
+
 - docs: close the 2026-09-23 documentation audit (Resolved) and its plan (Shipped).
 
 - docs(readme): `del` replaces the nonexistent `delete`; only `--verbose` is global; bucket
