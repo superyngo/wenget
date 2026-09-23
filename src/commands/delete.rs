@@ -430,7 +430,7 @@ fn delete_self(yes: bool) -> Result<()> {
     // Step: Remove from PATH (if selected)
     if options.remove_path {
         println!("{} Removing from PATH...", format!("{}.", step_num).bold());
-        match remove_from_path(&paths.bin_dir()) {
+        match remove_from_path(&paths) {
             Ok(()) => println!("   {} PATH updated", "✓".green()),
             Err(e) => println!("   {} Failed to update PATH: {}", "⚠".yellow(), e),
         }
@@ -483,12 +483,17 @@ fn delete_self(yes: bool) -> Result<()> {
 }
 
 /// Remove wenget bin directory from PATH
-fn remove_from_path(bin_dir: &Path) -> Result<()> {
+fn remove_from_path(paths: &WenPaths) -> Result<()> {
+    let bin_dir = paths.bin_dir();
     let bin_dir_str = bin_dir.to_string_lossy();
 
     #[cfg(windows)]
     {
         remove_from_path_windows(&bin_dir_str)?;
+        // `init` adds the internal bin dir to the system PATH for system installs
+        if paths.is_system_install() {
+            crate::core::registry::remove_from_system_path(&paths.internal_bin_dir())?;
+        }
     }
 
     #[cfg(not(windows))]
@@ -499,36 +504,10 @@ fn remove_from_path(bin_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Remove from PATH on Windows
+/// Remove from the user PATH on Windows
 #[cfg(windows)]
 fn remove_from_path_windows(bin_dir: &str) -> Result<()> {
-    use std::process::Command;
-
-    let ps_script = format!(
-        r#"
-        $oldPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-        if ($oldPath -like '*{}*') {{
-            $newPath = ($oldPath -split ';' | Where-Object {{ $_ -ne '{}' }}) -join ';'
-            [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
-            Write-Output 'Removed'
-        }} else {{
-            Write-Output 'Not found'
-        }}
-        "#,
-        bin_dir, bin_dir
-    );
-
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &ps_script])
-        .output()
-        .context("Failed to execute PowerShell command")?;
-
-    let result = String::from_utf8_lossy(&output.stdout);
-
-    if !result.contains("Removed") && !result.contains("Not found") && !output.status.success() {
-        return Err(anyhow::anyhow!("PowerShell command failed"));
-    }
-
+    crate::core::registry::remove_from_user_path(Path::new(bin_dir))?;
     Ok(())
 }
 

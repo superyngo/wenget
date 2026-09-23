@@ -1,7 +1,8 @@
 //! Windows Registry operations for wenget
 //!
-//! This module provides utilities for modifying the Windows system PATH
-//! when running with Administrator privileges.
+//! This module edits the Windows user PATH (`HKCU\\Environment`) and, with
+//! Administrator privileges, the system PATH. Values are edited in the registry
+//! directly (no generated PowerShell source), keeping their value type.
 
 #[allow(unused_imports)]
 use anyhow::{Context, Result};
@@ -66,15 +67,19 @@ fn modify_path_value(
     use winreg::enums::*;
     use winreg::RegValue;
 
-    let vtype = key
-        .get_raw_value(name)
-        .map(|v| v.vtype)
-        .context("Failed to read current PATH")?;
-    let vtype = match vtype {
-        REG_SZ | REG_EXPAND_SZ => vtype,
-        _ => REG_EXPAND_SZ,
+    let (current_path, vtype) = match key.get_raw_value(name) {
+        Ok(raw) => {
+            let vtype = match raw.vtype {
+                REG_SZ => REG_SZ,
+                _ => REG_EXPAND_SZ,
+            };
+            let value: String = key.get_value(name).context("Failed to read current PATH")?;
+            (value, vtype)
+        }
+        // A fresh user profile may have no user `Path` value yet
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (String::new(), REG_EXPAND_SZ),
+        Err(e) => return Err(e).context("Failed to read current PATH"),
     };
-    let current_path: String = key.get_value(name).context("Failed to read current PATH")?;
 
     let path_str = path.to_string_lossy();
     let Some(new_path) = compute_new_path(&current_path, &path_str, operation) else {
@@ -114,6 +119,40 @@ fn modify_system_path_inner(path: &Path, operation: PathOperation) -> Result<boo
     Ok(changed)
 }
 
+/// Core implementation for modifying the current user's PATH
+#[cfg(windows)]
+fn modify_user_path_inner(path: &Path, operation: PathOperation) -> Result<bool> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (env, _) = hkcu
+        .create_subkey("Environment")
+        .context("Failed to open user environment registry key")?;
+
+    let changed = modify_path_value(&env, "Path", path, operation)?;
+    if changed {
+        broadcast_environment_change();
+    }
+    Ok(changed)
+}
+
+/// Add a directory to the current user's PATH on Windows
+///
+/// Returns `Ok(false)` when the directory is already present.
+#[cfg(windows)]
+pub fn add_to_user_path(path: &Path) -> Result<bool> {
+    modify_user_path_inner(path, PathOperation::Add)
+}
+
+/// Remove a directory from the current user's PATH on Windows
+///
+/// Returns `Ok(false)` when the directory was not present.
+#[cfg(windows)]
+pub fn remove_from_user_path(path: &Path) -> Result<bool> {
+    modify_user_path_inner(path, PathOperation::Remove)
+}
+
 /// Add a directory to the system PATH on Windows
 ///
 /// This modifies the system-wide PATH environment variable in the registry.
@@ -144,7 +183,6 @@ pub fn add_to_system_path(path: &Path) -> Result<bool> {
 /// - Not running with Administrator privileges
 /// - Registry access fails
 #[cfg(windows)]
-#[allow(dead_code)]
 pub fn remove_from_system_path(path: &Path) -> Result<bool> {
     modify_system_path_inner(path, PathOperation::Remove)
 }
@@ -152,10 +190,27 @@ pub fn remove_from_system_path(path: &Path) -> Result<bool> {
 /// Broadcast a WM_SETTINGCHANGE message to notify other processes of environment change
 #[cfg(windows)]
 fn broadcast_environment_change() {
-    // We use a simple approach here - in a real implementation, you might want to use
-    // SendMessageTimeout with HWND_BROADCAST and WM_SETTINGCHANGE
-    // For now, we just log that the change was made
-    log::debug!("Environment change made. You may need to restart your terminal.");
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_SETTINGCHANGE,
+    };
+
+    // Explorer re-reads the environment on WM_SETTINGCHANGE("Environment"), so
+    // shells started afterwards see the new PATH. Already-running shells do not.
+    let area: Vec<u16> = "Environment".encode_utf16().chain(Some(0)).collect();
+    let mut result: usize = 0;
+    // SAFETY: `area` is a NUL-terminated UTF-16 string that outlives the call,
+    // and `result` is a valid out-pointer.
+    unsafe {
+        SendMessageTimeoutW(
+            HWND_BROADCAST,
+            WM_SETTINGCHANGE,
+            0,
+            area.as_ptr() as isize,
+            SMTO_ABORTIFHUNG,
+            5000,
+            &mut result,
+        );
+    }
 }
 
 /// Stub implementation for non-Windows platforms
@@ -234,5 +289,33 @@ mod tests {
         assert!(changed.unwrap());
         assert_eq!(raw.vtype, REG_EXPAND_SZ);
         assert_eq!(value, "%SystemRoot%\\system32;C:\\wenget\\bin");
+    }
+
+    /// A missing value is created on Add and left alone on Remove; paths with `'` work
+    #[cfg(windows)]
+    #[test]
+    fn test_modify_path_value_missing_value_and_quote() {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let sub = format!("Software\\wenget-test-missing-{}", std::process::id());
+        let (key, _) = hkcu.create_subkey(&sub).unwrap();
+        let dir = Path::new("C:\\Users\\o'brien\\.local\\bin");
+
+        let removed_missing = modify_path_value(&key, "Path", dir, PathOperation::Remove);
+        let added = modify_path_value(&key, "Path", dir, PathOperation::Add);
+        let raw_type = key.get_raw_value("Path").map(|v| v.vtype);
+        let value: std::io::Result<String> = key.get_value("Path");
+        let removed = modify_path_value(&key, "Path", dir, PathOperation::Remove);
+        let after: std::io::Result<String> = key.get_value("Path");
+        hkcu.delete_subkey_all(&sub).unwrap();
+
+        assert!(!removed_missing.unwrap());
+        assert!(added.unwrap());
+        assert_eq!(raw_type.unwrap(), REG_EXPAND_SZ);
+        assert_eq!(value.unwrap(), "C:\\Users\\o'brien\\.local\\bin");
+        assert!(removed.unwrap());
+        assert_eq!(after.unwrap(), "");
     }
 }

@@ -2215,6 +2215,7 @@ dependencies = [
  "tar",
  "tempfile",
  "toml",
+ "windows-sys 0.61.2",
  "winreg",
  "xz2",
  "zip",

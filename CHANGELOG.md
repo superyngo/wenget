@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(windows): user PATH is edited in the registry instead of generated PowerShell source, so
+  usernames containing `'` work and entries match exactly; PATH changes are broadcast
+  (`WM_SETTINGCHANGE`); `del self` also removes the system PATH entry for system installs
+  (S-4, SI-5).
 - fix(windows): self-update cleanup and `del self` scripts now run when the path contains spaces
   (`start` got the quoted path as its window title); non-UTF-8 paths no longer panic (S-8, Q-7).
 - fix(windows): admin `init` keeps the system `Path` value type (`REG_EXPAND_SZ`) when adding to

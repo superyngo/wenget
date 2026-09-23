@@ -468,9 +468,8 @@ fn setup_path(config: &Config) -> Result<()> {
 /// Set up PATH on Windows (modify user or system environment variable)
 #[cfg(windows)]
 fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
-    use crate::core::registry::add_to_system_path;
+    use crate::core::registry::{add_to_system_path, add_to_user_path};
     use std::path::Path;
-    use std::process::Command;
 
     if is_system_install {
         // For system installs, use registry to modify system PATH
@@ -498,41 +497,28 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
         return Ok(());
     }
 
-    // For user installs, use PowerShell to add to user PATH
-    let ps_script = format!(
-        r#"
-        $oldPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-        if ($oldPath -notlike '*{}*') {{
-            $newPath = $oldPath + ';{}'
-            [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
-            Write-Output 'Added'
-        }} else {{
-            Write-Output 'Already exists'
-        }}
-        "#,
-        bin_dir, bin_dir
-    );
-
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &ps_script])
-        .output()
-        .context("Failed to execute PowerShell command")?;
-
-    let result = String::from_utf8_lossy(&output.stdout);
-
-    if result.contains("Added") {
-        println!("{}", "✓ Added wenget bin directory to user PATH".green());
-        println!();
-        println!("{}", "IMPORTANT:".yellow().bold());
-        println!("  Please restart your terminal or command prompt");
-        println!("  for the PATH changes to take effect.");
-    } else if result.contains("Already exists") {
-        println!("{}", "✓ wenget bin directory is already in PATH".green());
-    } else if !output.status.success() {
-        println!("{}", "⚠ Failed to automatically update PATH".yellow());
-        println!();
-        println!("Please manually add the following to your PATH:");
-        println!("  {}", bin_dir.cyan());
+    // For user installs, edit the user PATH in the registry
+    match add_to_user_path(Path::new(bin_dir)) {
+        Ok(true) => {
+            println!("{}", "✓ Added wenget bin directory to user PATH".green());
+            println!();
+            println!("{}", "IMPORTANT:".yellow().bold());
+            println!("  Please restart your terminal or command prompt");
+            println!("  for the PATH changes to take effect.");
+        }
+        Ok(false) => {
+            println!("{}", "✓ wenget bin directory is already in PATH".green());
+        }
+        Err(e) => {
+            println!(
+                "{} Failed to automatically update PATH: {}",
+                "⚠".yellow(),
+                e
+            );
+            println!();
+            println!("Please manually add the following to your PATH:");
+            println!("  {}", bin_dir.cyan());
+        }
     }
 
     Ok(())
