@@ -2335,27 +2335,40 @@ fn install_script_from_bucket(
     // Determine the final command name
     let command_name = custom_name.unwrap_or(name);
 
-    println!("  Installing script as '{}'...", command_name);
+    // Keep a name set by `wenget rename` when the script is reinstalled/updated
+    let launcher_name = match custom_name {
+        Some(_) => None,
+        None => installed
+            .get_package(name)
+            .filter(|p| matches!(p.source, PackageSource::Script { .. }))
+            .and_then(|p| p.executables.values().next().cloned())
+            .filter(|cmd| cmd != name),
+    };
+    let launcher_name = launcher_name.as_deref().unwrap_or(command_name);
+
+    println!("  Installing script as '{}'...", launcher_name);
 
     // Install script to app directory
     let files = install_script(paths, command_name, &content, &script_type)?;
+    let script_file = files
+        .first()
+        .cloned()
+        .unwrap_or_else(|| format!("{}.{}", command_name, script_type.extension()));
 
-    println!("  Command will be available as: {}", command_name);
+    println!("  Command will be available as: {}", launcher_name);
 
     // Create shim
     println!("  Creating launcher...");
-    create_script_shim(paths, command_name, &script_type)?;
+    crate::installer::script::create_script_launcher(
+        paths,
+        launcher_name,
+        &paths.app_dir(command_name).join(&script_file),
+        &script_type,
+    )?;
 
     // Create executables map
     let mut executables = HashMap::new();
-    if let Some(script_file) = files.first() {
-        executables.insert(script_file.clone(), command_name.to_string());
-    } else {
-        executables.insert(
-            format!("{}.{}", command_name, script_type.extension()),
-            command_name.to_string(),
-        );
-    }
+    executables.insert(script_file, launcher_name.to_string());
 
     // Create installed package info
     let inst_pkg = InstalledPackage {

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(update): updating a bucket script keeps the command name set by `wenget rename` instead of
+  recreating the original launcher and leaving the renamed one stale (B-2).
 - fix(add): package name patterns use `glob::Pattern` like `del`, so `?` and `[...]` work
   (`add 'f[d]'`) (SI-3).
 - fix: 7z extraction records `/`-separated paths on Windows like tar/zip; tests fixed for Windows
