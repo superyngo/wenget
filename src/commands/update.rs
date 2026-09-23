@@ -138,6 +138,20 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
         return Ok(());
     }
 
+    // wenget itself was just checked above; `self` is not a package name
+    let asked_for_self = names.iter().any(|n| n.eq_ignore_ascii_case("self"));
+    let names: Vec<String> = names
+        .into_iter()
+        .filter(|n| !n.eq_ignore_ascii_case("self"))
+        .collect();
+    if asked_for_self && names.is_empty() {
+        println!(
+            "{}",
+            "wenget itself is checked on every 'wenget update'".green()
+        );
+        return Ok(());
+    }
+
     let config = Config::new()?;
     let installed = config.get_or_create_installed()?;
 
