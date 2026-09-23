@@ -7,6 +7,15 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
 
+/// GitHub API base URL; `WENGET_GITHUB_API` overrides it (test hook for local fixtures)
+pub fn api_base() -> String {
+    std::env::var("WENGET_GITHUB_API")
+        .ok()
+        .filter(|u| !u.trim().is_empty())
+        .map(|u| u.trim_end_matches('/').to_string())
+        .unwrap_or_else(|| "https://api.github.com".to_string())
+}
+
 /// GitHub provider
 #[derive(Clone)]
 pub struct GitHubProvider {
@@ -55,10 +64,7 @@ impl GitHubProvider {
 
     /// Fetch latest release from GitHub API
     pub fn fetch_latest_release(&self, owner: &str, repo: &str) -> Result<GitHubRelease> {
-        let url = format!(
-            "https://api.github.com/repos/{}/{}/releases/latest",
-            owner, repo
-        );
+        let url = format!("{}/repos/{}/{}/releases/latest", api_base(), owner, repo);
 
         self.http
             .get_json(&url)
@@ -82,8 +88,11 @@ impl GitHubProvider {
         let mut last_error = None;
         for try_tag in tags_to_try {
             let url = format!(
-                "https://api.github.com/repos/{}/{}/releases/tags/{}",
-                owner, repo, try_tag
+                "{}/repos/{}/{}/releases/tags/{}",
+                api_base(),
+                owner,
+                repo,
+                try_tag
             );
 
             match self.http.get_json(&url) {
@@ -99,7 +108,7 @@ impl GitHubProvider {
 
     /// Get repository information
     pub fn fetch_repo_info(&self, owner: &str, repo: &str) -> Result<GitHubRepo> {
-        let url = format!("https://api.github.com/repos/{}/{}", owner, repo);
+        let url = format!("{}/repos/{}/{}", api_base(), owner, repo);
 
         self.http
             .get_json(&url)

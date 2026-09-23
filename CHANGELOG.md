@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- test(update): end-to-end `update` tests against a local HTTP fixture (bucket + GitHub API), with
+  the API base overridable via the `WENGET_GITHUB_API` test hook (T-3).
 - refactor(add): `install_packages`/`install_package` take `&InstallOptions` instead of positional
   flags, and the unused `_parent_package` argument is gone (CL-1; Installer split tracked as CL-8).
 - refactor(paths): resolve `~/.local/bin` when `WenPaths` is built, removing the `expect` in

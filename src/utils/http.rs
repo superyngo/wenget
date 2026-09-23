@@ -95,7 +95,10 @@ impl HttpClient {
     #[allow(dead_code)]
     pub fn check_rate_limit(&self) -> Result<RateLimit> {
         let data: serde_json::Value = self
-            .get_json("https://api.github.com/rate_limit")
+            .get_json(&format!(
+                "{}/rate_limit",
+                crate::providers::github::api_base()
+            ))
             .context("Failed to check rate limit")?;
 
         let core = &data["rate"];
