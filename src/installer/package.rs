@@ -294,8 +294,6 @@ impl PackageInstaller<'_> {
             installed_key,
         } = *req;
         let (paths, ui) = (self.paths, self.ui);
-        let custom_name = self.command_name;
-        let (no_suffix, update_mode) = (self.no_suffix, self.update_mode);
 
         // Log if using fallback
         if let Some(fallback_type) = &platform_match.fallback_type {
@@ -355,113 +353,18 @@ impl PackageInstaller<'_> {
         let selected_executables =
             self.select_executables(installed, installed_key, &candidates)?;
 
-        // Install all selected executables
-        let mut executables: HashMap<String, String> = HashMap::new();
-
-        // Extract repo_name and variant from installed_key for resolve_command_name
-        // installed_key format: "repo_name" or "repo_name::variant"
-        let (_, variant_opt) = if let Some(pos) = installed_key.find("::") {
-            (
-                installed_key[..pos].to_string(),
-                if no_suffix {
-                    None
-                } else {
-                    Some(installed_key[pos + 2..].to_string())
-                },
-            )
-        } else {
-            (installed_key.to_string(), None)
-        };
-
-        // If this package is already installed, grab old executables for command name reuse
+        // Resolve every command name before the swap: anything that can fail here must
+        // fail while the previous install and its record are still in place.
+        let launchers = self.plan_launchers(
+            installed,
+            installed_key,
+            staged.path(),
+            selected_executables,
+        )?;
         let old_executables = installed
             .get_package(installed_key)
             .map(|p| p.executables.clone());
-
-        // Precompute the set of command names already in use (excluding this package)
-        // so per-executable conflict checks are O(1) instead of scanning all packages
-        // for every candidate suffix in `resolve_command_name`.
-        let mut taken_names = installed.command_name_set(Some(installed_key));
-
-        // Resolve every command name before the swap: anything that can fail here must
-        // fail while the previous install and its record are still in place.
-        let mut launchers: Vec<(String, String)> = Vec::new(); // (exe_relative, command name)
-        for exe_relative in selected_executables {
-            let staged_exe = staged.path().join(&exe_relative);
-
-            if !staged_exe.exists() {
-                anyhow::bail!("Executable not found: {}", exe_relative);
-            }
-
-            // When updating, try to reuse old command names
-            let reused_name = if update_mode {
-                if let Some(old_exes) = &old_executables {
-                    let filename = staged_exe
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("");
-
-                    // Try path match first, then filename match
-                    old_exes.get(&exe_relative).cloned().or_else(|| {
-                        old_exes
-                            .iter()
-                            .find(|(old_path, _)| {
-                                std::path::Path::new(old_path.as_str())
-                                    .file_name()
-                                    .and_then(|s| s.to_str())
-                                    == Some(filename)
-                            })
-                            .map(|(_, name)| name.clone())
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            let resolved_name = if let Some(reused) = reused_name {
-                ui.line(&format!("  Reusing command name: {}", reused));
-                reused
-            } else {
-                // Extract the actual command name from the executable path
-                let (base_name, is_custom) = if let Some(custom) = custom_name {
-                    // Use custom name if provided (only for first executable)
-                    if launchers.is_empty() {
-                        (custom.to_string(), true)
-                    } else {
-                        // For additional executables, use auto-detected name
-                        let raw_name = staged_exe
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .context("Failed to extract command name")?;
-                        (normalize_command_name(raw_name), false)
-                    }
-                } else {
-                    // Auto-detect and normalize command name
-                    let raw_name = staged_exe
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .context("Failed to extract command name")?;
-
-                    // Apply smart normalization to remove platform suffixes
-                    (normalize_command_name(raw_name), false)
-                };
-
-                // Resolve command name with variant to avoid conflicts
-                resolve_command_name(&base_name, variant_opt.as_deref(), &taken_names, is_custom)
-            };
-
-            ui.line(&format!(
-                "  Command will be available as: {}",
-                resolved_name
-            ));
-
-            // Record the name as taken so subsequent executables in the same package
-            // don't resolve to a colliding name.
-            taken_names.insert(resolved_name.clone());
-            launchers.push((exe_relative, resolved_name));
-        }
+        let mut executables: HashMap<String, String> = HashMap::new();
 
         // Every remaining step reads from the final location: swap now, so the
         // launchers point at the app directory rather than the staging path.
@@ -487,22 +390,7 @@ impl PackageInstaller<'_> {
 
         // Clean up symlinks/shims for old executables that no longer exist in the new version
         if let Some(ref old_exes) = old_executables {
-            for old_cmd in old_exes.values() {
-                if !executables.values().any(|n| n == old_cmd) {
-                    let old_bin = paths.bin_shim_path(old_cmd);
-                    if old_bin.exists() {
-                        match fs::remove_file(&old_bin) {
-                            Ok(()) => ui.line(&format!("  Removed obsolete command: {}", old_cmd)),
-                            Err(e) => ui.line(&format!(
-                                "  {} Could not remove obsolete command {}: {}",
-                                "⚠".yellow(),
-                                old_cmd,
-                                e
-                            )),
-                        }
-                    }
-                }
-            }
+            self.remove_obsolete_commands(old_exes, &executables);
         }
 
         // Extract repo_name and variant from installed_key
@@ -551,6 +439,114 @@ impl PackageInstaller<'_> {
         }
 
         Ok(inst_pkg)
+    }
+
+    /// Pick a command name for each selected executable: `(exe_relative, command name)`.
+    ///
+    /// Update mode reuses the old name (by path, then by file name); otherwise the
+    /// `-c` name (first executable only) or the normalized file name, suffixed with the
+    /// variant and made unique against every other package's commands.
+    fn plan_launchers(
+        &self,
+        installed: &InstalledSet,
+        installed_key: &str,
+        staged_dir: &Path,
+        selected_executables: Vec<String>,
+    ) -> Result<Vec<(String, String)>> {
+        let ui = self.ui;
+        // installed_key format: "repo_name" or "repo_name::variant"
+        let variant_opt = match installed_key.find("::") {
+            Some(pos) if !self.no_suffix => Some(installed_key[pos + 2..].to_string()),
+            _ => None,
+        };
+
+        // If this package is already installed, grab old executables for command name reuse
+        let old_executables = installed
+            .get_package(installed_key)
+            .map(|p| p.executables.clone());
+
+        // Command names already in use (excluding this package), so per-executable
+        // conflict checks are O(1) instead of scanning all packages per candidate suffix.
+        let mut taken_names = installed.command_name_set(Some(installed_key));
+
+        let mut launchers: Vec<(String, String)> = Vec::new();
+        for exe_relative in selected_executables {
+            let staged_exe = staged_dir.join(&exe_relative);
+
+            if !staged_exe.exists() {
+                anyhow::bail!("Executable not found: {}", exe_relative);
+            }
+            let filename = staged_exe.file_name().and_then(|s| s.to_str());
+
+            // When updating, try to reuse old command names: path match, then filename
+            let reused_name = match (&old_executables, self.update_mode) {
+                (Some(old_exes), true) => old_exes.get(&exe_relative).cloned().or_else(|| {
+                    old_exes
+                        .iter()
+                        .find(|(old_path, _)| {
+                            Path::new(old_path.as_str())
+                                .file_name()
+                                .and_then(|s| s.to_str())
+                                == Some(filename.unwrap_or(""))
+                        })
+                        .map(|(_, name)| name.clone())
+                }),
+                _ => None,
+            };
+
+            let resolved_name = if let Some(reused) = reused_name {
+                ui.line(&format!("  Reusing command name: {}", reused));
+                reused
+            } else {
+                // The custom name applies to the first executable only
+                let (base_name, is_custom) = match self.command_name {
+                    Some(custom) if launchers.is_empty() => (custom.to_string(), true),
+                    _ => {
+                        let raw_name = filename.context("Failed to extract command name")?;
+                        // Smart normalization removes platform suffixes
+                        (normalize_command_name(raw_name), false)
+                    }
+                };
+                resolve_command_name(&base_name, variant_opt.as_deref(), &taken_names, is_custom)
+            };
+
+            ui.line(&format!(
+                "  Command will be available as: {}",
+                resolved_name
+            ));
+
+            // Later executables in this package must not collide with this name
+            taken_names.insert(resolved_name.clone());
+            launchers.push((exe_relative, resolved_name));
+        }
+        Ok(launchers)
+    }
+
+    /// Remove the launchers of old commands the new install no longer provides
+    fn remove_obsolete_commands(
+        &self,
+        old_exes: &HashMap<String, String>,
+        executables: &HashMap<String, String>,
+    ) {
+        for old_cmd in old_exes.values() {
+            if executables.values().any(|n| n == old_cmd) {
+                continue;
+            }
+            let old_bin = self.paths.bin_shim_path(old_cmd);
+            if old_bin.exists() {
+                match fs::remove_file(&old_bin) {
+                    Ok(()) => self
+                        .ui
+                        .line(&format!("  Removed obsolete command: {}", old_cmd)),
+                    Err(e) => self.ui.line(&format!(
+                        "  {} Could not remove obsolete command {}: {}",
+                        "⚠".yellow(),
+                        old_cmd,
+                        e
+                    )),
+                }
+            }
+        }
     }
 
     /// Choose which extracted executables get launchers.
