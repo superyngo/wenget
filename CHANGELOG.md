@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- fix(add): when the GitHub API lookup fails and the bucket's cached download links are used,
+  `add`/`update` now say so ("⚠ Using cached download links (GitHub API unavailable)") and no longer
+  write the stale package back into the cache. Before 158afd5 this fallback was silent.
 - fix(delete): `del` lists and deletes matches in a stable sorted order and labels each group
   with its repo (`regclient`), instead of a random variant key (`regclient::regbot`) that changed
   between runs (B-11).
