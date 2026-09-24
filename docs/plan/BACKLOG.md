@@ -9,7 +9,6 @@ last checked against the tree — not when it was opened.
 
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
-| A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
 | CL-6 | 2026-09-23 | 2026-09-23 | P3 | 24 functions exceed 100 LOC (largest `install_packages` ~650 after CL-8; its plan/render phase is still inline) | `commands/add.rs` `install_packages`; `installer/package.rs` `PackageInstaller::install` (~280); `commands/delete.rs` `run`; `commands/info.rs` `display_package_info` | M | Complex functions refactored into distinct compute and render/presentation passes |
 | SI-10 | 2026-09-23 | 2026-09-23 | P3 | `extract_variant_from_asset` uses 141-step substring replacement cascade | `core/manifest.rs` `extract_variant_from_asset` | S | Token-based asset name parser drops version/platform noise; verified with golden tests |
@@ -122,4 +121,5 @@ last checked against the tree — not when it was opened.
 | SI-6 | Launcher creation `cfg` switches duplicated across install/rename/repair (unified in `installer::create_launcher`) | a273e99 |
 | S-5 | Best-effort checksum downgraded on probe failure; `PlatformBinary.checksum` unused (probe failure aborts unless `--skip-checksum`; mismatch never overridable; manifest checksum verified first) | ecaea8e |
 | B-6 | `del self` removed the default bin dir from PATH, not `custom_bin_path`, and could strip user-owned entries (`init` records each PATH entry it adds in `path.json` via `core::path_record`; `del self` removes exactly those, otherwise leaves PATH alone) | 351b704 |
+| A-6 | Data model spawned processes and performed disk I/O (interpreter probing now `installer::script::is_interpreter_available`/`installable_script`; legacy migration in `core/migrate.rs`) | 629967c |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
