@@ -10,7 +10,6 @@ last checked against the tree — not when it was opened.
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
 | S-5 | 2026-09-03 | 2026-09-23 | P3 | Checksum verification is best-effort and downgrades (with warning) on probe failure; `PlatformBinary.checksum` unused, and no bucket manifest sets it | `core/checksum.rs` `verify_download`, `core/manifest.rs` `PlatformBinary.checksum` | S | Unreachable checksum manifests fail or require explicit flag; manifest-provided `PlatformBinary.checksum` verified when present |
-| S-7 | 2026-09-03 | 2026-09-23 | P3 | Generated shims and Unix script wrappers interpolate paths without escaping (robustness: the bucket already supplies the executed script) | `installer/shim.rs` `create_shim`, `installer/script.rs` `create_script_shim_unix` | XS | Batch metacharacters escaped in `.cmd` shims; quotes and dollar signs escaped in Unix script wrapper |
 | A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
 | CL-3 | 2026-09-23 | 2026-09-23 | P3 | Glossary drift in `meta_version` and misleading `get_or_create_installed` method name | `core/manifest.rs` `CURRENT_META_VERSION`, `core/config.rs` `get_or_create_installed` | XS | Fields renamed to `schema_version` with serde alias; legacy alias method removed |
@@ -18,7 +17,6 @@ last checked against the tree — not when it was opened.
 | CL-6 | 2026-09-23 | 2026-09-23 | P3 | 24 functions exceed 100 LOC (largest `install_packages` ~650 after CL-8; its plan/render phase is still inline) | `commands/add.rs` `install_packages`; `installer/package.rs` `PackageInstaller::install` (~280); `commands/delete.rs` `run`; `commands/info.rs` `display_package_info` | M | Complex functions refactored into distinct compute and render/presentation passes |
 | SI-6 | 2026-09-23 | 2026-09-23 | P3 | Launcher creation contains `cfg` platform switches at every call site | `commands/add.rs`, `commands/rename.rs`, `installer/local.rs` | S | Unified `installer::create_launcher` and `remove_launcher` abstraction hides platform branches |
 | SI-10 | 2026-09-23 | 2026-09-23 | P3 | `extract_variant_from_asset` uses 141-step substring replacement cascade | `core/manifest.rs` `extract_variant_from_asset` | S | Token-based asset name parser drops version/platform noise; verified with golden tests |
-| B-3 | 2026-09-23 | 2026-09-23 | P3 | `FallbackType` enum variants for libc and Windows compiler are dead code | `core/platform.rs` `FallbackType::MuslOnGnu`, `GnuOnMusl`, `WindowsCompilerVariant` | XS | Unconstructed fallback enum variants removed or wired into platform matching |
 | B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
 
 ## Pending verification
@@ -122,4 +120,6 @@ last checked against the tree — not when it was opened.
 | IM-11 | Self-update skipped permission/magic-byte checks (`find_executable` takes the extraction dir) | 375da56 |
 | IM-15 | Download filename parsed from the URL (`sanitize_path_component(asset_name)` in `PackageInstaller::install` and self-update) | 6d9d97d |
 | Q-9 | Backup failure swallowed before resetting `buckets.json` (`repair_buckets` errors, `BucketConfig::load` warns and leaves the file) | 3766ba6 |
+| S-7 | Launcher paths interpolated unescaped (`sh_single_quote` for Unix wrappers; `escape_cmd_quoted` doubles `%` in `.cmd` shims) | 289ea13 |
+| B-3 | Dead `FallbackType` variants (already removed by the dead-code sweep; only `Arch32On64`/`X64OnArm` remain) | 21b5b67 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
