@@ -126,7 +126,7 @@ fn match_installed(installed: &crate::core::InstalledSet, names: &[String]) -> R
         .map(|p| Pattern::new(p))
         .collect::<Result<_, _>>()?;
 
-    Ok(installed
+    let mut keys: Vec<String> = installed
         .packages
         .iter()
         .filter(|(key, pkg)| {
@@ -135,7 +135,9 @@ fn match_installed(installed: &crate::core::InstalledSet, names: &[String]) -> R
                 .any(|pattern| pattern.matches(key) || pattern.matches(&pkg.repo_name))
         })
         .map(|(key, _)| key.clone())
-        .collect())
+        .collect();
+    keys.sort();
+    Ok(keys)
 }
 
 /// Print each repo about to be deleted with its installed variants
@@ -715,14 +717,22 @@ fn group_delete_candidates(
             continue;
         }
 
-        // Collect all variant keys
-        let variant_keys: Vec<String> = variants.iter().map(|(key, _)| (*key).clone()).collect();
+        // Collect all variant keys, in a stable order
+        let mut variant_keys: Vec<String> =
+            variants.iter().map(|(key, _)| (*key).clone()).collect();
+        variant_keys.sort();
 
         for key in &variant_keys {
             processed.insert(key.clone());
         }
 
-        packages_to_delete.push((name.clone(), variant_keys));
+        // Label the group with the repo, not whichever variant matched first
+        let label = if repo_name.is_empty() {
+            name.split("::").next().unwrap_or(name).to_string()
+        } else {
+            repo_name.clone()
+        };
+        packages_to_delete.push((label, variant_keys));
     }
 
     packages_to_delete
@@ -787,6 +797,24 @@ mod tests {
         let mut keys = groups[0].1.clone();
         keys.sort();
         assert_eq!(keys, matching);
+    }
+
+    #[test]
+    fn test_group_label_is_repo_and_variants_sorted() {
+        let set = set();
+        let matching = vec!["opencode::desktop.app".to_string(), "opencode".to_string()];
+        let groups = group_delete_candidates(&set, &["opencode".to_string()], &matching, None);
+        assert_eq!(
+            groups,
+            vec![(
+                "opencode".to_string(),
+                vec!["opencode".to_string(), "opencode::desktop.app".to_string()]
+            )]
+        );
+        assert_eq!(
+            match_installed(&set, &["opencode*".to_string()]).unwrap(),
+            vec!["opencode".to_string(), "opencode::desktop.app".to_string()]
+        );
     }
 
     #[test]

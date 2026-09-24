@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-24
+
+- fix(delete): `del` lists and deletes matches in a stable sorted order and labels each group
+  with its repo (`regclient`), instead of a random variant key (`regclient::regbot`) that changed
+  between runs (B-11).
+
 ### 2026-09-23
 
 - refactor(delete, info): `delete::run` split into `match_installed`, `print_delete_plan` and
