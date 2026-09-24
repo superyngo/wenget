@@ -25,3 +25,21 @@ pub use shim::create_shim;
 
 #[cfg(unix)]
 pub use symlink::create_symlink;
+
+/// Create the platform launcher at `bin_path` for `target`: a symlink on Unix,
+/// a `.cmd` shim on Windows. `bin_path` comes from `WenPaths::bin_shim_path`.
+pub fn create_launcher(
+    target: &std::path::Path,
+    bin_path: &std::path::Path,
+    command: &str,
+) -> anyhow::Result<()> {
+    #[cfg(unix)]
+    {
+        let _ = command;
+        create_symlink(target, bin_path)
+    }
+    #[cfg(windows)]
+    {
+        create_shim(target, bin_path, command)
+    }
+}

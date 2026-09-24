@@ -18,11 +18,6 @@ use crate::downloader;
 use crate::installer::extractor::ExecutableCandidate;
 use crate::installer::{extract_archive, find_executable_candidates, normalize_command_name};
 
-#[cfg(windows)]
-use crate::installer::create_shim;
-#[cfg(unix)]
-use crate::installer::create_symlink;
-
 /// The interaction an install needs from its front end.
 ///
 /// The terminal implementation lives in `utils::prompt::TerminalUi`; tests script
@@ -473,11 +468,7 @@ impl PackageInstaller<'_> {
 
             ui.line(&format!("  Creating launcher at {}...", bin_path.display()));
 
-            #[cfg(unix)]
-            let created = create_symlink(&exe_path, &bin_path);
-
-            #[cfg(windows)]
-            let created = create_shim(&exe_path, &bin_path, &resolved_name);
+            let created = crate::installer::create_launcher(&exe_path, &bin_path, &resolved_name);
 
             if let Err(e) = created {
                 launcher_errors.push(format!("{}: {:#}", bin_path.display(), e));

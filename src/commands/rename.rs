@@ -278,21 +278,8 @@ fn rename_command(
             anyhow::bail!("Old shim does not exist: {}", old_shim.display());
         };
 
-        #[cfg(unix)]
-        {
-            installer::create_symlink(&target_binary, &paths.bin_dir().join(new_cmd))
-                .context("Failed to create new symlink")?;
-        }
-
-        #[cfg(windows)]
-        {
-            installer::create_shim(
-                &target_binary,
-                &paths.bin_dir().join(format!("{}.cmd", new_cmd)),
-                new_cmd,
-            )
-            .context("Failed to create new shim")?;
-        }
+        installer::create_launcher(&target_binary, &paths.bin_shim_path(new_cmd), new_cmd)
+            .context("Failed to create new launcher")?;
     }
 
     log::info!("Created new shim/symlink: {}", new_cmd);

@@ -371,10 +371,7 @@ fn recreate_launcher(paths: &WenPaths, set: &InstalledSet, command: &str) -> Res
         return crate::installer::create_script_launcher(paths, command, &target, script_type);
     }
 
-    #[cfg(unix)]
-    crate::installer::create_symlink(&target, &shim)?;
-    #[cfg(windows)]
-    crate::installer::create_shim(&target, &shim, command)?;
+    crate::installer::create_launcher(&target, &shim, command)?;
 
     Ok(())
 }

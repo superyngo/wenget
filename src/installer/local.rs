@@ -5,15 +5,9 @@ use chrono::Utc;
 use std::collections::HashMap;
 use std::path::Path;
 
-#[cfg(unix)]
-use crate::installer::symlink::create_symlink;
-
 use crate::core::manifest::PackageSource;
 use crate::core::{InstalledPackage, WenPaths};
 use crate::installer::{extract_archive, find_executable_candidates, normalize_command_name};
-
-#[cfg(windows)]
-use crate::installer::create_shim;
 
 /// Archive extensions stripped when deriving a package name from a filename
 const ARCHIVE_EXTENSIONS: &[&str] = &[
@@ -117,15 +111,7 @@ pub fn install_local_file(
     let bin_path = paths.bin_shim_path(&command_name);
     println!("  Creating launcher at {}...", bin_path.display());
 
-    #[cfg(unix)]
-    {
-        create_symlink(&exe_path, &bin_path)?;
-    }
-
-    #[cfg(windows)]
-    {
-        create_shim(&exe_path, &bin_path, &command_name)?;
-    }
+    crate::installer::create_launcher(&exe_path, &bin_path, &command_name)?;
 
     // Construct InstalledPackage info
     let source = if let Some(src) = original_source {
