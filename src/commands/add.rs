@@ -214,111 +214,91 @@ pub fn run_with(
     Ok(())
 }
 
-/// Install scripts from local paths or URLs
-fn install_scripts(
-    _config: &Config,
-    paths: &WenPaths,
-    installed: &mut crate::core::InstalledSet,
-    script_inputs: Vec<&String>,
-    yes: bool,
+/// Load script content from a remote URL or a local file path
+fn fetch_script_content(input: &str) -> Option<String> {
+    let is_url = input.starts_with("http://") || input.starts_with("https://");
+    if is_url {
+        match download_script(input) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                eprintln!("{} Failed to download {}: {}", "✗".red(), input, e);
+                None
+            }
+        }
+    } else {
+        let path = Path::new(input);
+        match read_local_script(path) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                eprintln!("{} Failed to read {}: {}", "✗".red(), input, e);
+                None
+            }
+        }
+    }
+}
+
+/// Validate and resolve a single script input to its installable metadata
+fn resolve_script_candidate(
+    installed: &crate::core::InstalledSet,
+    input: &str,
     custom_name: Option<&str>,
-) -> Result<usize> {
-    println!("{}", "Scripts to install:".bold());
+) -> Option<(String, String, ScriptType, String)> {
+    let content = fetch_script_content(input)?;
 
-    let mut scripts_to_install: Vec<(String, String, ScriptType, String)> = Vec::new(); // (name, content, type, origin)
-    let mut resolve_failures = 0;
+    let script_type = match detect_script_type(input, &content) {
+        Some(t) => t,
+        None => {
+            eprintln!("{} Cannot detect script type for: {}", "✗".red(), input);
+            return None;
+        }
+    };
 
-    for input in script_inputs {
-        // Determine if local or remote
-        let is_url = input.starts_with("http://") || input.starts_with("https://");
+    if !crate::installer::script::is_interpreter_available(&script_type) {
+        println!(
+            "  {} {} ({}) - {}",
+            "⚠".yellow(),
+            input,
+            script_type.display_name(),
+            "not supported on this platform".yellow()
+        );
+        return None;
+    }
 
-        // Get script content
-        let content = if is_url {
-            match download_script(input) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("{} Failed to download {}: {}", "✗".red(), input, e);
-                    resolve_failures += 1;
-                    continue;
-                }
-            }
-        } else {
-            let path = Path::new(input);
-            match read_local_script(path) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("{} Failed to read {}: {}", "✗".red(), input, e);
-                    resolve_failures += 1;
-                    continue;
-                }
-            }
-        };
-
-        // Detect script type
-        let script_type = match detect_script_type(input, &content) {
-            Some(t) => t,
+    let name = if let Some(custom) = custom_name {
+        custom.to_string()
+    } else {
+        match extract_script_name(input) {
+            Some(n) => n,
             None => {
-                eprintln!("{} Cannot detect script type for: {}", "✗".red(), input);
-                resolve_failures += 1;
-                continue;
+                eprintln!("{} Cannot extract name from: {}", "✗".red(), input);
+                return None;
             }
-        };
-
-        // Check platform compatibility
-        if !crate::installer::script::is_interpreter_available(&script_type) {
-            println!(
-                "  {} {} ({}) - {}",
-                "⚠".yellow(),
-                input,
-                script_type.display_name(),
-                "not supported on this platform".yellow()
-            );
-            resolve_failures += 1;
-            continue;
         }
+    };
 
-        // Determine script name
-        let name = if let Some(custom) = custom_name {
-            custom.to_string()
-        } else {
-            match extract_script_name(input) {
-                Some(n) => n,
-                None => {
-                    eprintln!("{} Cannot extract name from: {}", "✗".red(), input);
-                    resolve_failures += 1;
-                    continue;
-                }
-            }
-        };
-
-        // Check if already installed
-        if installed.is_installed(&name) {
-            println!(
-                "  {} {} ({}) - {}",
-                "•".yellow(),
-                name,
-                script_type.display_name(),
-                "already installed, will be replaced".yellow()
-            );
-        } else {
-            println!(
-                "  {} {} ({}) {}",
-                "•".green(),
-                name,
-                script_type.display_name(),
-                "(new)".green()
-            );
-        }
-
-        scripts_to_install.push((name, content, script_type, input.clone()));
+    if installed.is_installed(&name) {
+        println!(
+            "  {} {} ({}) - {}",
+            "•".yellow(),
+            name,
+            script_type.display_name(),
+            "already installed, will be replaced".yellow()
+        );
+    } else {
+        println!(
+            "  {} {} ({}) {}",
+            "•".green(),
+            name,
+            script_type.display_name(),
+            "(new)".green()
+        );
     }
 
-    if scripts_to_install.is_empty() {
-        println!("{}", "No scripts to install".yellow());
-        return Ok(resolve_failures);
-    }
+    Some((name, content, script_type, input.to_string()))
+}
 
-    // Show security warning
+/// Show security warning and prompt for user confirmation if not --yes
+fn confirm_script_installation(yes: bool) -> Result<bool> {
     println!();
     println!(
         "{}",
@@ -327,17 +307,22 @@ fn install_scripts(
             .bold()
     );
 
-    // Confirm installation
     if !yes && !crate::utils::confirm("\nProceed with installation?")? {
         println!("Installation cancelled");
-        return Ok(resolve_failures);
+        return Ok(false);
     }
+    Ok(true)
+}
 
-    println!();
-
+/// Install each resolved script and record it in the installed set
+fn execute_script_installs(
+    paths: &WenPaths,
+    installed: &mut crate::core::InstalledSet,
+    scripts: Vec<(String, String, ScriptType, String)>,
+) -> BatchReport {
     let mut report = BatchReport::new("script");
 
-    for (name, content, script_type, origin) in scripts_to_install {
+    for (name, content, script_type, origin) in scripts {
         println!(
             "{} {} ({})...",
             "Installing".cyan(),
@@ -361,6 +346,42 @@ fn install_scripts(
             }
         }
     }
+
+    report
+}
+
+/// Install scripts from local paths or URLs
+fn install_scripts(
+    _config: &Config,
+    paths: &WenPaths,
+    installed: &mut crate::core::InstalledSet,
+    script_inputs: Vec<&String>,
+    yes: bool,
+    custom_name: Option<&str>,
+) -> Result<usize> {
+    println!("{}", "Scripts to install:".bold());
+
+    let mut scripts_to_install = Vec::new();
+    let mut resolve_failures = 0;
+
+    for input in script_inputs {
+        match resolve_script_candidate(installed, input, custom_name) {
+            Some(item) => scripts_to_install.push(item),
+            None => resolve_failures += 1,
+        }
+    }
+
+    if scripts_to_install.is_empty() {
+        println!("{}", "No scripts to install".yellow());
+        return Ok(resolve_failures);
+    }
+
+    if !confirm_script_installation(yes)? {
+        return Ok(resolve_failures);
+    }
+
+    println!();
+    let report = execute_script_installs(paths, installed, scripts_to_install);
 
     println!();
     println!("{}", "Summary:".bold());
@@ -967,6 +988,161 @@ fn resolve_script(cache: &ManifestCache, name: &str) -> Option<ScriptJob> {
     ))
 }
 
+/// Candidate package data prepared for plan classification
+struct PlanCandidate {
+    original_name: String,
+    resolved: ResolvedPackage,
+    platform_match: crate::core::platform::PlatformMatch,
+    version: String,
+    status: TargetStatus,
+}
+
+/// Fetch target release for a resolved package and verify platform compatibility
+fn resolve_target_and_platform(
+    s: &Session,
+    github: &GitHubProvider,
+    original_name: String,
+    mut resolved: ResolvedPackage,
+) -> Option<PlanCandidate> {
+    let repo = &resolved.package.repo;
+
+    // Fetch the target release: always ask GitHub first (the cached bucket version
+    // may be stale), except where the cache was just refreshed.
+    let target = target_package(
+        &resolved.package,
+        &resolved.source,
+        s.opts.version.as_deref(),
+        s.opts.update_mode,
+        |v| github.fetch_package(repo, v, Some((&resolved.package).into())),
+    );
+    let version = target.version;
+    let status = target.status;
+    resolved.package = target.package;
+
+    // Recompute platform match for the new target package platforms
+    let matches = s.platform_matches(&resolved.package);
+    if matches.is_empty() {
+        println!(
+            "{} {} v{} does not support platform {}",
+            "Warning:".yellow(),
+            resolved.package.name,
+            version,
+            s.target_platform()
+        );
+        return None;
+    }
+    let platform_match = matches[0].clone();
+
+    Some(PlanCandidate {
+        original_name,
+        resolved,
+        platform_match,
+        version,
+        status,
+    })
+}
+
+/// Classify a resolved package candidate into new install, reinstall, upgrade, or skipped
+fn classify_package_plan(
+    s: &Session,
+    installed: &crate::core::InstalledSet,
+    candidate: PlanCandidate,
+    to_install: &mut Vec<PlanItem>,
+    to_update: &mut Vec<PlanItem>,
+) -> Result<()> {
+    let PlanCandidate {
+        original_name,
+        resolved,
+        platform_match,
+        version,
+        status,
+    } = candidate;
+
+    let pkg_name = resolved.package.name.clone();
+    let check_name = if original_name.contains("::") {
+        original_name.clone()
+    } else if let Some(filter) = s.opts.variant_filter.as_deref() {
+        crate::core::manifest::generate_installed_key(&pkg_name, Some(filter))
+    } else {
+        pkg_name.clone()
+    };
+
+    let print_urls = || {
+        if let Some(binaries) = resolved.package.platforms.get(&platform_match.platform_id) {
+            for binary in binaries {
+                println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
+            }
+        }
+    };
+
+    if let Some(inst_pkg) = installed.get_package(&check_name) {
+        if inst_pkg.version == version {
+            println!(
+                "  {} {} v{} {}",
+                "•".cyan(),
+                check_name,
+                version,
+                "(already installed, same version)".dimmed()
+            );
+            // With --yes or a "no", skip reinstallation
+            if !s.opts.yes && s.ui.confirm("  Reinstall?", false)? {
+                to_install.push(PlanItem {
+                    input: original_name,
+                    resolved,
+                    platform_match,
+                    installed_key: None,
+                    version,
+                    status,
+                });
+            }
+        } else {
+            println!(
+                "  {} {} v{} {} → {}",
+                "•".yellow(),
+                check_name,
+                inst_pkg.version.dimmed(),
+                "upgrade to".yellow(),
+                version.green()
+            );
+            print_urls();
+            to_update.push(PlanItem {
+                input: original_name,
+                resolved,
+                platform_match,
+                installed_key: Some(check_name),
+                version,
+                status,
+            });
+        }
+    } else if s.opts.update_mode {
+        // Update mode: don't install new packages
+        println!(
+            "  {} {} is not installed, skipping (use 'wenget add' to install new packages)",
+            "⚠".yellow(),
+            pkg_name
+        );
+    } else {
+        println!(
+            "  {} {} v{} {}",
+            "•".green(),
+            pkg_name,
+            version,
+            "(new)".green()
+        );
+        print_urls();
+        to_install.push(PlanItem {
+            input: original_name,
+            resolved,
+            platform_match,
+            installed_key: None,
+            version,
+            status,
+        });
+    }
+
+    Ok(())
+}
+
 /// Phase 2: fetch each package's target release and classify it as a new install or
 /// an upgrade, printing the plan.
 ///
@@ -984,122 +1160,16 @@ fn plan_packages(
     }
 
     let github = GitHubProvider::new()?;
-    let yes = s.opts.yes;
-    let update_mode = s.opts.update_mode;
     println!("{}", "Packages to install:".bold());
 
-    for (original_name, mut resolved) in packages {
-        let pkg_name = resolved.package.name.clone();
-        let repo = &resolved.package.repo;
-
-        // Fetch the target release: always ask GitHub first (the cached bucket version
-        // may be stale), except where the cache was just refreshed.
-        let target = target_package(
-            &resolved.package,
-            &resolved.source,
-            s.opts.version.as_deref(),
-            update_mode,
-            |v| github.fetch_package(repo, v, Some((&resolved.package).into())),
-        );
-        let version = target.version;
-        let status = target.status;
-        resolved.package = target.package;
-
-        // Recompute platform match for the new target package platforms
-        let matches = s.platform_matches(&resolved.package);
-        if matches.is_empty() {
-            println!(
-                "{} {} v{} does not support platform {}",
-                "Warning:".yellow(),
-                resolved.package.name,
-                version,
-                s.target_platform()
-            );
-            failures += 1;
-            continue;
-        }
-        let platform_match = matches[0].clone();
-
-        // The installed key to check: the typed `name::variant`, else the --variant key
-        let check_name = if original_name.contains("::") {
-            original_name.clone()
-        } else if let Some(filter) = s.opts.variant_filter.as_deref() {
-            crate::core::manifest::generate_installed_key(&pkg_name, Some(filter))
-        } else {
-            pkg_name.clone()
-        };
-
-        let print_urls = || {
-            if let Some(binaries) = resolved.package.platforms.get(&platform_match.platform_id) {
-                for binary in binaries {
-                    println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
-                }
+    for (original_name, resolved) in packages {
+        match resolve_target_and_platform(s, &github, original_name, resolved) {
+            Some(candidate) => {
+                classify_package_plan(s, installed, candidate, &mut to_install, &mut to_update)?;
             }
-        };
-
-        if let Some(inst_pkg) = installed.get_package(&check_name) {
-            if inst_pkg.version == version {
-                println!(
-                    "  {} {} v{} {}",
-                    "•".cyan(),
-                    check_name,
-                    version,
-                    "(already installed, same version)".dimmed()
-                );
-                // With --yes or a "no", skip reinstallation
-                if !yes && s.ui.confirm("  Reinstall?", false)? {
-                    to_install.push(PlanItem {
-                        input: original_name,
-                        resolved,
-                        platform_match,
-                        installed_key: None,
-                        version,
-                        status,
-                    });
-                }
-            } else {
-                println!(
-                    "  {} {} v{} {} → {}",
-                    "•".yellow(),
-                    check_name,
-                    inst_pkg.version.dimmed(),
-                    "upgrade to".yellow(),
-                    version.green()
-                );
-                print_urls();
-                to_update.push(PlanItem {
-                    input: original_name,
-                    resolved,
-                    platform_match,
-                    installed_key: Some(check_name),
-                    version,
-                    status,
-                });
+            None => {
+                failures += 1;
             }
-        } else if update_mode {
-            // Update mode: don't install new packages
-            println!(
-                "  {} {} is not installed, skipping (use 'wenget add' to install new packages)",
-                "⚠".yellow(),
-                pkg_name
-            );
-        } else {
-            println!(
-                "  {} {} v{} {}",
-                "•".green(),
-                pkg_name,
-                version,
-                "(new)".green()
-            );
-            print_urls();
-            to_install.push(PlanItem {
-                input: original_name,
-                resolved,
-                platform_match,
-                installed_key: None,
-                version,
-                status,
-            });
         }
     }
 
@@ -1159,34 +1229,29 @@ fn effective_variant(
     Some(variant)
 }
 
-/// Phase 4: install the selected binaries of one planned package.
-///
-/// Returns the package to refresh in the cache when it came from the GitHub API.
-fn install_plan_item(
+/// Selected binaries and fallback status for installing a plan item
+struct PreparedBinaries<'a> {
+    using_fallback: bool,
+    binaries: &'a [crate::core::manifest::PlatformBinary],
+    filtered: Vec<crate::core::manifest::PlatformBinary>,
+    selected_indices: Vec<usize>,
+}
+
+/// Validate release status, locate platform binaries, and prompt for user selection
+fn prepare_plan_binaries<'a>(
     s: &Session,
-    installer: &PackageInstaller,
-    paths: &WenPaths,
-    installed: &mut crate::core::InstalledSet,
-    item: PlanItem,
+    installed: &crate::core::InstalledSet,
+    item: &'a PlanItem,
+    effective_variant_filter: Option<&str>,
     report: &mut BatchReport,
-) -> Option<(crate::core::Package, PackageSource)> {
+) -> Option<PreparedBinaries<'a>> {
     let yes = s.opts.yes;
     let update_mode = s.opts.update_mode;
-    let variant = effective_variant(s, installed, &item);
-    let effective_variant_filter = variant.as_deref();
-    let PlanItem {
-        resolved,
-        platform_match,
-        installed_key: installed_check_name,
-        version,
-        status,
-        ..
-    } = item;
-    let pkg_name = &resolved.package.name;
+    let pkg_name = &item.resolved.package.name;
 
     // The release was chosen during planning; report how it was obtained
-    let pkg_to_install = &resolved.package;
-    let using_fallback = match status {
+    let pkg_to_install = &item.resolved.package;
+    let using_fallback = match &item.status {
         TargetStatus::Failed(e) => {
             println!("  {} {}", "✗".red(), e);
             report.fail(pkg_name.to_string());
@@ -1202,7 +1267,10 @@ fn install_plan_item(
         TargetStatus::Fresh => false,
     };
 
-    let Some(binaries) = pkg_to_install.platforms.get(&platform_match.platform_id) else {
+    let Some(binaries) = pkg_to_install
+        .platforms
+        .get(&item.platform_match.platform_id)
+    else {
         println!("  {} Platform binary not found", "✗".red());
         report.fail(pkg_name.to_string());
         return None;
@@ -1210,7 +1278,7 @@ fn install_plan_item(
 
     // In update mode, match the previously installed asset first
     let stored_asset = if update_mode {
-        installed_check_name
+        item.installed_key
             .as_ref()
             .and_then(|k| installed.get_package(k))
             .map(|p| p.asset_name.clone())
@@ -1243,12 +1311,45 @@ fn install_plan_item(
             }
         };
 
+    Some(PreparedBinaries {
+        using_fallback,
+        binaries,
+        filtered: filtered_binaries,
+        selected_indices,
+    })
+}
+
+/// Phase 4: install the selected binaries of one planned package.
+///
+/// Returns the package to refresh in the cache when it came from the GitHub API.
+fn install_plan_item(
+    s: &Session,
+    installer: &PackageInstaller,
+    paths: &WenPaths,
+    installed: &mut crate::core::InstalledSet,
+    item: PlanItem,
+    report: &mut BatchReport,
+) -> Option<(crate::core::Package, PackageSource)> {
+    let variant = effective_variant(s, installed, &item);
+    let effective_variant_filter = variant.as_deref();
+
+    let prep = prepare_plan_binaries(s, installed, &item, effective_variant_filter, report)?;
+
+    let PlanItem {
+        resolved,
+        platform_match,
+        version,
+        ..
+    } = &item;
+    let pkg_name = &resolved.package.name;
+    let pkg_to_install = &resolved.package;
+
     let mut to_cache = None;
-    for (i, &idx) in selected_indices.iter().enumerate() {
-        let binary = &filtered_binaries[idx];
+    for (i, &idx) in prep.selected_indices.iter().enumerate() {
+        let binary = &prep.filtered[idx];
 
         // A platform with a single binary and no filters installs as the default (no variant)
-        let variant = if binaries.len() == 1
+        let variant = if prep.binaries.len() == 1
             && effective_variant_filter.is_none()
             && s.opts.platform.is_none()
         {
@@ -1260,21 +1361,21 @@ fn install_plan_item(
             crate::core::manifest::generate_installed_key(pkg_name, variant.as_deref());
 
         println!("{} {} v{}...", "Installing".cyan(), installed_key, version);
-        if using_fallback {
+        if prep.using_fallback {
             println!(
                 "  {} Falling back to bucket source download links",
                 "ℹ".cyan()
             );
         }
-        if selected_indices.len() > 1 {
+        if prep.selected_indices.len() > 1 {
             println!("  {} From: {}", "ℹ".cyan(), binary.asset_name.dimmed());
         }
 
         let request = InstallRequest {
             package: pkg_to_install,
-            platform_match: &platform_match,
+            platform_match,
             binary,
-            version: &version,
+            version,
             source: &resolved.source,
             installed_key: &installed_key,
         };
@@ -1289,7 +1390,7 @@ fn install_plan_item(
                 }
 
                 // Cache the GitHub API result once, not per binary
-                if i == 0 && !using_fallback {
+                if i == 0 && !prep.using_fallback {
                     to_cache = Some((pkg_to_install.clone(), resolved.source.clone()));
                 }
 
