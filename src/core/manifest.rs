@@ -885,12 +885,11 @@ pub fn extract_variant_from_asset(asset_name: &str, repo_name: &str) -> Option<S
 
     let mut result = without_unknown;
 
-    // Remove platform patterns
+    // Remove platform patterns, normalized like the name (`x86_64` -> `x86-64`)
     for pattern in &platform_patterns {
-        // Try both with and without hyphens
+        let pattern = pattern.replace('_', "-");
         result = result.replace(&format!("-{}", pattern), "");
-        result = result.replace(&format!("_{}", pattern), "");
-        result = result.replace(pattern, "");
+        result = result.replace(&pattern, "");
     }
 
     // Clean up multiple hyphens/underscores
@@ -935,6 +934,18 @@ pub fn generate_installed_key(repo_name: &str, variant: Option<&str>) -> String 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extract_variant_handles_underscored_arch() {
+        let v = |a: &str| extract_variant_from_asset(a, "confy");
+        assert_eq!(v("confy-windows-x86_64.exe"), None);
+        assert_eq!(
+            v("confy-desktop-windows-x86_64.exe"),
+            Some("desktop".into())
+        );
+        assert_eq!(v("confy-x86_64-unknown-linux-gnu.tar.gz"), None);
+        assert_eq!(v("confy-x86_64-pc-windows-msvc.zip"), None);
+    }
 
     #[test]
     fn test_source_manifest_new() {
