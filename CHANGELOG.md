@@ -39,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(delete): `del` lists and deletes matches in a stable sorted order and labels each group
   with its repo (`regclient`), instead of a random variant key (`regclient::regbot`) that changed
   between runs (B-11).
+- fix(add): the upgrade plan preview (`add`/`update`) now prints only the binary URL matching the
+  previously installed asset (variant-filtered), instead of every release asset for the platform.
+  A repo that ships many components per platform (e.g. `codex`: `codex`, `codex-app-server`,
+  `codex-npm-darwin-arm64`, ...) no longer floods the upgrade line for one package with every
+  other component's download URL; the new-install preview still lists all variants so `add` users
+  can see what they're choosing between.
 
 ### 2026-09-23
 

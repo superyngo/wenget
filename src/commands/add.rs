@@ -1067,6 +1067,37 @@ fn resolve_target_and_platform(
     })
 }
 
+/// Print only the binary URL(s) matching the previously installed asset (update-mode preview)
+fn print_upgrade_urls(
+    s: &Session,
+    resolved: &ResolvedPackage,
+    platform_match: &crate::core::platform::PlatformMatch,
+    original_name: &str,
+    pkg_name: &str,
+    inst_pkg: &crate::core::InstalledPackage,
+) {
+    let Some(binaries) = resolved.package.platforms.get(&platform_match.platform_id) else {
+        return;
+    };
+    let variant_filter = original_name
+        .split("::")
+        .nth(1)
+        .or(s.opts.variant_filter.as_deref())
+        .or(inst_pkg.variant.as_deref());
+    let filtered = dedupe_same_variant(
+        filter_binaries(
+            binaries,
+            pkg_name,
+            Some(&inst_pkg.asset_name),
+            variant_filter,
+        ),
+        pkg_name,
+    );
+    for binary in &filtered {
+        println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
+    }
+}
+
 /// Classify a resolved package candidate into new install, reinstall, upgrade, or skipped
 fn classify_package_plan(
     s: &Session,
@@ -1090,14 +1121,6 @@ fn classify_package_plan(
         crate::core::manifest::generate_installed_key(&pkg_name, Some(filter))
     } else {
         pkg_name.clone()
-    };
-
-    let print_urls = || {
-        if let Some(binaries) = resolved.package.platforms.get(&platform_match.platform_id) {
-            for binary in binaries {
-                println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
-            }
-        }
     };
 
     if let Some(inst_pkg) = installed.get_package(&check_name) {
@@ -1129,7 +1152,14 @@ fn classify_package_plan(
                 "upgrade to".yellow(),
                 version.green()
             );
-            print_urls();
+            print_upgrade_urls(
+                s,
+                &resolved,
+                &platform_match,
+                &original_name,
+                &pkg_name,
+                inst_pkg,
+            );
             to_update.push(PlanItem {
                 input: original_name,
                 resolved,
@@ -1154,7 +1184,11 @@ fn classify_package_plan(
             version,
             "(new)".green()
         );
-        print_urls();
+        if let Some(binaries) = resolved.package.platforms.get(&platform_match.platform_id) {
+            for binary in binaries {
+                println!("    {} {}", "↳".dimmed(), binary.url.dimmed());
+            }
+        }
         to_install.push(PlanItem {
             input: original_name,
             resolved,
