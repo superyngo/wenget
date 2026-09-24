@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- build: `src/main.rs` enables `clippy::too_many_lines`, so CI (clippy `-D warnings`) rejects any
+  new function over 100 lines.
 - refactor: the 13 remaining functions over 100 lines (clippy `too_many_lines`) are split into
   phase helpers: `add` (`install_scripts`, `plan_packages`, `install_plan_item`), `update` (`run`,
   `find_upgradeable`, `upgrade_self_with_provider`), `installer` (`install`, `select_executables`,

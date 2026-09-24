@@ -87,6 +87,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
 
 - **Types/Structs/Enums**: `PascalCase` (`InstalledPackage`, `ScriptType`)
 - **Functions/Methods**: `snake_case` (`fetch_latest_release`, `install_package`)
+- **Function length**: `src/main.rs` enables `clippy::too_many_lines` (100 lines) and CI fails on it; split long functions into phase helpers
 - **Constants**: `SCREAMING_SNAKE_CASE` (`INTERPRETER_CACHE`)
 - **Modules**: `snake_case` (`package_resolver.rs`)
 - **Boolean methods**: Use `is_`/`has_` prefix (`is_installed`, `is_valid`)

@@ -1,5 +1,8 @@
 //! wenget - A cross-platform package manager for GitHub binaries
 
+// Keep functions under clippy's 100-line limit (CI runs clippy with -D warnings)
+#![warn(clippy::too_many_lines)]
+
 mod cli;
 mod commands;
 mod core;
