@@ -218,6 +218,11 @@ impl WenPaths {
         self.root.join("buckets.json")
     }
 
+    /// Record of the PATH entries `init` added (`path_record::PathRecord`)
+    pub fn path_record_json(&self) -> PathBuf {
+        self.root.join("path.json")
+    }
+
     /// Get the manifest cache path
     pub fn manifest_cache_json(&self) -> PathBuf {
         self.root.join("manifest-cache.json")

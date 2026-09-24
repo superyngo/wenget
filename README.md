@@ -141,7 +141,7 @@ wenget del ripgrep
   - `-f, --force` - Force deletion (allows removing wenget itself without interactive confirmation)
   - `--variant <name>` - Specify variant to delete (e.g., `baseline`, `profile`)
   - `-y, --yes` - Skip confirmation prompts
-  - `wenget del self` - Uninstall wenget itself and clean up PATH and files
+  - `wenget del self` - Uninstall wenget itself and its files; removes only the PATH entries `wenget init` added (recorded in `~/.wenget/path.json`)
 - `wenget list` (alias: `ls`) - List installed packages (with source and description)
   - `-a, --all` - Show all available packages from buckets
 - `wenget search <terms>...` (alias: `s`) - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs supported)

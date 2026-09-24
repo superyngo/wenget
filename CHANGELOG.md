@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(delete): `del self` now removes only the PATH entries `wenget init` actually added, recorded
+  in `~/.wenget/path.json` (shell rc block or Windows registry entry). It no longer removes the
+  default bin dir when `custom_bin_path` is set, and no longer strips user-owned lines that mention
+  the bin dir. Installs initialized by older versions have no record, so PATH is left untouched with
+  a hint to remove it manually (B-6).
 - fix(checksum): a checksum lookup that fails on the network now aborts the install instead of
   proceeding unverified; `add`/`update --skip-checksum` installs anyway (a mismatch still always
   aborts). A manifest `PlatformBinary.checksum` (`<hex>` or `sha256:<hex>`) is now verified and takes

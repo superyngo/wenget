@@ -2,7 +2,7 @@
 
 use crate::bucket::Bucket;
 use crate::core::is_elevated;
-use crate::core::Config;
+use crate::core::{Config, WenPaths};
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::env;
@@ -432,6 +432,7 @@ fn setup_path(config: &Config) -> Result<()> {
             bin_dir.clone()
         };
         setup_path_windows(
+            config.paths(),
             &actual_bin_dir.to_string_lossy(),
             config.paths().is_system_install(),
         )?;
@@ -447,7 +448,7 @@ fn setup_path(config: &Config) -> Result<()> {
             );
             println!("  Symlinks will be created in /usr/local/bin");
         } else {
-            setup_path_unix(&bin_dir.to_string_lossy())?;
+            setup_path_unix(config.paths(), &bin_dir.to_string_lossy())?;
         }
     }
 
@@ -456,14 +457,24 @@ fn setup_path(config: &Config) -> Result<()> {
 
 /// Set up PATH on Windows (modify user or system environment variable)
 #[cfg(windows)]
-fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
+fn setup_path_windows(paths: &WenPaths, bin_dir: &str, is_system_install: bool) -> Result<()> {
+    use crate::core::path_record::{PathEntry, PathRecord};
     use crate::core::registry::{add_to_system_path, add_to_user_path};
     use std::path::Path;
+
+    let record = |entry: PathEntry| {
+        if let Err(e) = PathRecord::add(paths, entry) {
+            println!("{} Failed to record PATH change: {}", "⚠".yellow(), e);
+        }
+    };
 
     if is_system_install {
         // For system installs, use registry to modify system PATH
         match add_to_system_path(Path::new(bin_dir)) {
             Ok(true) => {
+                record(PathEntry::SystemRegistry {
+                    dir: PathBuf::from(bin_dir),
+                });
                 println!("{}", "✓ Added wenget bin directory to system PATH".green());
                 println!();
                 println!("{}", "IMPORTANT:".yellow().bold());
@@ -489,6 +500,9 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
     // For user installs, edit the user PATH in the registry
     match add_to_user_path(Path::new(bin_dir)) {
         Ok(true) => {
+            record(PathEntry::UserRegistry {
+                dir: PathBuf::from(bin_dir),
+            });
             println!("{}", "✓ Added wenget bin directory to user PATH".green());
             println!();
             println!("{}", "IMPORTANT:".yellow().bold());
@@ -515,7 +529,9 @@ fn setup_path_windows(bin_dir: &str, is_system_install: bool) -> Result<()> {
 
 /// Set up PATH on Unix-like systems (add to shell config)
 #[cfg(not(windows))]
-fn setup_path_unix(bin_dir: &str) -> Result<()> {
+fn setup_path_unix(paths: &WenPaths, bin_dir: &str) -> Result<()> {
+    use crate::core::path_record::{shell_export_line, PathEntry, PathRecord};
+
     let home = dirs::home_dir().context("Failed to determine home directory")?;
 
     // Determine which shell configs to update
@@ -529,14 +545,28 @@ fn setup_path_unix(bin_dir: &str) -> Result<()> {
         return Ok(());
     }
 
-    let export_line = format!("\n# wenget\nexport PATH=\"{}:$PATH\"\n", bin_dir);
+    let export_line = format!(
+        "\n# wenget\n{}\n",
+        shell_export_line(std::path::Path::new(bin_dir))
+    );
 
     let mut updated_files = Vec::new();
     let mut skipped_files = Vec::new();
 
     for config_path in shell_configs {
         match update_shell_config(&config_path, &export_line, bin_dir) {
-            Ok(true) => updated_files.push(config_path),
+            Ok(true) => {
+                if let Err(e) = PathRecord::add(
+                    paths,
+                    PathEntry::ShellFile {
+                        file: config_path.clone(),
+                        dir: PathBuf::from(bin_dir),
+                    },
+                ) {
+                    println!("  {} Failed to record PATH change: {}", "⚠".yellow(), e);
+                }
+                updated_files.push(config_path)
+            }
             Ok(false) => skipped_files.push(config_path),
             Err(e) => {
                 println!(

@@ -368,9 +368,8 @@ fn delete_self(yes: bool) -> Result<()> {
     // Step: Remove from PATH (if selected)
     if options.remove_path {
         println!("{} Removing from PATH...", format!("{}.", step_num).bold());
-        match remove_from_path(&paths) {
-            Ok(()) => println!("   {} PATH updated", "✓".green()),
-            Err(e) => println!("   {} Failed to update PATH: {}", "⚠".yellow(), e),
+        if let Err(e) = remove_from_path(&paths) {
+            println!("   {} Failed to update PATH: {}", "⚠".yellow(), e);
         }
         println!();
         step_num += 1;
@@ -429,84 +428,85 @@ fn delete_self(yes: bool) -> Result<()> {
     Ok(())
 }
 
-/// Remove wenget bin directory from PATH
+/// Remove exactly the PATH entries `wenget init` recorded (see `core::path_record`)
+///
+/// Without a record PATH is left alone: the bin directory may be one the user
+/// put on PATH themselves.
 fn remove_from_path(paths: &WenPaths) -> Result<()> {
+    use crate::core::path_record::{PathEntry, PathRecord};
+
     // A WENGET_ROOT sandbox never edited the real rc files or registry PATH
     if paths.is_root_override() {
+        println!("   {} WENGET_ROOT is set; PATH untouched", "ℹ".cyan());
         return Ok(());
     }
-    let bin_dir = paths.bin_dir();
-    let bin_dir_str = bin_dir.to_string_lossy();
 
-    #[cfg(windows)]
-    {
-        remove_from_path_windows(&bin_dir_str)?;
-        // `init` adds the internal bin dir to the system PATH for system installs
-        if paths.is_system_install() {
-            crate::core::registry::remove_from_system_path(&paths.internal_bin_dir())?;
-        }
+    let record = PathRecord::load(paths);
+    if record.entries.is_empty() {
+        println!(
+            "   {} No PATH change recorded by `wenget init`; PATH untouched",
+            "ℹ".cyan()
+        );
+        println!(
+            "      If {} is on your PATH, remove it manually",
+            paths.bin_dir().display()
+        );
+        return Ok(());
     }
 
-    #[cfg(not(windows))]
-    {
-        remove_from_path_unix(&bin_dir_str)?;
+    for entry in &record.entries {
+        let (what, result) = match entry {
+            PathEntry::ShellFile { file, dir } => (
+                format!("{} from {}", dir.display(), file.display()),
+                remove_shell_block(file, dir),
+            ),
+            PathEntry::UserRegistry { dir } => (
+                format!("{} from user PATH", dir.display()),
+                remove_registry_entry(dir, false),
+            ),
+            PathEntry::SystemRegistry { dir } => (
+                format!("{} from system PATH", dir.display()),
+                remove_registry_entry(dir, true),
+            ),
+        };
+        match result {
+            Ok(()) => println!("   {} Removed {}", "✓".green(), what),
+            Err(e) => println!("   {} Failed to remove {}: {}", "⚠".yellow(), what, e),
+        }
     }
 
     Ok(())
 }
 
-/// Remove from the user PATH on Windows
+/// Remove the PATH block `init` appended to a shell rc file
+fn remove_shell_block(file: &Path, dir: &Path) -> Result<()> {
+    if !file.exists() {
+        return Ok(());
+    }
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read {}", file.display()))?;
+    let stripped = crate::core::path_record::strip_shell_block(&content, dir);
+    if stripped != content {
+        fs::write(file, stripped)
+            .with_context(|| format!("Failed to write to {}", file.display()))?;
+    }
+    Ok(())
+}
+
+/// Remove `dir` from the Windows user or system PATH
 #[cfg(windows)]
-fn remove_from_path_windows(bin_dir: &str) -> Result<()> {
-    crate::core::registry::remove_from_user_path(Path::new(bin_dir))?;
+fn remove_registry_entry(dir: &Path, system: bool) -> Result<()> {
+    if system {
+        crate::core::registry::remove_from_system_path(dir)?;
+    } else {
+        crate::core::registry::remove_from_user_path(dir)?;
+    }
     Ok(())
 }
 
-/// Remove from PATH on Unix-like systems
+/// Registry entries are only ever recorded on Windows
 #[cfg(not(windows))]
-fn remove_from_path_unix(bin_dir: &str) -> Result<()> {
-    let home = dirs::home_dir().context("Failed to determine home directory")?;
-
-    let shell_configs = vec![
-        home.join(".bashrc"),
-        home.join(".bash_profile"),
-        home.join(".zshrc"),
-        home.join(".profile"),
-    ];
-
-    for config_path in shell_configs {
-        if config_path.exists() {
-            if let Err(e) = remove_from_shell_config(&config_path, bin_dir) {
-                log::warn!("Failed to update {}: {}", config_path.display(), e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Remove wenget PATH entry from a shell configuration file
-#[cfg(not(windows))]
-fn remove_from_shell_config(config_path: &Path, bin_dir: &str) -> Result<()> {
-    let content = fs::read_to_string(config_path)
-        .with_context(|| format!("Failed to read {}", config_path.display()))?;
-
-    // Remove lines containing the wenget PATH entry
-    let new_content: String = content
-        .lines()
-        .filter(|line| {
-            // Skip lines that contain the wenget bin directory or wenget comment
-            !line.contains(bin_dir) && !line.contains("# wenget")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    // Only write if content changed
-    if new_content != content {
-        fs::write(config_path, new_content.trim_end())
-            .with_context(|| format!("Failed to write to {}", config_path.display()))?;
-    }
-
+fn remove_registry_entry(_dir: &Path, _system: bool) -> Result<()> {
     Ok(())
 }
 
