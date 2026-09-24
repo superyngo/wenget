@@ -1,5 +1,7 @@
 //! Core modules for wenget
 
+pub mod bucket;
+pub mod cache;
 pub mod checksum;
 pub mod config;
 pub mod fuzzy;

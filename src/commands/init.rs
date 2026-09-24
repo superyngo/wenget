@@ -1,6 +1,6 @@
 //! Initialize wenget
 
-use crate::bucket::Bucket;
+use crate::core::bucket::Bucket;
 use crate::core::is_elevated;
 use crate::core::{Config, WenPaths};
 use anyhow::{Context, Result};

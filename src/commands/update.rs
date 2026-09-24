@@ -345,7 +345,7 @@ pub fn run(
 fn find_upgradeable(
     installed: &crate::core::InstalledSet,
     github: &GitHubProvider,
-    cache: &mut crate::cache::ManifestCache,
+    cache: &mut crate::core::cache::ManifestCache,
     yes: bool,
 ) -> Result<Vec<(String, String, String)>> {
     let mut upgradeable = Vec::new();
@@ -572,7 +572,7 @@ fn sync_bucket_packages_to_cache(
     installed: &crate::core::InstalledSet,
     keys: &[String],
     github: &GitHubProvider,
-    cache: &mut crate::cache::ManifestCache,
+    cache: &mut crate::core::cache::ManifestCache,
 ) {
     let mut synced = HashSet::new();
     let mut jobs: Vec<(String, String, RepoMeta)> = Vec::new();

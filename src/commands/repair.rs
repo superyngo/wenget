@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-use crate::bucket::BucketConfig;
-use crate::cache::ManifestCache;
+use crate::core::bucket::BucketConfig;
+use crate::core::cache::ManifestCache;
 use crate::core::manifest::InstalledSet;
 use crate::core::paths::WenPaths;
 use crate::core::repair::{check_json_file, create_backup, FileStatus};

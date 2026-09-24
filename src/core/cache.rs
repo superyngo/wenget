@@ -3,7 +3,7 @@
 //! The cache fetches and merges bucket sources into a unified view.
 //! This reduces GitHub API calls and improves performance.
 
-use crate::bucket::Bucket;
+use crate::core::bucket::Bucket;
 use crate::core::manifest::{Package, PackageSource, ScriptItem, SourceManifest};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};

@@ -5,7 +5,7 @@
 //! - Fetching package information from cache or GitHub
 //! - Determining the bucket source of cached packages
 
-use crate::cache::ManifestCache;
+use crate::core::cache::ManifestCache;
 use crate::core::manifest::{Package, PackageSource};
 use crate::core::Config;
 use crate::providers::GitHubProvider;

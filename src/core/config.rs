@@ -10,8 +10,8 @@ use super::manifest::{InstalledSet, SourceManifest};
 use super::paths::WenPaths;
 use super::preferences::Preferences;
 use super::store::InstalledStore;
-use crate::bucket::BucketConfig;
-use crate::cache::ManifestCache;
+use crate::core::bucket::BucketConfig;
+use crate::core::cache::ManifestCache;
 use anyhow::{Context, Result};
 use std::fs;
 
@@ -145,8 +145,8 @@ impl Config {
 
     /// Force rebuild manifest cache from buckets only
     pub fn rebuild_cache(&self) -> Result<ManifestCache> {
-        use crate::bucket::Bucket;
-        use crate::cache::build_cache_from_results;
+        use crate::core::bucket::Bucket;
+        use crate::core::cache::build_cache_from_results;
         use crate::utils::HttpClient;
         use std::time::Duration;
 

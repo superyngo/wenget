@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(core): `bucket` and `cache` modules moved under `core/`, so `core::config` no longer
+  depends upward on root-level modules (A-7).
 - refactor(core): interpreter probing moved from `core/manifest.rs` to `installer::script`
   (`is_interpreter_available`, `installable_script`); legacy `InstalledSet::migrate` moved to
   `core/migrate.rs`, so the manifest data definitions no longer spawn processes or touch disk (A-6).

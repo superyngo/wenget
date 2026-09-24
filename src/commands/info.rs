@@ -284,7 +284,7 @@ fn display_package_info(
 
 /// Display detailed information for a single script
 fn display_script_info(
-    cached_script: &crate::cache::CachedScript,
+    cached_script: &crate::core::cache::CachedScript,
     installed: &crate::core::InstalledSet,
 ) -> Result<()> {
     let script = &cached_script.script;

@@ -1,7 +1,7 @@
 //! Bucket command implementation
 
-use crate::bucket::Bucket;
 use crate::cli::{BucketCommands, UpdateMode};
+use crate::core::bucket::Bucket;
 use crate::core::manifest::{Package, ScriptItem, ScriptPlatform, ScriptType};
 use crate::core::Config;
 use crate::providers::{GitHubProvider, GitHubRepo};

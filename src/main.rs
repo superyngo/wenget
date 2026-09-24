@@ -1,7 +1,5 @@
 //! wenget - A cross-platform package manager for GitHub binaries
 
-mod bucket;
-mod cache;
 mod cli;
 mod commands;
 mod core;

@@ -16,7 +16,7 @@ _Avoid_: Registry, index.
 
 **Manifest cache**:
 The local cache file (`{root}/manifest-cache.json`, `WenPaths::manifest_cache_json`) that merges
-**Bucket** sources into a unified catalog with a 24-hour TTL (`src/cache.rs`). Rebuilt
+**Bucket** sources into a unified catalog with a 24-hour TTL (`src/core/cache.rs`). Rebuilt
 automatically from configured **Bucket**s when expired or corrupted.
 _Avoid_: Index, registry.
 

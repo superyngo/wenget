@@ -1,6 +1,6 @@
 //! Add (Install) command implementation
 
-use crate::cache::ManifestCache;
+use crate::core::cache::ManifestCache;
 use crate::core::manifest::{PackageSource, ScriptType};
 use crate::core::{Config, InstalledPackage, Platform, WenPaths};
 use crate::downloader;

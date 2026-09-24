@@ -610,11 +610,9 @@ cargo test
 ```
 wenget/
 ├── src/
-│   ├── bucket.rs           # Bucket management
-│   ├── cache.rs            # Package cache
 │   ├── cli.rs              # CLI interface
 │   ├── commands/           # Command implementations
-│   ├── core/               # Core functionality
+│   ├── core/               # Core functionality (config, buckets, manifest cache, installed store)
 │   ├── downloader/         # Download logic
 │   ├── installer/          # Installation logic
 │   ├── main.rs             # Entry point

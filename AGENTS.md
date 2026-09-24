@@ -43,7 +43,7 @@ cargo run -- list --all
 ## Project Structure
 
 See [`CONTEXT.md`](CONTEXT.md) and [`docs/reference/`](docs/reference/) for architecture, module structure, and data flow.
-Note that `src/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
+Note that `src/core/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
 
 ## Code Style Guidelines
 
