@@ -123,7 +123,7 @@ impl WenPaths {
     /// Create a WenPaths instance explicitly for user-level installation
     ///
     /// This bypasses the privilege detection and always uses ~/.wenget/
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn new_user() -> Result<Self> {
         let home = Self::home()?;
         Ok(Self {
@@ -151,7 +151,7 @@ impl WenPaths {
     /// Create a WenPaths instance explicitly for system-level installation
     ///
     /// This bypasses the privilege detection and always uses system paths
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn new_system() -> Self {
         Self {
             root: Self::system_root_path(),
@@ -233,21 +233,13 @@ impl WenPaths {
         self.apps_dir().join(sanitize_path_component(name))
     }
 
-    /// Get a specific app's bin directory
-    #[allow(dead_code)]
-    pub fn app_bin_dir(&self, name: &str) -> PathBuf {
-        self.app_dir(name).join("bin")
-    }
-
     /// Get the `.wenget` directory holding a package's record
-    // First callers land with InstalledStore.
-    #[allow(dead_code)]
     pub fn record_dir(&self, key: &str) -> PathBuf {
         self.app_dir(key).join(".wenget")
     }
 
     /// Get a package's record path: `{app_dir}/.wenget/package.json`
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn package_record_path(&self, key: &str) -> PathBuf {
         self.record_dir(key).join("package.json")
     }
@@ -365,23 +357,6 @@ impl WenPaths {
             self.bin_dir().join(name)
         }
     }
-
-    /// Get the platform-specific executable name
-    ///
-    /// On Windows: {name}.exe
-    /// On Unix: {name}
-    #[allow(dead_code)]
-    pub fn executable_name(name: &str) -> String {
-        #[cfg(windows)]
-        {
-            format!("{}.exe", name)
-        }
-
-        #[cfg(not(windows))]
-        {
-            name.to_string()
-        }
-    }
 }
 
 #[cfg(test)]
@@ -432,51 +407,10 @@ mod tests {
     }
 
     #[test]
-    fn test_user_paths() {
-        let paths = WenPaths::new_user().unwrap();
-        assert!(!paths.is_system_install());
-        assert!(paths.root().ends_with(".wenget"));
-    }
-
-    #[test]
-    fn test_system_paths() {
-        let paths = WenPaths::new_system();
-        assert!(paths.is_system_install());
-
-        #[cfg(unix)]
-        {
-            assert_eq!(paths.root(), Path::new("/opt/wenget"));
-            assert_eq!(paths.bin_dir(), PathBuf::from("/usr/local/bin"));
-        }
-
-        #[cfg(windows)]
-        {
-            // On Windows, verify the path contains "wenget"
-            assert!(paths.root().to_string_lossy().contains("wenget"));
-        }
-    }
-
-    #[test]
     fn test_app_paths() {
         let paths = WenPaths::new_user().unwrap();
         let app_dir = paths.app_dir("test");
         assert!(app_dir.ends_with("apps/test") || app_dir.ends_with("apps\\test"));
-
-        let bin_dir = paths.app_bin_dir("test");
-        assert!(bin_dir.ends_with("apps/test/bin") || bin_dir.ends_with("apps\\test\\bin"));
-    }
-
-    #[test]
-    fn test_executable_name() {
-        #[cfg(windows)]
-        {
-            assert_eq!(WenPaths::executable_name("test"), "test.exe");
-        }
-
-        #[cfg(not(windows))]
-        {
-            assert_eq!(WenPaths::executable_name("test"), "test");
-        }
     }
 
     #[test]

@@ -14,7 +14,6 @@ use crate::bucket::BucketConfig;
 use crate::cache::ManifestCache;
 use anyhow::{Context, Result};
 use std::fs;
-use std::path::Path;
 
 /// Configuration manager
 pub struct Config {
@@ -85,16 +84,6 @@ impl Config {
     /// `InstalledStore::load`.
     pub fn load_installed(&self) -> Result<InstalledSet> {
         self.store().load()
-    }
-
-    /// Generic JSON loader (without repair - for internal use)
-    #[allow(dead_code)]
-    fn load_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
-        let content = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read file: {}", path.display()))?;
-
-        serde_json::from_str(&content)
-            .with_context(|| format!("Failed to parse JSON from: {}", path.display()))
     }
 
     /// Load the set of installed packages

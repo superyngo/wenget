@@ -32,7 +32,6 @@ pub fn create_shim(target: &Path, shim: &Path, _name: &str) -> Result<()> {
 
 /// Placeholder for Unix (uses symlink instead)
 #[cfg(not(windows))]
-#[allow(dead_code)]
 pub fn create_shim(_target: &Path, _shim: &Path, _name: &str) -> Result<()> {
     // On Unix, we use symlinks instead of shims
     Ok(())

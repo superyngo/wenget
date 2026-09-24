@@ -108,28 +108,6 @@ impl HttpClient {
 
         Ok(data)
     }
-
-    /// Check GitHub API rate limit
-    #[allow(dead_code)]
-    pub fn check_rate_limit(&self) -> Result<RateLimit> {
-        let data: serde_json::Value = self
-            .get_json(&format!(
-                "{}/rate_limit",
-                crate::providers::github::api_base()
-            ))
-            .context("Failed to check rate limit")?;
-
-        let core = &data["rate"];
-        let limit = core["limit"].as_u64().unwrap_or(0);
-        let remaining = core["remaining"].as_u64().unwrap_or(0);
-        let reset = core["reset"].as_u64().unwrap_or(0);
-
-        Ok(RateLimit {
-            limit,
-            remaining,
-            reset,
-        })
-    }
 }
 
 /// Build the error for a non-success response, naming an exhausted GitHub rate limit
@@ -184,36 +162,6 @@ impl Default for HttpClient {
     }
 }
 
-/// GitHub API rate limit information
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct RateLimit {
-    pub limit: u64,
-    pub remaining: u64,
-    pub reset: u64,
-}
-
-impl RateLimit {
-    /// Check if we're close to the rate limit
-    #[allow(dead_code)]
-    pub fn is_low(&self) -> bool {
-        self.remaining < 10
-    }
-
-    /// Get a warning message if rate limit is low
-    #[allow(dead_code)]
-    pub fn warning_message(&self) -> Option<String> {
-        if self.is_low() {
-            Some(format!(
-                "⚠ GitHub API rate limit low: {}/{} remaining",
-                self.remaining, self.limit
-            ))
-        } else {
-            None
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -252,13 +200,5 @@ mod tests {
         assert_eq!(msg, "HTTP 403 Forbidden for https://x");
         let msg = describe_status(404, None, None, "https://x").to_string();
         assert_eq!(msg, "HTTP 404 Not Found for https://x");
-    }
-
-    #[test]
-    #[ignore] // Requires network access
-    fn test_rate_limit_check() {
-        let client = HttpClient::new().unwrap();
-        let rate_limit = client.check_rate_limit();
-        assert!(rate_limit.is_ok());
     }
 }

@@ -25,7 +25,6 @@ static POWERSHELL_CMD: OnceLock<&'static str> = OnceLock::new();
 ///
 /// The result is cached using OnceLock for efficiency.
 #[cfg(windows)]
-#[allow(dead_code)]
 pub fn get_powershell_command() -> &'static str {
     POWERSHELL_CMD.get_or_init(|| {
         if std::process::Command::new("pwsh")
@@ -44,7 +43,7 @@ pub fn get_powershell_command() -> &'static str {
 ///
 /// On Unix, PowerShell Core (pwsh) must be installed, so we always use "pwsh".
 #[cfg(not(windows))]
-#[allow(dead_code)]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn get_powershell_command() -> &'static str {
     "pwsh"
 }

@@ -489,7 +489,6 @@ fn has_executable_permission(file_path: &Path) -> bool {
 }
 
 #[cfg(not(unix))]
-#[allow(dead_code)]
 fn has_executable_permission(_file_path: &Path) -> bool {
     // On Windows, we rely on .exe extension, not permissions
     true

@@ -252,11 +252,6 @@ struct ManifestGenerator {
 }
 
 impl ManifestGenerator {
-    #[allow(dead_code)]
-    fn new() -> Result<Self> {
-        Self::with_token(None)
-    }
-
     fn with_token(token: Option<String>) -> Result<Self> {
         Ok(Self {
             http: HttpClient::with_token(token.clone())?,

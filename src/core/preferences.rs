@@ -42,23 +42,6 @@ impl Preferences {
             .with_context(|| format!("Failed to parse config file: {}", config_path.display()))
     }
 
-    /// Save preferences to config.toml
-    #[allow(dead_code)]
-    pub fn save(&self, config_path: &Path) -> Result<()> {
-        // Create parent directory if needed
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create config directory: {}", parent.display())
-            })?;
-        }
-
-        let content =
-            toml::to_string_pretty(self).context("Failed to serialize preferences to TOML")?;
-
-        fs::write(config_path, content)
-            .with_context(|| format!("Failed to write config file: {}", config_path.display()))
-    }
-
     /// Generate a default config.toml with helpful comments
     pub fn generate_default_file(config_path: &Path) -> Result<()> {
         // Create parent directory if needed
@@ -159,7 +142,7 @@ mod tests {
             custom_bin_path: Some(PathBuf::from("/usr/local/bin")),
         };
 
-        prefs.save(&config_path).unwrap();
+        std::fs::write(&config_path, toml::to_string_pretty(&prefs).unwrap()).unwrap();
         let loaded = Preferences::load(&config_path).unwrap();
 
         assert_eq!(loaded.preferred_platform, prefs.preferred_platform);

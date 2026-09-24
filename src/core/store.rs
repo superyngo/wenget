@@ -45,13 +45,12 @@ pub struct InstalledStore {
     paths: WenPaths,
 }
 
-// Callers land as the write sites are converted.
-#[allow(dead_code)]
 impl InstalledStore {
     pub fn new(paths: WenPaths) -> Self {
         Self { paths }
     }
 
+    #[cfg(test)]
     pub fn paths(&self) -> &WenPaths {
         &self.paths
     }
@@ -325,22 +324,7 @@ impl InstalledStore {
         write_record_atomically(&final_path, pkg)
     }
 
-    /// Drop a record while keeping the files
-    ///
-    /// Uninstall does not use this: `remove_dir_all` on the app directory removes
-    /// the record with the payload.
-    #[allow(dead_code)]
-    pub fn remove_package(&self, key: &str) -> Result<()> {
-        let record_path = self.paths.package_record_path(key);
-        if record_path.exists() {
-            fs::remove_file(&record_path)
-                .with_context(|| format!("Failed to remove {}", record_path.display()))?;
-        }
-        Ok(())
-    }
-
     /// Installed keys claimed by more than one app directory
-    #[allow(dead_code)]
     pub fn duplicate_keys(&self) -> Result<Vec<(String, Vec<PathBuf>)>> {
         let mut by_key: HashMap<String, Vec<PathBuf>> = HashMap::new();
         for entry in self.scan_app_dirs()? {
@@ -430,7 +414,6 @@ fn is_old_install_residue(name: &str) -> bool {
 }
 
 /// Serialize to a sibling `.tmp`, fsync, then rename over the target
-#[allow(dead_code)]
 pub(crate) fn write_record_atomically(final_path: &Path, pkg: &InstalledPackage) -> Result<()> {
     use std::io::Write;
 
@@ -673,23 +656,6 @@ mod tests {
             .filter(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
             .collect();
         assert!(leftovers.is_empty());
-    }
-
-    #[test]
-    fn test_remove_package_drops_record_only() {
-        let tmp = TempDir::new().unwrap();
-        let s = store(&tmp);
-        s.save_package("gone", &pkg("gone", None)).unwrap();
-        std::fs::write(tmp.path().join("apps").join("gone").join("payload"), b"x").unwrap();
-
-        s.remove_package("gone").unwrap();
-        assert!(s.load().unwrap().packages.is_empty());
-        assert!(tmp
-            .path()
-            .join("apps")
-            .join("gone")
-            .join("payload")
-            .exists());
     }
 
     /// Writes a legacy installed.json holding `keys`, creating a matching app

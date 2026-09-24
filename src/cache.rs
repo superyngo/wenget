@@ -190,12 +190,6 @@ impl ManifestCache {
         }
     }
 
-    /// Find a package by name
-    #[allow(dead_code)]
-    pub fn find_package(&self, name: &str) -> Option<&CachedPackage> {
-        self.packages.values().find(|cp| cp.package.name == name)
-    }
-
     /// Build a name → cached package index for bulk name-based lookups.
     ///
     /// The `packages` map is keyed by repo URL, but update/check flows look
@@ -211,27 +205,8 @@ impl ManifestCache {
     }
 
     /// Find a script by name
-    #[allow(dead_code)]
     pub fn find_script(&self, name: &str) -> Option<&CachedScript> {
         self.scripts.get(name)
-    }
-
-    /// Get packages filtered by source
-    #[allow(dead_code)]
-    pub fn packages_by_source(&self, source_type: &PackageSource) -> Vec<&CachedPackage> {
-        self.packages
-            .values()
-            .filter(|cp| &cp.source == source_type)
-            .collect()
-    }
-
-    /// Get scripts filtered by source
-    #[allow(dead_code)]
-    pub fn scripts_by_source(&self, source_type: &PackageSource) -> Vec<&CachedScript> {
-        self.scripts
-            .values()
-            .filter(|cs| &cs.source == source_type)
-            .collect()
     }
 }
 
@@ -329,7 +304,8 @@ mod tests {
         cache.add_package(package.clone(), source.clone());
         assert_eq!(cache.packages.len(), 1);
 
-        let cached = cache.find_package("test").unwrap();
+        let index = cache.packages_by_name();
+        let cached = index["test"];
         assert_eq!(cached.package.name, "test");
         assert_eq!(cached.source, source);
     }

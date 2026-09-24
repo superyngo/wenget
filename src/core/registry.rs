@@ -6,6 +6,7 @@
 
 #[allow(unused_imports)]
 use anyhow::{Context, Result};
+#[cfg(windows)]
 use std::path::Path;
 
 /// Path modification operation type
@@ -211,20 +212,6 @@ fn broadcast_environment_change() {
             &mut result,
         );
     }
-}
-
-/// Stub implementation for non-Windows platforms
-#[cfg(not(windows))]
-#[allow(dead_code)]
-pub fn add_to_system_path(_path: &Path) -> Result<bool> {
-    anyhow::bail!("System PATH modification is only supported on Windows")
-}
-
-/// Stub implementation for non-Windows platforms
-#[cfg(not(windows))]
-#[allow(dead_code)]
-pub fn remove_from_system_path(_path: &Path) -> Result<bool> {
-    anyhow::bail!("System PATH modification is only supported on Windows")
 }
 
 #[cfg(test)]

@@ -24,6 +24,4 @@ pub use platform::{Arch, BinaryAsset, BinarySelector, Compiler, FileExtension, O
 pub use preferences::Preferences;
 pub use privilege::is_elevated;
 #[allow(unused_imports)]
-pub use registry::{add_to_system_path, remove_from_system_path};
-#[allow(unused_imports)]
 pub use store::InstalledStore;

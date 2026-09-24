@@ -24,23 +24,17 @@ pub enum RepairSeverity {
 
 /// Type of repair action taken
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum RepairAction {
-    /// File was missing, created new
-    CreatedNew,
     /// Parse error, reset to empty (with backup path if backed up)
     ResetToEmpty { backup_path: Option<PathBuf> },
     /// Parse error, rebuilt from sources
     Rebuilt { source: String },
-    /// File was deleted (will be rebuilt on next access)
-    Deleted,
 }
 
 impl RepairAction {
     /// Get user-friendly description of the repair action
     pub fn description(&self) -> String {
         match self {
-            RepairAction::CreatedNew => "Created new configuration file".to_string(),
             RepairAction::ResetToEmpty {
                 backup_path: Some(p),
             } => {
@@ -52,7 +46,6 @@ impl RepairAction {
             RepairAction::Rebuilt { source } => {
                 format!("Will rebuild from {}", source)
             }
-            RepairAction::Deleted => "Deleted corrupted file".to_string(),
         }
     }
 }
@@ -286,8 +279,8 @@ mod tests {
 
     #[test]
     fn test_try_parse_json_invalid() {
-        #[derive(serde::Deserialize)]
         #[allow(dead_code)]
+        #[derive(serde::Deserialize)]
         struct Test {
             value: i32,
         }

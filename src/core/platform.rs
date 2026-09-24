@@ -9,40 +9,27 @@ use std::collections::HashMap;
 
 /// Types of fallback compatibility
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)] // Some variants used in tests and future features
 pub enum FallbackType {
-    /// Using musl on a GNU system (compatible - musl is statically linked)
-    MuslOnGnu,
-    /// Using GNU on a musl system (may require glibc installation)
-    GnuOnMusl,
     /// 32-bit binary on 64-bit system
     Arch32On64,
     /// x86_64 on ARM via emulation (Rosetta 2, Windows 11)
     X64OnArm,
-    /// Different compiler variant on Windows
-    WindowsCompilerVariant,
 }
 
 impl FallbackType {
     /// Get user-friendly description of the fallback
     pub fn description(&self) -> &str {
         match self {
-            FallbackType::MuslOnGnu => "musl-linked binary (statically linked, should work)",
-            FallbackType::GnuOnMusl => "glibc-linked binary (may require glibc installation)",
             FallbackType::Arch32On64 => "32-bit binary on 64-bit system",
             FallbackType::X64OnArm => "x86_64 binary via emulation (Rosetta 2 / Windows 11)",
-            FallbackType::WindowsCompilerVariant => "different compiler variant",
         }
     }
 
     /// Whether this fallback should require user confirmation
     pub fn requires_confirmation(&self) -> bool {
         match self {
-            FallbackType::MuslOnGnu => false,              // Generally works
-            FallbackType::GnuOnMusl => true,               // May not work
-            FallbackType::Arch32On64 => true,              // User might want 64-bit
-            FallbackType::X64OnArm => true,                // Performance impact
-            FallbackType::WindowsCompilerVariant => false, // Usually works
+            FallbackType::Arch32On64 => true, // User might want 64-bit
+            FallbackType::X64OnArm => true,   // Performance impact
         }
     }
 }
@@ -52,9 +39,6 @@ impl FallbackType {
 pub struct PlatformMatch {
     /// The platform identifier that matched
     pub platform_id: String,
-    /// Whether this is an exact match or fallback
-    #[allow(dead_code)] // Used for future features and debugging
-    pub is_exact: bool,
     /// Type of fallback if not exact
     pub fallback_type: Option<FallbackType>,
     /// Score for this match (higher = better)
@@ -189,7 +173,7 @@ pub enum Compiler {
 
 /// Detected libc type on the current system
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)] // Unknown variant kept for completeness and future use
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub enum LibcType {
     /// musl libc (Alpine, Void Linux musl, etc.)
     Musl,
@@ -681,16 +665,6 @@ impl Platform {
         }
     }
 
-    /// Create a platform with compiler specification
-    #[allow(dead_code)]
-    pub fn with_compiler(os: Os, arch: Arch, compiler: Compiler) -> Self {
-        Self {
-            os,
-            arch,
-            compiler: Some(compiler),
-        }
-    }
-
     /// Get all possible platform identifiers for this platform
     ///
     /// Returns variants in priority order based on detected libc:
@@ -764,7 +738,6 @@ impl Platform {
             if available_platforms.contains_key(id) {
                 matches.push(PlatformMatch {
                     platform_id: id.clone(),
-                    is_exact: true,
                     fallback_type: None,
                     score: 1000 - priority, // Higher priority = higher score
                 });
@@ -777,15 +750,11 @@ impl Platform {
             for (id, fallback_type) in fallback_ids {
                 if available_platforms.contains_key(&id) {
                     let score = match fallback_type {
-                        FallbackType::MuslOnGnu => 500,
-                        FallbackType::GnuOnMusl => 400,
-                        FallbackType::WindowsCompilerVariant => 450,
                         FallbackType::Arch32On64 => 300,
                         FallbackType::X64OnArm => 200,
                     };
                     matches.push(PlatformMatch {
                         platform_id: id,
-                        is_exact: false,
                         fallback_type: Some(fallback_type),
                         score,
                     });
@@ -817,7 +786,6 @@ impl Platform {
         if available_platforms.contains_key(override_str) {
             return vec![PlatformMatch {
                 platform_id: override_str.to_string(),
-                is_exact: true,
                 fallback_type: None,
                 score: 1000,
             }];
@@ -1187,10 +1155,6 @@ mod tests {
 
         let platform = Platform::new(Os::Linux, Arch::Aarch64);
         assert_eq!(platform.to_string(), "linux-aarch64");
-
-        // Test platform with compiler
-        let platform = Platform::with_compiler(Os::Linux, Arch::X86_64, Compiler::Musl);
-        assert_eq!(platform.to_string(), "linux-x86_64-musl");
     }
 
     #[test]
@@ -1570,7 +1534,7 @@ mod tests {
         let matches = platform.find_best_match(&available);
 
         assert_eq!(matches.len(), 1);
-        assert!(!matches[0].is_exact);
+        assert!(matches[0].fallback_type.is_some());
         assert_eq!(matches[0].fallback_type, Some(FallbackType::Arch32On64));
     }
 
@@ -1622,7 +1586,7 @@ mod tests {
 
         let matches = Platform::match_override("linux-aarch64-musl", &available);
         assert_eq!(matches.len(), 1);
-        assert!(matches[0].is_exact);
+        assert!(matches[0].fallback_type.is_none());
         assert_eq!(matches[0].platform_id, "linux-aarch64-musl");
     }
 
@@ -1667,7 +1631,7 @@ mod tests {
         let matches = platform.find_best_match(&available);
 
         assert_eq!(matches.len(), 1);
-        assert!(!matches[0].is_exact);
+        assert!(matches[0].fallback_type.is_some());
         assert_eq!(matches[0].fallback_type, Some(FallbackType::X64OnArm));
     }
 
@@ -1676,11 +1640,6 @@ mod tests {
         // Arch fallback should require confirmation
         assert!(FallbackType::Arch32On64.requires_confirmation());
         assert!(FallbackType::X64OnArm.requires_confirmation());
-        assert!(FallbackType::GnuOnMusl.requires_confirmation());
-
-        // Compiler variants should not require confirmation
-        assert!(!FallbackType::MuslOnGnu.requires_confirmation());
-        assert!(!FallbackType::WindowsCompilerVariant.requires_confirmation());
     }
 
     #[test]
@@ -1712,7 +1671,7 @@ mod tests {
 
         // Should prefer exact match (musl) over fallback (i686)
         assert!(!matches.is_empty());
-        assert!(matches[0].is_exact);
+        assert!(matches[0].fallback_type.is_none());
         assert_eq!(matches[0].platform_id, "linux-x86_64-musl");
     }
 

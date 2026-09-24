@@ -124,32 +124,9 @@ impl BucketConfig {
         self.buckets.len() < original_len
     }
 
-    /// Find a bucket by name
-    #[allow(dead_code)]
-    pub fn find_bucket(&self, name: &str) -> Option<&Bucket> {
-        self.buckets.iter().find(|b| b.name == name)
-    }
-
-    /// Find a bucket by name (mutable)
-    #[allow(dead_code)]
-    pub fn find_bucket_mut(&mut self, name: &str) -> Option<&mut Bucket> {
-        self.buckets.iter_mut().find(|b| b.name == name)
-    }
-
     /// Get all enabled buckets
     pub fn enabled_buckets(&self) -> Vec<&Bucket> {
         self.buckets.iter().filter(|b| b.enabled).collect()
-    }
-
-    /// Set bucket enabled state
-    #[allow(dead_code)]
-    pub fn set_enabled(&mut self, name: &str, enabled: bool) -> bool {
-        if let Some(bucket) = self.find_bucket_mut(name) {
-            bucket.enabled = enabled;
-            true
-        } else {
-            false
-        }
     }
 }
 

@@ -327,21 +327,9 @@ impl ScriptItem {
         None
     }
 
-    /// Get all available platforms for this script
-    #[allow(dead_code)]
-    pub fn available_platforms(&self) -> Vec<ScriptType> {
-        self.platforms.keys().cloned().collect()
-    }
-
     /// Check if this script has a compatible version for the current platform
     pub fn is_compatible_with_current_platform(&self) -> bool {
         self.get_compatible_script().is_some()
-    }
-
-    /// Get a specific platform's script info
-    #[allow(dead_code)]
-    pub fn get_platform(&self, script_type: &ScriptType) -> Option<&ScriptPlatform> {
-        self.platforms.get(script_type)
     }
 
     /// Get a display string showing available platforms
@@ -369,24 +357,6 @@ impl SourceManifest {
             packages: Vec::new(),
             scripts: Vec::new(),
         }
-    }
-
-    /// Get packages that support a specific platform
-    #[allow(dead_code)]
-    pub fn packages_for_platform(&self, platform: &str) -> Vec<&Package> {
-        self.packages
-            .iter()
-            .filter(|p| p.platforms.contains_key(platform))
-            .collect()
-    }
-
-    /// Get scripts that are supported on the current platform
-    #[allow(dead_code)]
-    pub fn scripts_for_current_platform(&self) -> Vec<&ScriptItem> {
-        self.scripts
-            .iter()
-            .filter(|s| s.is_compatible_with_current_platform())
-            .collect()
     }
 }
 
@@ -550,12 +520,6 @@ impl InstalledSet {
         self.packages.remove(name)
     }
 
-    /// Get all installed package names
-    #[allow(dead_code)]
-    pub fn installed_names(&self) -> Vec<&str> {
-        self.packages.keys().map(|s| s.as_str()).collect()
-    }
-
     /// Group packages by their repo_name
     /// Returns a HashMap where keys are repo names and values are vectors of (key, package) tuples
     pub fn group_by_repo(&self) -> HashMap<String, Vec<(&String, &InstalledPackage)>> {
@@ -601,24 +565,6 @@ impl InstalledSet {
                 }
             })
             .collect()
-    }
-
-    /// Check if a command name is already taken by another package
-    #[allow(dead_code)] // Superseded by command_name_set for bulk probes; kept for single-check use and tests.
-    pub fn is_command_taken(&self, command_name: &str, exclude_key: Option<&str>) -> bool {
-        for (key, package) in &self.packages {
-            if let Some(exclude) = exclude_key {
-                if key == exclude {
-                    continue;
-                }
-            }
-            if package.executables.values().any(|n| n == command_name)
-                || package.command_names.contains(&command_name.to_string())
-            {
-                return true;
-            }
-        }
-        false
     }
 
     /// Build the set of all command names currently in use, optionally excluding
@@ -1065,40 +1011,6 @@ mod tests {
         assert_eq!(pkg.get_exe_path_for_command("rg"), Some("bin/rg"));
         assert_eq!(pkg.get_exe_path_for_command("rg-doc"), Some("bin/rg-doc"));
         assert_eq!(pkg.get_exe_path_for_command("nonexistent"), None);
-    }
-
-    #[test]
-    fn test_is_command_taken_with_executables() {
-        let mut manifest = InstalledSet::new();
-
-        let mut executables = HashMap::new();
-        executables.insert("bin/rg".to_string(), "rg".to_string());
-
-        let pkg = InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
-            repo_name: "ripgrep".to_string(),
-            variant: None,
-            version: "14.0.0".to_string(),
-            platform: "linux-x86_64".to_string(),
-            installed_at: Utc::now(),
-            install_path: "/path".to_string(),
-            executables,
-            source: PackageSource::Bucket {
-                name: "main".to_string(),
-            },
-            description: String::new(),
-            command_names: vec![],
-            command_name: None,
-            asset_name: "rg.tar.gz".to_string(),
-            parent_package: None,
-            download_url: None,
-        };
-
-        manifest.upsert_package("ripgrep".to_string(), pkg);
-
-        assert!(manifest.is_command_taken("rg", None));
-        assert!(!manifest.is_command_taken("rg", Some("ripgrep")));
-        assert!(!manifest.is_command_taken("nonexistent", None));
     }
 
     #[test]
