@@ -1,0 +1,1178 @@
+Agenvoy	linux-aarch64	agen-v1.0.19-linux-arm64.tar.gz	agen
+Agenvoy	linux-x86_64	agen-v1.0.19-linux-amd64.tar.gz	agen
+Agenvoy	macos-aarch64	agen-v1.0.19-darwin-arm64.tar.gz	agen
+FFmpeg-Builds	linux-aarch64	ffmpeg-N-126782-gdc52424419-linuxarm64-gpl-shared.tar.xz	ffmpeg-N-126782-gdc52424419-linuxarm64-gpl-shared
+FFmpeg-Builds	linux-aarch64	ffmpeg-N-126782-gdc52424419-linuxarm64-gpl.tar.xz	ffmpeg-N-126782-gdc52424419-linuxarm64-gpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-N-126782-gdc52424419-linuxarm64-lgpl-shared.tar.xz	ffmpeg-N-126782-gdc52424419-linuxarm64-lgpl-shared
+FFmpeg-Builds	linux-aarch64	ffmpeg-N-126782-gdc52424419-linuxarm64-lgpl.tar.xz	ffmpeg-N-126782-gdc52424419-linuxarm64-lgpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-n8.1.3-linuxarm64-gpl-8.1.tar.xz	ffmpeg-n8-1-3-linuxarm64-gpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-n8.1.3-linuxarm64-gpl-shared-8.1.tar.xz	ffmpeg-n8-1-3-linuxarm64-gpl-shared
+FFmpeg-Builds	linux-aarch64	ffmpeg-n8.1.3-linuxarm64-lgpl-8.1.tar.xz	ffmpeg-n8-1-3-linuxarm64-lgpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-n8.1.3-linuxarm64-lgpl-shared-8.1.tar.xz	ffmpeg-n8-1-3-linuxarm64-lgpl-shared
+FFmpeg-Builds	linux-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-linuxarm64-gpl-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linuxarm64-gpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-linuxarm64-gpl-shared-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linuxarm64-gpl-shared
+FFmpeg-Builds	linux-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-linuxarm64-lgpl-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linuxarm64-lgpl
+FFmpeg-Builds	linux-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-linuxarm64-lgpl-shared-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linuxarm64-lgpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-N-126782-gdc52424419-linux64-gpl-shared.tar.xz	ffmpeg-N-126782-gdc52424419-linux64-gpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-N-126782-gdc52424419-linux64-gpl.tar.xz	ffmpeg-N-126782-gdc52424419-linux64-gpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-N-126782-gdc52424419-linux64-lgpl-shared.tar.xz	ffmpeg-N-126782-gdc52424419-linux64-lgpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-N-126782-gdc52424419-linux64-lgpl.tar.xz	ffmpeg-N-126782-gdc52424419-linux64-lgpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-n8.1.3-linux64-gpl-8.1.tar.xz	ffmpeg-n8-1-3-linux64-gpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-n8.1.3-linux64-gpl-shared-8.1.tar.xz	ffmpeg-n8-1-3-linux64-gpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-n8.1.3-linux64-lgpl-8.1.tar.xz	ffmpeg-n8-1-3-linux64-lgpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-n8.1.3-linux64-lgpl-shared-8.1.tar.xz	ffmpeg-n8-1-3-linux64-lgpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linux64-gpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-shared-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linux64-gpl-shared
+FFmpeg-Builds	linux-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-linux64-lgpl-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linux64-lgpl
+FFmpeg-Builds	linux-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-linux64-lgpl-shared-9.0.tar.xz	ffmpeg-n9-0-2-3-ga5923073bf-linux64-lgpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-N-126782-gdc52424419-win64-gpl-shared.zip	ffmpeg-N-126782-gdc52424419-gpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-N-126782-gdc52424419-win64-gpl.zip	ffmpeg-N-126782-gdc52424419-gpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-N-126782-gdc52424419-win64-lgpl-shared.zip	ffmpeg-N-126782-gdc52424419-lgpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-N-126782-gdc52424419-win64-lgpl.zip	ffmpeg-N-126782-gdc52424419-lgpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-n8.1.3-win64-gpl-8.1.zip	ffmpeg-n8-1-3-gpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-n8.1.3-win64-gpl-shared-8.1.zip	ffmpeg-n8-1-3-gpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-n8.1.3-win64-lgpl-8.1.zip	ffmpeg-n8-1-3-lgpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-n8.1.3-win64-lgpl-shared-8.1.zip	ffmpeg-n8-1-3-lgpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl-shared
+FFmpeg-Builds	windows-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl
+FFmpeg-Builds	windows-aarch64	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-N-126782-gdc52424419-win64-gpl-shared.zip	ffmpeg-N-126782-gdc52424419-gpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-N-126782-gdc52424419-win64-gpl.zip	ffmpeg-N-126782-gdc52424419-gpl
+FFmpeg-Builds	windows-i686	ffmpeg-N-126782-gdc52424419-win64-lgpl-shared.zip	ffmpeg-N-126782-gdc52424419-lgpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-N-126782-gdc52424419-win64-lgpl.zip	ffmpeg-N-126782-gdc52424419-lgpl
+FFmpeg-Builds	windows-i686	ffmpeg-n8.1.3-win64-gpl-8.1.zip	ffmpeg-n8-1-3-gpl
+FFmpeg-Builds	windows-i686	ffmpeg-n8.1.3-win64-gpl-shared-8.1.zip	ffmpeg-n8-1-3-gpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-n8.1.3-win64-lgpl-8.1.zip	ffmpeg-n8-1-3-lgpl
+FFmpeg-Builds	windows-i686	ffmpeg-n8.1.3-win64-lgpl-shared-8.1.zip	ffmpeg-n8-1-3-lgpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl
+FFmpeg-Builds	windows-i686	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl-shared
+FFmpeg-Builds	windows-i686	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl
+FFmpeg-Builds	windows-i686	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-N-126782-gdc52424419-win64-gpl-shared.zip	ffmpeg-N-126782-gdc52424419-gpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-N-126782-gdc52424419-win64-gpl.zip	ffmpeg-N-126782-gdc52424419-gpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-N-126782-gdc52424419-win64-lgpl-shared.zip	ffmpeg-N-126782-gdc52424419-lgpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-N-126782-gdc52424419-win64-lgpl.zip	ffmpeg-N-126782-gdc52424419-lgpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-n8.1.3-win64-gpl-8.1.zip	ffmpeg-n8-1-3-gpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-n8.1.3-win64-gpl-shared-8.1.zip	ffmpeg-n8-1-3-gpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-n8.1.3-win64-lgpl-8.1.zip	ffmpeg-n8-1-3-lgpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-n8.1.3-win64-lgpl-shared-8.1.zip	ffmpeg-n8-1-3-lgpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-gpl-shared
+FFmpeg-Builds	windows-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl
+FFmpeg-Builds	windows-x86_64	ffmpeg-n9.0.2-3-ga5923073bf-win64-lgpl-shared-9.0.zip	ffmpeg-n9-0-2-3-ga5923073bf-lgpl-shared
+Komac	linux-aarch64-gnu	komac-2.16.0-aarch64-unknown-linux-gnu.tar.gz	
+Komac	linux-x86_64-gnu	komac-2.16.0-x86_64-unknown-linux-gnu.tar.gz	
+Komac	macos-aarch64	komac-2.16.0-aarch64-apple-darwin.tar.gz	
+Komac	macos-x86_64	komac-2.16.0-x86_64-apple-darwin.tar.gz	
+Komac	windows-aarch64-msvc	komac-2.16.0-aarch64-pc-windows-msvc.exe	
+Komac	windows-aarch64-msvc	komac-setup-2.16.0-aarch64-pc-windows-msvc.exe	setup
+Komac	windows-x86_64-msvc	komac-2.16.0-x86_64-pc-windows-msvc.exe	
+Komac	windows-x86_64-msvc	komac-setup-2.16.0-x86_64-pc-windows-msvc.exe	setup
+N_m3u8DL-RE	linux-aarch64	N_m3u8DL-RE_v0.6.0-beta_android-bionic-arm64_20260629.tar.gz	beta-android-bionic-20260629
+N_m3u8DL-RE	linux-aarch64	N_m3u8DL-RE_v0.6.0-beta_linux-arm64_20260629.tar.gz	beta-20260629
+N_m3u8DL-RE	linux-x86_64	N_m3u8DL-RE_v0.6.0-beta_android-bionic-x64_20260629.tar.gz	beta-android-bionic-20260629
+N_m3u8DL-RE	linux-x86_64	N_m3u8DL-RE_v0.6.0-beta_linux-x64_20260629.tar.gz	beta-20260629
+N_m3u8DL-RE	macos-aarch64	N_m3u8DL-RE_v0.6.0-beta_osx-arm64_20260629.tar.gz	beta-osx-20260629
+N_m3u8DL-RE	macos-x86_64	N_m3u8DL-RE_v0.6.0-beta_osx-x64_20260629.tar.gz	beta-osx-20260629
+N_m3u8DL-RE	windows-aarch64	N_m3u8DL-RE_v0.6.0-beta_win-arm64_20260629.zip	beta-20260629
+N_m3u8DL-RE	windows-i686	N_m3u8DL-RE_v0.6.0-beta_win-NT6.0-x86_20260629.zip	beta-NT6-0-20260629
+N_m3u8DL-RE	windows-x86_64	N_m3u8DL-RE_v0.6.0-beta_win-x64_20260629.zip	beta-20260629
+Termix	linux-aarch64	termix_linux_arm64_portable.tar.gz	portable
+Termix	linux-aarch64	termix_linux_flatpak.flatpak	flatpak-flatpak
+Termix	linux-armv7	termix_linux_armv7l_portable.tar.gz	armv7l-portable
+Termix	linux-armv7	termix_linux_flatpak.flatpak	flatpak-flatpak
+Termix	linux-i686	termix_linux_flatpak.flatpak	flatpak-flatpak
+Termix	linux-x86_64	termix_linux_flatpak.flatpak	flatpak-flatpak
+Termix	linux-x86_64	termix_linux_x64_portable.tar.gz	portable
+Termix	windows-aarch64	termix_windows_ia32_nsis.exe	ia32-nsis
+Termix	windows-aarch64	termix_windows_ia32_portable.zip	ia32-portable
+Termix	windows-i686	termix_windows_ia32_nsis.exe	ia32-nsis
+Termix	windows-i686	termix_windows_ia32_portable.zip	ia32-portable
+Termix	windows-x86_64	termix_windows_ia32_nsis.exe	ia32-nsis
+Termix	windows-x86_64	termix_windows_ia32_portable.zip	ia32-portable
+Termix	windows-x86_64	termix_windows_x64_nsis.exe	nsis
+Termix	windows-x86_64	termix_windows_x64_portable.zip	portable
+agd	linux-aarch64	agd-linux-aarch64.tar.gz	
+agd	linux-aarch64-musl	agd-linux-aarch64-musl.tar.gz	
+agd	linux-armv7	agd-linux-armv7.tar.gz	
+agd	linux-armv7-musl	agd-linux-armv7-musl.tar.gz	
+agd	linux-i686	agd-linux-i686.tar.gz	
+agd	linux-i686-musl	agd-linux-i686-musl.tar.gz	
+agd	linux-x86_64	agd-linux-x86_64.tar.gz	
+agd	linux-x86_64-musl	agd-linux-x86_64-musl.tar.gz	
+agd	macos-aarch64	agd-macos-aarch64.tar.gz	
+agd	macos-x86_64	agd-macos-x86_64.tar.gz	
+agd	windows-aarch64	agd-windows-aarch64.zip	
+agd	windows-i686	agd-windows-i686.zip	
+agd	windows-x86_64	agd-windows-x86_64.zip	
+agm	linux-aarch64	agm-linux-aarch64.tar.gz	
+agm	linux-aarch64-musl	agm-linux-aarch64-musl.tar.gz	
+agm	linux-armv7	agm-linux-armv7.tar.gz	
+agm	linux-armv7-musl	agm-linux-armv7-musl.tar.gz	
+agm	linux-i686	agm-linux-i686.tar.gz	
+agm	linux-i686-musl	agm-linux-i686-musl.tar.gz	
+agm	linux-x86_64	agm-linux-x86_64.tar.gz	
+agm	linux-x86_64-musl	agm-linux-x86_64-musl.tar.gz	
+agm	macos-aarch64	agm-macos-aarch64.tar.gz	
+agm	macos-x86_64	agm-macos-x86_64.tar.gz	
+agm	windows-i686	agm-windows-i686.zip	
+agm	windows-x86_64	agm-windows-x86_64.zip	
+ai-config-manager	linux-aarch64	aimgr_3.9.0_linux_arm64.tar.gz	aimgr
+ai-config-manager	linux-x86_64	aimgr_3.9.0_linux_amd64.tar.gz	aimgr
+ai-config-manager	macos-aarch64	aimgr_3.9.0_darwin_arm64.tar.gz	aimgr
+ai-config-manager	macos-x86_64	aimgr_3.9.0_darwin_amd64.tar.gz	aimgr
+ai-config-manager	windows-aarch64	aimgr_3.9.0_windows_arm64.zip	aimgr
+ai-config-manager	windows-x86_64	aimgr_3.9.0_windows_amd64.zip	aimgr
+alist	freebsd-aarch64	alist-freebsd-arm64.tar.gz	freebsd
+alist	freebsd-x86_64	alist-freebsd-amd64.tar.gz	freebsd
+alist	linux-aarch64	alist-android-arm64.tar.gz	android
+alist	linux-aarch64	alist-linux-arm64.tar.gz	
+alist	linux-aarch64-musl	alist-linux-musl-arm64.tar.gz	
+alist	linux-armv7	alist-linux-arm-5.tar.gz	arm-5
+alist	linux-armv7	alist-linux-arm-6.tar.gz	arm-6
+alist	linux-armv7	alist-linux-arm-7.tar.gz	arm-7
+alist	linux-armv7-musl	alist-linux-musleabi-arm.tar.gz	musleabi-arm
+alist	linux-armv7-musl	alist-linux-musleabi-armel.tar.gz	musleabi-armel
+alist	linux-armv7-musl	alist-linux-musleabi-armv5l.tar.gz	musleabi-armv5l
+alist	linux-armv7-musl	alist-linux-musleabi-armv6.tar.gz	musleabi-armv6
+alist	linux-armv7-musl	alist-linux-musleabi-armv7m.tar.gz	musleabi-armv7m
+alist	linux-armv7-musl	alist-linux-musleabihf-arm.tar.gz	musleabihf-arm
+alist	linux-armv7-musl	alist-linux-musleabihf-armel.tar.gz	musleabihf-armel
+alist	linux-armv7-musl	alist-linux-musleabihf-armv5l.tar.gz	musleabihf-armv5l
+alist	linux-armv7-musl	alist-linux-musleabihf-armv6.tar.gz	musleabihf-armv6
+alist	linux-armv7-musl	alist-linux-musleabihf-armv7l.tar.gz	musleabihf-armv7l
+alist	linux-armv7-musl	alist-linux-musleabihf-armv7r.tar.gz	musleabihf-armv7r
+alist	linux-i686	alist-android-386.tar.gz	android-386
+alist	linux-i686	alist-linux-386.tar.gz	386
+alist	linux-x86_64	alist-android-amd64.tar.gz	android
+alist	linux-x86_64	alist-linux-amd64.tar.gz	
+alist	linux-x86_64-musl	alist-linux-musl-amd64.tar.gz	
+alist	macos-aarch64	alist-darwin-arm64.tar.gz	
+alist	macos-x86_64	alist-darwin-amd64.tar.gz	
+alist	windows-aarch64	alist-windows-arm64.zip	
+alist	windows-i686	alist-windows-386.zip	386
+alist	windows-x86_64	alist-windows-amd64-upx.zip	upx
+alist	windows-x86_64	alist-windows-amd64.zip	
+antigravity-cli	linux-aarch64	agy_cli_linux_arm64.tar.gz	agy-cli
+antigravity-cli	linux-x86_64	agy_cli_linux_x64.tar.gz	agy-cli
+antigravity-cli	macos-aarch64	agy_cli_mac_arm64.tar.gz	agy-cli
+antigravity-cli	macos-x86_64	agy_cli_mac_x64.tar.gz	agy-cli
+antigravity-cli	windows-aarch64	agy_cli_windows_arm64.zip	agy-cli
+antigravity-cli	windows-x86_64	agy_cli_windows_x64.zip	agy-cli
+aria2	linux-aarch64	aria2-1.37.0-aarch64-linux-android-build1.zip	android-build1
+aria2	windows-aarch64	aria2-1.37.0-win-32bit-build1.zip	32bit-build1
+aria2	windows-aarch64	aria2-1.37.0-win-64bit-build1.zip	64bit-build1
+aria2	windows-i686	aria2-1.37.0-win-32bit-build1.zip	32bit-build1
+aria2	windows-i686	aria2-1.37.0-win-64bit-build1.zip	64bit-build1
+aria2	windows-x86_64	aria2-1.37.0-win-32bit-build1.zip	32bit-build1
+aria2	windows-x86_64	aria2-1.37.0-win-64bit-build1.zip	64bit-build1
+basalt	linux-aarch64-gnu	basalt-0.12.7-aarch64-unknown-linux-gnu.tar.gz	
+basalt	linux-aarch64-musl	basalt-0.12.7-aarch64-unknown-linux-musl.tar.gz	
+basalt	linux-armv7-gnu	basalt-0.12.7-armv7-unknown-linux-gnueabihf.tar.gz	gnueabihf
+basalt	linux-x86_64-gnu	basalt-0.12.7-x86_64-unknown-linux-gnu.tar.gz	
+basalt	linux-x86_64-musl	basalt-0.12.7-x86_64-unknown-linux-musl.tar.gz	
+basalt	macos-aarch64	basalt-0.12.7-aarch64-apple-darwin.tar.gz	
+basalt	macos-x86_64	basalt-0.12.7-x86_64-apple-darwin.tar.gz	
+basalt	windows-x86_64-gnu	basalt-0.12.7-x86_64-pc-windows-gnu.zip	
+basalt	windows-x86_64-msvc	basalt-0.12.7-x86_64-pc-windows-msvc.zip	
+bat	linux-aarch64-gnu	bat-v0.26.1-aarch64-unknown-linux-gnu.tar.gz	
+bat	linux-aarch64-musl	bat-v0.26.1-aarch64-unknown-linux-musl.tar.gz	
+bat	linux-armv7-gnu	bat-v0.26.1-arm-unknown-linux-gnueabihf.tar.gz	arm-gnueabihf
+bat	linux-armv7-musl	bat-v0.26.1-arm-unknown-linux-musleabihf.tar.gz	arm-musleabihf
+bat	linux-i686-gnu	bat-v0.26.1-i686-unknown-linux-gnu.tar.gz	
+bat	linux-i686-musl	bat-v0.26.1-i686-unknown-linux-musl.tar.gz	
+bat	linux-x86_64-gnu	bat-v0.26.1-x86_64-unknown-linux-gnu.tar.gz	
+bat	linux-x86_64-musl	bat-v0.26.1-x86_64-unknown-linux-musl.tar.gz	
+bat	macos-aarch64	bat-v0.26.1-aarch64-apple-darwin.tar.gz	
+bat	macos-x86_64	bat-v0.26.1-x86_64-apple-darwin.tar.gz	
+bat	windows-aarch64-msvc	bat-v0.26.1-aarch64-pc-windows-msvc.zip	
+bat	windows-i686-msvc	bat-v0.26.1-i686-pc-windows-msvc.zip	
+bat	windows-x86_64-msvc	bat-v0.26.1-x86_64-pc-windows-msvc.zip	
+bkp	linux-aarch64	bkp-linux-aarch64.tar.gz	
+bkp	linux-aarch64-musl	bkp-linux-aarch64-musl.tar.gz	
+bkp	linux-armv7	bkp-linux-armv7.tar.gz	
+bkp	linux-armv7-musl	bkp-linux-armv7-musl.tar.gz	
+bkp	linux-i686	bkp-linux-i686.tar.gz	
+bkp	linux-i686-musl	bkp-linux-i686-musl.tar.gz	
+bkp	linux-x86_64	bkp-linux-x86_64.tar.gz	
+bkp	linux-x86_64-musl	bkp-linux-x86_64-musl.tar.gz	
+bkp	macos-aarch64	bkp-macos-aarch64.tar.gz	
+bkp	macos-x86_64	bkp-macos-x86_64.tar.gz	
+bkp	windows-aarch64	bkp-windows-aarch64.exe	
+bkp	windows-i686	bkp-windows-i686.exe	
+bkp	windows-x86_64	bkp-windows-x86_64.exe	
+bottom	freebsd-x86_64	bottom_x86_64-unknown-freebsd-13.5.tar.gz	freebsd
+bottom	freebsd-x86_64	bottom_x86_64-unknown-freebsd-14.3.tar.gz	freebsd
+bottom	freebsd-x86_64	bottom_x86_64-unknown-freebsd-15.0.tar.gz	freebsd
+bottom	linux-aarch64	bottom_aarch64-linux-android.tar.gz	android
+bottom	linux-aarch64-gnu	bottom_aarch64-unknown-linux-gnu.tar.gz	
+bottom	linux-aarch64-musl	bottom_aarch64-unknown-linux-musl.tar.gz	
+bottom	linux-armv7-gnu	bottom_armv7-unknown-linux-gnueabihf.tar.gz	gnueabihf
+bottom	linux-armv7-musl	bottom_armv7-unknown-linux-musleabihf.tar.gz	musleabihf
+bottom	linux-i686-gnu	bottom_i686-unknown-linux-gnu.tar.gz	
+bottom	linux-i686-musl	bottom_i686-unknown-linux-musl.tar.gz	
+bottom	linux-x86_64-gnu	bottom_x86_64-unknown-linux-gnu-2-17.tar.gz	2-17
+bottom	linux-x86_64-gnu	bottom_x86_64-unknown-linux-gnu.tar.gz	
+bottom	linux-x86_64-musl	bottom_x86_64-unknown-linux-musl.tar.gz	
+bottom	macos-aarch64	bottom_aarch64-apple-darwin.tar.gz	
+bottom	macos-x86_64	bottom_x86_64-apple-darwin.tar.gz	
+bottom	windows-aarch64-msvc	bottom_aarch64-pc-windows-msvc.tar.gz	
+bottom	windows-i686-msvc	bottom_i686-pc-windows-msvc.zip	
+bottom	windows-x86_64-gnu	bottom_x86_64-pc-windows-gnu.zip	
+bottom	windows-x86_64-msvc	bottom_x86_64-pc-windows-msvc.zip	
+btop	linux-aarch64-musl	btop-aarch64-unknown-linux-musl.tar.gz	
+btop	linux-aarch64-musl	btop-i586-unknown-linux-musl.tar.gz	i586
+btop	linux-aarch64-musl	btop-m68k-unknown-linux-musl.tar.gz	m68k
+btop	linux-armv7-musl	btop-arm-unknown-linux-musleabi.tar.gz	arm-musleabi
+btop	linux-armv7-musl	btop-armv7-unknown-linux-musleabi.tar.gz	musleabi
+btop	linux-armv7-musl	btop-i586-unknown-linux-musl.tar.gz	i586
+btop	linux-armv7-musl	btop-m68k-unknown-linux-musl.tar.gz	m68k
+btop	linux-i686-musl	btop-i586-unknown-linux-musl.tar.gz	i586
+btop	linux-i686-musl	btop-i686-unknown-linux-musl.tar.gz	
+btop	linux-i686-musl	btop-m68k-unknown-linux-musl.tar.gz	m68k
+btop	linux-x86_64-musl	btop-i586-unknown-linux-musl.tar.gz	i586
+btop	linux-x86_64-musl	btop-m68k-unknown-linux-musl.tar.gz	m68k
+btop	linux-x86_64-musl	btop-x86_64-unknown-linux-musl.tar.gz	
+bun	freebsd-aarch64	bun-freebsd-aarch64-profile.zip	freebsd-profile
+bun	freebsd-aarch64	bun-freebsd-aarch64.zip	freebsd
+bun	freebsd-x86_64	bun-freebsd-x64-baseline-profile.zip	freebsd-baseline-profile
+bun	freebsd-x86_64	bun-freebsd-x64-baseline.zip	freebsd-baseline
+bun	freebsd-x86_64	bun-freebsd-x64-profile.zip	freebsd-profile
+bun	freebsd-x86_64	bun-freebsd-x64.zip	freebsd
+bun	linux-aarch64	bun-linux-aarch64-android-profile.zip	android-profile
+bun	linux-aarch64	bun-linux-aarch64-android.zip	android
+bun	linux-aarch64	bun-linux-aarch64-profile.zip	profile
+bun	linux-aarch64	bun-linux-aarch64.zip	
+bun	linux-aarch64-musl	bun-linux-aarch64-musl-profile.zip	profile
+bun	linux-aarch64-musl	bun-linux-aarch64-musl.zip	
+bun	linux-x86_64	bun-linux-x64-android-baseline-profile.zip	android-baseline-profile
+bun	linux-x86_64	bun-linux-x64-android-baseline.zip	android-baseline
+bun	linux-x86_64	bun-linux-x64-android-profile.zip	android-profile
+bun	linux-x86_64	bun-linux-x64-android.zip	android
+bun	linux-x86_64	bun-linux-x64-baseline-profile.zip	baseline-profile
+bun	linux-x86_64	bun-linux-x64-baseline.zip	baseline
+bun	linux-x86_64	bun-linux-x64-profile.zip	profile
+bun	linux-x86_64	bun-linux-x64.zip	
+bun	linux-x86_64-musl	bun-linux-x64-musl-baseline-profile.zip	baseline-profile
+bun	linux-x86_64-musl	bun-linux-x64-musl-baseline.zip	baseline
+bun	linux-x86_64-musl	bun-linux-x64-musl-profile.zip	profile
+bun	linux-x86_64-musl	bun-linux-x64-musl.zip	
+bun	macos-aarch64	bun-darwin-aarch64-profile.zip	profile
+bun	macos-aarch64	bun-darwin-aarch64.zip	
+bun	macos-x86_64	bun-darwin-x64-baseline-profile.zip	baseline-profile
+bun	macos-x86_64	bun-darwin-x64-baseline.zip	baseline
+bun	macos-x86_64	bun-darwin-x64-profile.zip	profile
+bun	macos-x86_64	bun-darwin-x64.zip	
+bun	windows-aarch64	bun-windows-aarch64-profile.zip	profile
+bun	windows-aarch64	bun-windows-aarch64.zip	
+bun	windows-x86_64	bun-windows-x64-baseline-profile.zip	baseline-profile
+bun	windows-x86_64	bun-windows-x64-baseline.zip	baseline
+bun	windows-x86_64	bun-windows-x64-profile.zip	profile
+bun	windows-x86_64	bun-windows-x64.zip	
+carbonyl	linux-aarch64	carbonyl.linux-arm64.zip	
+carbonyl	linux-x86_64	carbonyl.linux-amd64.zip	
+carbonyl	macos-aarch64	carbonyl.macos-arm64.zip	
+carbonyl	macos-x86_64	carbonyl.macos-amd64.zip	
+cate	linux-aarch64	cate-linux-aarch64.tar.gz	
+cate	linux-aarch64-musl	cate-linux-aarch64-musl.tar.gz	
+cate	linux-armv7	cate-linux-armv7.tar.gz	
+cate	linux-armv7-musl	cate-linux-armv7-musl.tar.gz	
+cate	linux-i686	cate-linux-i686.tar.gz	
+cate	linux-i686-musl	cate-linux-i686-musl.tar.gz	
+cate	linux-x86_64	cate-linux-x86_64.tar.gz	
+cate	linux-x86_64-musl	cate-linux-x86_64-musl.tar.gz	
+cate	macos-aarch64	cate-macos-aarch64.tar.gz	
+cate	macos-x86_64	cate-macos-x86_64.tar.gz	
+cate	windows-i686	cate-windows-i686.exe	
+cate	windows-x86_64	cate-windows-x86_64.exe	
+chezmoi	freebsd-aarch64	chezmoi_2.72.2_freebsd_arm64.tar.gz	freebsd
+chezmoi	freebsd-x86_64	chezmoi_2.72.2_freebsd_amd64.tar.gz	freebsd
+chezmoi	linux-aarch64	chezmoi_2.72.2_android_arm64.tar.gz	android
+chezmoi	linux-aarch64	chezmoi_2.72.2_linux_arm64.tar.gz	
+chezmoi	linux-aarch64	chezmoi_2.72.2_openbsd_arm64.tar.gz	openbsd
+chezmoi	linux-armv7	chezmoi_2.72.2_linux_armv5.tar.gz	armv5
+chezmoi	linux-armv7	chezmoi_2.72.2_linux_armv6.tar.gz	armv6
+chezmoi	linux-i686	chezmoi_2.72.2_linux_i386.tar.gz	i386
+chezmoi	linux-i686	chezmoi_2.72.2_openbsd_i386.tar.gz	openbsd-i386
+chezmoi	linux-x86_64	chezmoi-linux-amd64	
+chezmoi	linux-x86_64	chezmoi_2.72.2_linux_amd64.tar.gz	
+chezmoi	linux-x86_64	chezmoi_2.72.2_openbsd_amd64.tar.gz	openbsd
+chezmoi	linux-x86_64-gnu	chezmoi_2.72.2_linux-glibc_amd64.tar.gz	glibc
+chezmoi	linux-x86_64-musl	chezmoi-linux-amd64-musl	
+chezmoi	linux-x86_64-musl	chezmoi_2.72.2_linux-musl_amd64.tar.gz	
+chezmoi	macos-aarch64	chezmoi-darwin-arm64	
+chezmoi	macos-aarch64	chezmoi_2.72.2_darwin_arm64.tar.gz	
+chezmoi	macos-x86_64	chezmoi-darwin-amd64	
+chezmoi	macos-x86_64	chezmoi_2.72.2_darwin_amd64.tar.gz	
+chezmoi	windows-aarch64	chezmoi_2.72.2_windows_arm64.zip	
+chezmoi	windows-i686	chezmoi_2.72.2_windows_i386.zip	i386
+chezmoi	windows-x86_64	chezmoi-windows-amd64.exe	
+chezmoi	windows-x86_64	chezmoi_2.72.2_windows_amd64.zip	
+cli	linux-aarch64	gh_2.101.0_linux_arm64.tar.gz	gh
+cli	linux-armv7	gh_2.101.0_linux_armv6.tar.gz	gh-armv6
+cli	linux-i686	gh_2.101.0_linux_386.tar.gz	gh-386
+cli	linux-x86_64	gh_2.101.0_linux_amd64.tar.gz	gh
+cli	macos-aarch64	gh_2.101.0_macOS_arm64.zip	gh
+cli	macos-x86_64	gh_2.101.0_macOS_amd64.zip	gh
+cli	windows-aarch64	gh_2.101.0_windows_arm64.zip	gh
+cli	windows-i686	gh_2.101.0_windows_386.zip	gh-386
+cli	windows-x86_64	gh_2.101.0_windows_amd64.zip	gh
+cloudflared	linux-aarch64	cloudflared-linux-arm64	
+cloudflared	linux-armv7	cloudflared-linux-arm	arm
+cloudflared	linux-armv7	cloudflared-linux-armhf	armhf
+cloudflared	linux-i686	cloudflared-linux-386	386
+cloudflared	linux-x86_64	cloudflared-fips-linux-amd64	fips
+cloudflared	linux-x86_64	cloudflared-linux-amd64	
+cloudflared	macos-aarch64	cloudflared-darwin-arm64.tgz	
+cloudflared	macos-x86_64	cloudflared-darwin-amd64.tgz	
+cloudflared	windows-i686	cloudflared-windows-386.exe	386
+cloudflared	windows-x86_64	cloudflared-windows-amd64.exe	
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64-portable.mcpb	portable-mcpb
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64-portable.mcpb.bundle	portable-mcpb-bundle
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64-portable.tar.gz	portable
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64-portable.tar.gz.bundle	portable-tar-gz-bundle
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64.tar.gz	
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-linux-arm64.tar.gz.bundle	tar-gz-bundle
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-ui-linux-arm64-portable.tar.gz	ui-portable
+codebase-memory-mcp	linux-aarch64	codebase-memory-mcp-ui-linux-arm64.tar.gz	ui
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64-portable.mcpb	portable-mcpb
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64-portable.mcpb.bundle	portable-mcpb-bundle
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64-portable.tar.gz	portable
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64-portable.tar.gz.bundle	portable-tar-gz-bundle
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64.tar.gz	
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-linux-amd64.tar.gz.bundle	tar-gz-bundle
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-ui-linux-amd64-portable.tar.gz	ui-portable
+codebase-memory-mcp	linux-x86_64	codebase-memory-mcp-ui-linux-amd64.tar.gz	ui
+codebase-memory-mcp	macos-aarch64	codebase-memory-mcp-darwin-arm64.mcpb	mcpb
+codebase-memory-mcp	macos-aarch64	codebase-memory-mcp-darwin-arm64.mcpb.bundle	mcpb-bundle
+codebase-memory-mcp	macos-aarch64	codebase-memory-mcp-darwin-arm64.tar.gz	
+codebase-memory-mcp	macos-aarch64	codebase-memory-mcp-darwin-arm64.tar.gz.bundle	tar-gz-bundle
+codebase-memory-mcp	macos-aarch64	codebase-memory-mcp-ui-darwin-arm64.tar.gz	ui
+codebase-memory-mcp	macos-x86_64	codebase-memory-mcp-darwin-amd64.mcpb	mcpb
+codebase-memory-mcp	macos-x86_64	codebase-memory-mcp-darwin-amd64.mcpb.bundle	mcpb-bundle
+codebase-memory-mcp	macos-x86_64	codebase-memory-mcp-darwin-amd64.tar.gz	
+codebase-memory-mcp	macos-x86_64	codebase-memory-mcp-darwin-amd64.tar.gz.bundle	tar-gz-bundle
+codebase-memory-mcp	macos-x86_64	codebase-memory-mcp-ui-darwin-amd64.tar.gz	ui
+codebase-memory-mcp	windows-aarch64	codebase-memory-mcp-ui-windows-arm64.zip	ui
+codebase-memory-mcp	windows-aarch64	codebase-memory-mcp-windows-arm64.mcpb	mcpb
+codebase-memory-mcp	windows-aarch64	codebase-memory-mcp-windows-arm64.mcpb.bundle	mcpb-bundle
+codebase-memory-mcp	windows-aarch64	codebase-memory-mcp-windows-arm64.zip	
+codebase-memory-mcp	windows-aarch64	codebase-memory-mcp-windows-arm64.zip.bundle	zip-bundle
+codebase-memory-mcp	windows-x86_64	codebase-memory-mcp-ui-windows-amd64.zip	ui
+codebase-memory-mcp	windows-x86_64	codebase-memory-mcp-windows-amd64.mcpb	mcpb
+codebase-memory-mcp	windows-x86_64	codebase-memory-mcp-windows-amd64.mcpb.bundle	mcpb-bundle
+codebase-memory-mcp	windows-x86_64	codebase-memory-mcp-windows-amd64.zip	
+codebase-memory-mcp	windows-x86_64	codebase-memory-mcp-windows-amd64.zip.bundle	zip-bundle
+codex	linux-aarch64	codex-npm-linux-arm64-0.156.1.tgz	npm
+codex	linux-aarch64	openai_codex_cli_bin-0.156.1-py3-none-macosx_11_0_arm64.whl	openai-codex-cli-bin-py3-none-11-0-whl
+codex	linux-aarch64	openai_codex_cli_bin-0.156.1-py3-none-manylinux_2_17_aarch64.whl	openai-codex-cli-bin-py3-none-manylinux-2-17-whl
+codex	linux-aarch64-gnu	argument-comment-lint-aarch64-unknown-linux-gnu.tar.gz	argument-comment-lint
+codex	linux-aarch64-musl	bwrap-aarch64-unknown-linux-musl.tar.gz	bwrap
+codex	linux-aarch64-musl	bwrap-aarch64-unknown-linux-musl.zst	bwrap
+codex	linux-aarch64-musl	codex-aarch64-unknown-linux-musl.tar.gz	
+codex	linux-aarch64-musl	codex-aarch64-unknown-linux-musl.zst	
+codex	linux-aarch64-musl	codex-app-server-aarch64-unknown-linux-musl.tar.gz	app-server
+codex	linux-aarch64-musl	codex-app-server-aarch64-unknown-linux-musl.zst	app-server
+codex	linux-aarch64-musl	codex-app-server-package-aarch64-unknown-linux-musl.tar.gz	app-server-package
+codex	linux-aarch64-musl	codex-app-server-package-aarch64-unknown-linux-musl.tar.zst	app-server-package
+codex	linux-aarch64-musl	codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz	code-mode-host
+codex	linux-aarch64-musl	codex-code-mode-host-aarch64-unknown-linux-musl.zst	code-mode-host
+codex	linux-aarch64-musl	codex-package-aarch64-unknown-linux-musl.tar.gz	package
+codex	linux-aarch64-musl	codex-package-aarch64-unknown-linux-musl.tar.zst	package
+codex	linux-aarch64-musl	codex-responses-api-proxy-aarch64-unknown-linux-musl.tar.gz	responses-api-proxy
+codex	linux-aarch64-musl	codex-responses-api-proxy-aarch64-unknown-linux-musl.zst	responses-api-proxy
+codex	linux-aarch64-musl	codex-symbols-aarch64-unknown-linux-musl-app-server.tar.gz	symbols-app-server
+codex	linux-aarch64-musl	codex-symbols-aarch64-unknown-linux-musl.tar.gz	symbols
+codex	linux-x86_64	codex-npm-linux-x64-0.156.1.tgz	npm
+codex	linux-x86_64	openai_codex_cli_bin-0.156.1-py3-none-macosx_10_9_x86_64.whl	openai-codex-cli-bin-py3-none-10-9-whl
+codex	linux-x86_64	openai_codex_cli_bin-0.156.1-py3-none-manylinux_2_17_x86_64.whl	openai-codex-cli-bin-py3-none-manylinux-2-17-whl
+codex	linux-x86_64-gnu	argument-comment-lint-x86_64-unknown-linux-gnu.tar.gz	argument-comment-lint
+codex	linux-x86_64-musl	bwrap-x86_64-unknown-linux-musl.tar.gz	bwrap
+codex	linux-x86_64-musl	bwrap-x86_64-unknown-linux-musl.zst	bwrap
+codex	linux-x86_64-musl	codex-app-server-package-x86_64-unknown-linux-musl.tar.gz	app-server-package
+codex	linux-x86_64-musl	codex-app-server-package-x86_64-unknown-linux-musl.tar.zst	app-server-package
+codex	linux-x86_64-musl	codex-app-server-x86_64-unknown-linux-musl.tar.gz	app-server
+codex	linux-x86_64-musl	codex-app-server-x86_64-unknown-linux-musl.zst	app-server
+codex	linux-x86_64-musl	codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz	code-mode-host
+codex	linux-x86_64-musl	codex-code-mode-host-x86_64-unknown-linux-musl.zst	code-mode-host
+codex	linux-x86_64-musl	codex-package-x86_64-unknown-linux-musl.tar.gz	package
+codex	linux-x86_64-musl	codex-package-x86_64-unknown-linux-musl.tar.zst	package
+codex	linux-x86_64-musl	codex-responses-api-proxy-x86_64-unknown-linux-musl.tar.gz	responses-api-proxy
+codex	linux-x86_64-musl	codex-responses-api-proxy-x86_64-unknown-linux-musl.zst	responses-api-proxy
+codex	linux-x86_64-musl	codex-symbols-x86_64-unknown-linux-musl-app-server.tar.gz	symbols-app-server
+codex	linux-x86_64-musl	codex-symbols-x86_64-unknown-linux-musl.tar.gz	symbols
+codex	linux-x86_64-musl	codex-x86_64-unknown-linux-musl.tar.gz	
+codex	linux-x86_64-musl	codex-x86_64-unknown-linux-musl.zst	
+codex	macos-aarch64	argument-comment-lint-aarch64-apple-darwin.tar.gz	argument-comment-lint
+codex	macos-aarch64	codex-aarch64-apple-darwin.tar.gz	
+codex	macos-aarch64	codex-aarch64-apple-darwin.zst	
+codex	macos-aarch64	codex-app-server-aarch64-apple-darwin.tar.gz	app-server
+codex	macos-aarch64	codex-app-server-aarch64-apple-darwin.zst	app-server
+codex	macos-aarch64	codex-app-server-package-aarch64-apple-darwin.tar.gz	app-server-package
+codex	macos-aarch64	codex-app-server-package-aarch64-apple-darwin.tar.zst	app-server-package
+codex	macos-aarch64	codex-code-mode-host-aarch64-apple-darwin.tar.gz	code-mode-host
+codex	macos-aarch64	codex-code-mode-host-aarch64-apple-darwin.zst	code-mode-host
+codex	macos-aarch64	codex-npm-darwin-arm64-0.156.1.tgz	npm
+codex	macos-aarch64	codex-package-aarch64-apple-darwin.tar.gz	package
+codex	macos-aarch64	codex-package-aarch64-apple-darwin.tar.zst	package
+codex	macos-aarch64	codex-provisioned-package-aarch64-apple-darwin.tar.gz	provisioned-package
+codex	macos-aarch64	codex-responses-api-proxy-aarch64-apple-darwin.tar.gz	responses-api-proxy
+codex	macos-aarch64	codex-responses-api-proxy-aarch64-apple-darwin.zst	responses-api-proxy
+codex	macos-aarch64	codex-symbols-aarch64-apple-darwin-app-server.tar.gz	symbols-app-server
+codex	macos-aarch64	codex-symbols-aarch64-apple-darwin.tar.gz	symbols
+codex	macos-x86_64	codex-app-server-package-x86_64-apple-darwin.tar.gz	app-server-package
+codex	macos-x86_64	codex-app-server-package-x86_64-apple-darwin.tar.zst	app-server-package
+codex	macos-x86_64	codex-app-server-x86_64-apple-darwin.tar.gz	app-server
+codex	macos-x86_64	codex-app-server-x86_64-apple-darwin.zst	app-server
+codex	macos-x86_64	codex-code-mode-host-x86_64-apple-darwin.tar.gz	code-mode-host
+codex	macos-x86_64	codex-code-mode-host-x86_64-apple-darwin.zst	code-mode-host
+codex	macos-x86_64	codex-npm-darwin-x64-0.156.1.tgz	npm
+codex	macos-x86_64	codex-package-x86_64-apple-darwin.tar.gz	package
+codex	macos-x86_64	codex-package-x86_64-apple-darwin.tar.zst	package
+codex	macos-x86_64	codex-provisioned-package-x86_64-apple-darwin.tar.gz	provisioned-package
+codex	macos-x86_64	codex-responses-api-proxy-x86_64-apple-darwin.tar.gz	responses-api-proxy
+codex	macos-x86_64	codex-responses-api-proxy-x86_64-apple-darwin.zst	responses-api-proxy
+codex	macos-x86_64	codex-symbols-x86_64-apple-darwin-app-server.tar.gz	symbols-app-server
+codex	macos-x86_64	codex-symbols-x86_64-apple-darwin.tar.gz	symbols
+codex	macos-x86_64	codex-x86_64-apple-darwin.tar.gz	
+codex	macos-x86_64	codex-x86_64-apple-darwin.zst	
+codex	windows-aarch64	codex-npm-win32-arm64-0.156.1.tgz	npm
+codex	windows-aarch64	codex-windows-sandbox-service	sandbox-service
+codex	windows-aarch64	codex-windows-sandbox-setup	sandbox-setup
+codex	windows-aarch64	openai_codex_cli_bin-0.156.1-py3-none-win_arm64.whl	openai-codex-cli-bin-py3-none-whl
+codex	windows-aarch64-msvc	codex-aarch64-pc-windows-msvc.exe	
+codex	windows-aarch64-msvc	codex-aarch64-pc-windows-msvc.exe.tar.gz	
+codex	windows-aarch64-msvc	codex-aarch64-pc-windows-msvc.exe.zip	
+codex	windows-aarch64-msvc	codex-aarch64-pc-windows-msvc.exe.zst	
+codex	windows-aarch64-msvc	codex-app-server-aarch64-pc-windows-msvc.exe	app-server
+codex	windows-aarch64-msvc	codex-app-server-aarch64-pc-windows-msvc.exe.tar.gz	app-server
+codex	windows-aarch64-msvc	codex-app-server-aarch64-pc-windows-msvc.exe.zip	app-server
+codex	windows-aarch64-msvc	codex-app-server-aarch64-pc-windows-msvc.exe.zst	app-server
+codex	windows-aarch64-msvc	codex-app-server-package-aarch64-pc-windows-msvc.tar.gz	app-server-package
+codex	windows-aarch64-msvc	codex-app-server-package-aarch64-pc-windows-msvc.tar.zst	app-server-package
+codex	windows-aarch64-msvc	codex-code-mode-host-aarch64-pc-windows-msvc.exe	code-mode-host
+codex	windows-aarch64-msvc	codex-code-mode-host-aarch64-pc-windows-msvc.exe.tar.gz	code-mode-host
+codex	windows-aarch64-msvc	codex-code-mode-host-aarch64-pc-windows-msvc.exe.zip	code-mode-host
+codex	windows-aarch64-msvc	codex-code-mode-host-aarch64-pc-windows-msvc.exe.zst	code-mode-host
+codex	windows-aarch64-msvc	codex-command-runner-aarch64-pc-windows-msvc.exe	command-runner
+codex	windows-aarch64-msvc	codex-command-runner-aarch64-pc-windows-msvc.exe.tar.gz	command-runner
+codex	windows-aarch64-msvc	codex-command-runner-aarch64-pc-windows-msvc.exe.zip	command-runner
+codex	windows-aarch64-msvc	codex-command-runner-aarch64-pc-windows-msvc.exe.zst	command-runner
+codex	windows-aarch64-msvc	codex-package-aarch64-pc-windows-msvc.tar.gz	package
+codex	windows-aarch64-msvc	codex-package-aarch64-pc-windows-msvc.tar.zst	package
+codex	windows-aarch64-msvc	codex-responses-api-proxy-aarch64-pc-windows-msvc.exe	responses-api-proxy
+codex	windows-aarch64-msvc	codex-responses-api-proxy-aarch64-pc-windows-msvc.exe.tar.gz	responses-api-proxy
+codex	windows-aarch64-msvc	codex-responses-api-proxy-aarch64-pc-windows-msvc.exe.zip	responses-api-proxy
+codex	windows-aarch64-msvc	codex-responses-api-proxy-aarch64-pc-windows-msvc.exe.zst	responses-api-proxy
+codex	windows-aarch64-msvc	codex-symbols-aarch64-pc-windows-msvc.tar.gz	symbols
+codex	windows-aarch64-msvc	codex-windows-sandbox-service-aarch64-pc-windows-msvc.exe	sandbox-service
+codex	windows-aarch64-msvc	codex-windows-sandbox-service-aarch64-pc-windows-msvc.exe.tar.gz	sandbox-service
+codex	windows-aarch64-msvc	codex-windows-sandbox-service-aarch64-pc-windows-msvc.exe.zip	sandbox-service
+codex	windows-aarch64-msvc	codex-windows-sandbox-service-aarch64-pc-windows-msvc.exe.zst	sandbox-service
+codex	windows-aarch64-msvc	codex-windows-sandbox-setup-aarch64-pc-windows-msvc.exe	sandbox-setup
+codex	windows-aarch64-msvc	codex-windows-sandbox-setup-aarch64-pc-windows-msvc.exe.tar.gz	sandbox-setup
+codex	windows-aarch64-msvc	codex-windows-sandbox-setup-aarch64-pc-windows-msvc.exe.zip	sandbox-setup
+codex	windows-aarch64-msvc	codex-windows-sandbox-setup-aarch64-pc-windows-msvc.exe.zst	sandbox-setup
+codex	windows-i686	codex-windows-sandbox-service	sandbox-service
+codex	windows-i686	codex-windows-sandbox-setup	sandbox-setup
+codex	windows-x86_64	codex-npm-win32-x64-0.156.1.tgz	npm
+codex	windows-x86_64	codex-windows-sandbox-service	sandbox-service
+codex	windows-x86_64	codex-windows-sandbox-setup	sandbox-setup
+codex	windows-x86_64	openai_codex_cli_bin-0.156.1-py3-none-win_amd64.whl	openai-codex-cli-bin-py3-none-whl
+codex	windows-x86_64-msvc	argument-comment-lint-x86_64-pc-windows-msvc.zip	argument-comment-lint
+codex	windows-x86_64-msvc	codex-app-server-package-x86_64-pc-windows-msvc.tar.gz	app-server-package
+codex	windows-x86_64-msvc	codex-app-server-package-x86_64-pc-windows-msvc.tar.zst	app-server-package
+codex	windows-x86_64-msvc	codex-app-server-x86_64-pc-windows-msvc.exe	app-server
+codex	windows-x86_64-msvc	codex-app-server-x86_64-pc-windows-msvc.exe.tar.gz	app-server
+codex	windows-x86_64-msvc	codex-app-server-x86_64-pc-windows-msvc.exe.zip	app-server
+codex	windows-x86_64-msvc	codex-app-server-x86_64-pc-windows-msvc.exe.zst	app-server
+codex	windows-x86_64-msvc	codex-code-mode-host-x86_64-pc-windows-msvc.exe	code-mode-host
+codex	windows-x86_64-msvc	codex-code-mode-host-x86_64-pc-windows-msvc.exe.tar.gz	code-mode-host
+codex	windows-x86_64-msvc	codex-code-mode-host-x86_64-pc-windows-msvc.exe.zip	code-mode-host
+codex	windows-x86_64-msvc	codex-code-mode-host-x86_64-pc-windows-msvc.exe.zst	code-mode-host
+codex	windows-x86_64-msvc	codex-command-runner-x86_64-pc-windows-msvc.exe	command-runner
+codex	windows-x86_64-msvc	codex-command-runner-x86_64-pc-windows-msvc.exe.tar.gz	command-runner
+codex	windows-x86_64-msvc	codex-command-runner-x86_64-pc-windows-msvc.exe.zip	command-runner
+codex	windows-x86_64-msvc	codex-command-runner-x86_64-pc-windows-msvc.exe.zst	command-runner
+codex	windows-x86_64-msvc	codex-package-x86_64-pc-windows-msvc.tar.gz	package
+codex	windows-x86_64-msvc	codex-package-x86_64-pc-windows-msvc.tar.zst	package
+codex	windows-x86_64-msvc	codex-responses-api-proxy-x86_64-pc-windows-msvc.exe	responses-api-proxy
+codex	windows-x86_64-msvc	codex-responses-api-proxy-x86_64-pc-windows-msvc.exe.tar.gz	responses-api-proxy
+codex	windows-x86_64-msvc	codex-responses-api-proxy-x86_64-pc-windows-msvc.exe.zip	responses-api-proxy
+codex	windows-x86_64-msvc	codex-responses-api-proxy-x86_64-pc-windows-msvc.exe.zst	responses-api-proxy
+codex	windows-x86_64-msvc	codex-symbols-x86_64-pc-windows-msvc.tar.gz	symbols
+codex	windows-x86_64-msvc	codex-windows-sandbox-service-x86_64-pc-windows-msvc.exe	sandbox-service
+codex	windows-x86_64-msvc	codex-windows-sandbox-service-x86_64-pc-windows-msvc.exe.tar.gz	sandbox-service
+codex	windows-x86_64-msvc	codex-windows-sandbox-service-x86_64-pc-windows-msvc.exe.zip	sandbox-service
+codex	windows-x86_64-msvc	codex-windows-sandbox-service-x86_64-pc-windows-msvc.exe.zst	sandbox-service
+codex	windows-x86_64-msvc	codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe	sandbox-setup
+codex	windows-x86_64-msvc	codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.tar.gz	sandbox-setup
+codex	windows-x86_64-msvc	codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip	sandbox-setup
+codex	windows-x86_64-msvc	codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zst	sandbox-setup
+codex	windows-x86_64-msvc	codex-x86_64-pc-windows-msvc.exe	
+codex	windows-x86_64-msvc	codex-x86_64-pc-windows-msvc.exe.tar.gz	
+codex	windows-x86_64-msvc	codex-x86_64-pc-windows-msvc.exe.zip	
+codex	windows-x86_64-msvc	codex-x86_64-pc-windows-msvc.exe.zst	
+confy	linux-aarch64-gnu	confy-aarch64-unknown-linux-gnu.tar.gz	
+confy	linux-aarch64-musl	confy-aarch64-unknown-linux-musl.tar.gz	
+confy	linux-x86_64-gnu	confy-x86_64-unknown-linux-gnu.tar.gz	
+confy	linux-x86_64-musl	confy-x86_64-unknown-linux-musl.tar.gz	
+confy	macos-aarch64	confy-aarch64-apple-darwin.tar.gz	
+confy	macos-x86_64	confy-x86_64-apple-darwin.tar.gz	
+confy	windows-aarch64	confy-windows-arm64.exe	
+confy	windows-i686	confy-windows-i686.exe	
+confy	windows-x86_64	confy-desktop-windows-x86_64.exe	desktop
+confy	windows-x86_64	confy-windows-x86_64.exe	
+copilot-cli	linux-aarch64	copilot-linux-arm64.tar.gz	copilot
+copilot-cli	linux-aarch64	github-copilot-1.0.88-linux-arm64.tgz	github-copilot
+copilot-cli	linux-aarch64-musl	copilot-linuxmusl-arm64.tar.gz	copilot-linuxmusl
+copilot-cli	linux-aarch64-musl	github-copilot-1.0.88-linuxmusl-arm64.tgz	github-copilot-linuxmusl
+copilot-cli	linux-x86_64	copilot-linux-x64.tar.gz	copilot
+copilot-cli	linux-x86_64	github-copilot-1.0.88-linux-x64.tgz	github-copilot
+copilot-cli	linux-x86_64-musl	copilot-linuxmusl-x64.tar.gz	copilot-linuxmusl
+copilot-cli	linux-x86_64-musl	github-copilot-1.0.88-linuxmusl-x64.tgz	github-copilot-linuxmusl
+copilot-cli	macos-aarch64	copilot-darwin-arm64.tar.gz	copilot
+copilot-cli	macos-aarch64	github-copilot-1.0.88-darwin-arm64.tgz	github-copilot
+copilot-cli	macos-x86_64	copilot-darwin-x64.tar.gz	copilot
+copilot-cli	macos-x86_64	github-copilot-1.0.88-darwin-x64.tgz	github-copilot
+copilot-cli	windows-aarch64	copilot-win32-arm64.zip	copilot
+copilot-cli	windows-aarch64	github-copilot-1.0.88-win32-arm64.tgz	github-copilot
+copilot-cli	windows-x86_64	copilot-win32-x64.zip	copilot
+copilot-cli	windows-x86_64	github-copilot-1.0.88-win32-x64.tgz	github-copilot
+coreutils	linux-aarch64-gnu	coreutils-0.12.0-aarch64-unknown-linux-gnu.tar.gz	
+coreutils	linux-aarch64-musl	coreutils-0.12.0-aarch64-unknown-linux-musl.tar.gz	
+coreutils	linux-armv7-gnu	coreutils-0.12.0-arm-unknown-linux-gnueabihf.tar.gz	arm-gnueabihf
+coreutils	linux-i686-gnu	coreutils-0.12.0-i686-unknown-linux-gnu.tar.gz	
+coreutils	linux-i686-musl	coreutils-0.12.0-i686-unknown-linux-musl.tar.gz	
+coreutils	linux-x86_64-gnu	coreutils-0.12.0-x86_64-unknown-linux-gnu.tar.gz	
+coreutils	linux-x86_64-musl	coreutils-0.12.0-x86_64-unknown-linux-musl.tar.gz	
+coreutils	macos-aarch64	coreutils-0.12.0-aarch64-apple-darwin.tar.gz	
+coreutils	macos-x86_64	coreutils-0.12.0-x86_64-apple-darwin.tar.gz	
+coreutils	windows-aarch64-msvc	coreutils-0.12.0-aarch64-pc-windows-msvc.zip	
+coreutils	windows-i686-msvc	coreutils-0.12.0-i686-pc-windows-msvc.zip	
+coreutils	windows-x86_64-msvc	coreutils-0.12.0-x86_64-pc-windows-msvc.zip	
+crush	freebsd-aarch64	crush_0.96.1_Freebsd_arm64.tar.gz	Freebsd
+crush	freebsd-x86_64	crush_0.96.1_Freebsd_x86_64.tar.gz	Freebsd
+crush	linux-aarch64	crush_0.96.1_Android_arm64.tar.gz	Android
+crush	linux-aarch64	crush_0.96.1_Linux_arm64.tar.gz	
+crush	linux-aarch64	crush_0.96.1_Netbsd_arm64.tar.gz	Netbsd
+crush	linux-aarch64	crush_0.96.1_Openbsd_arm64.tar.gz	Openbsd
+crush	linux-armv7	crush_0.96.1_Linux_armv7.tar.gz	
+crush	linux-armv7	crush_0.96.1_Netbsd_armv7.tar.gz	Netbsd
+crush	linux-armv7	crush_0.96.1_Openbsd_armv7.tar.gz	Openbsd
+crush	linux-i686	crush_0.96.1_Linux_i386.tar.gz	i386
+crush	linux-i686	crush_0.96.1_Netbsd_i386.tar.gz	Netbsd-i386
+crush	linux-i686	crush_0.96.1_Openbsd_i386.tar.gz	Openbsd-i386
+crush	linux-x86_64	crush_0.96.1_Linux_x86_64.tar.gz	
+crush	linux-x86_64	crush_0.96.1_Netbsd_x86_64.tar.gz	Netbsd
+crush	linux-x86_64	crush_0.96.1_Openbsd_x86_64.tar.gz	Openbsd
+crush	macos-aarch64	crush_0.96.1_Darwin_arm64.tar.gz	
+crush	macos-x86_64	crush_0.96.1_Darwin_x86_64.tar.gz	
+crush	windows-aarch64	crush_0.96.1_Windows_arm64.zip	
+crush	windows-i686	crush_0.96.1_Windows_i386.zip	i386
+crush	windows-x86_64	crush_0.96.1_Windows_x86_64.zip	
+dbx	linux-aarch64	DBX_0.6.20_arm64-browser-static.tar.gz	browser-static
+dbx	linux-aarch64	DBX_0.6.20_arm64.app.tar.gz	app
+dbx	linux-x86_64	DBX_0.6.20_x64-browser-static.tar.gz	browser-static
+dbx	linux-x86_64	DBX_x64.app.tar.gz	app
+dbx	windows-aarch64	DBX_0.6.20_arm64-offline-setup.exe	offline-setup
+dbx	windows-aarch64	DBX_0.6.20_arm64-setup.exe	setup
+dbx	windows-x86_64	DBX_0.6.20_x64-offline-setup.exe	offline-setup
+dbx	windows-x86_64	DBX_0.6.20_x64-setup.exe	setup
+dbx	windows-x86_64	DBX_0.6.20_x64-win7-server2012r2-offline-setup.exe	win7-server2012r2-offline-setup
+deno	linux-aarch64-gnu	deno-aarch64-unknown-linux-gnu.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	linux-aarch64-gnu	deno-aarch64-unknown-linux-gnu.zip	
+deno	linux-aarch64-gnu	denort-aarch64-unknown-linux-gnu.zip	denort
+deno	linux-aarch64-gnu	libdenort-aarch64-unknown-linux-gnu.zip	libdenort
+deno	linux-x86_64-gnu	deno-x86_64-unknown-linux-gnu.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	linux-x86_64-gnu	deno-x86_64-unknown-linux-gnu.zip	
+deno	linux-x86_64-gnu	denort-x86_64-unknown-linux-gnu.zip	denort
+deno	linux-x86_64-gnu	libdenort-x86_64-unknown-linux-gnu.zip	libdenort
+deno	macos-aarch64	deno-aarch64-apple-darwin.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	macos-aarch64	deno-aarch64-apple-darwin.zip	
+deno	macos-aarch64	denort-aarch64-apple-darwin.zip	denort
+deno	macos-aarch64	libdenort-aarch64-apple-darwin.zip	libdenort
+deno	macos-x86_64	deno-x86_64-apple-darwin.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	macos-x86_64	deno-x86_64-apple-darwin.zip	
+deno	macos-x86_64	denort-x86_64-apple-darwin.zip	denort
+deno	macos-x86_64	libdenort-x86_64-apple-darwin.zip	libdenort
+deno	windows-aarch64-msvc	deno-aarch64-pc-windows-msvc.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	windows-aarch64-msvc	deno-aarch64-pc-windows-msvc.zip	
+deno	windows-aarch64-msvc	denort-aarch64-pc-windows-msvc.zip	denort
+deno	windows-aarch64-msvc	libdenort-aarch64-pc-windows-msvc.zip	libdenort
+deno	windows-x86_64-msvc	deno-x86_64-pc-windows-msvc.from-2.9.6.bsdiff	from-2-9-6-bsdiff
+deno	windows-x86_64-msvc	deno-x86_64-pc-windows-msvc.zip	
+deno	windows-x86_64-msvc	denort-x86_64-pc-windows-msvc.zip	denort
+deno	windows-x86_64-msvc	libdenort-x86_64-pc-windows-msvc.zip	libdenort
+devpod	linux-aarch64	devpod-linux-arm64	
+devpod	linux-x86_64	DevPod_linux_amd64.AppImage.tar.gz	AppImage
+devpod	linux-x86_64	DevPod_linux_x86_64.tar.gz	
+devpod	linux-x86_64	devpod-linux-amd64	
+devpod	macos-aarch64	DevPod_macos_aarch64.app.tar.gz	app
+devpod	macos-aarch64	devpod-darwin-arm64	
+devpod	macos-x86_64	DevPod_macos_x64.app.tar.gz	app
+devpod	macos-x86_64	devpod-darwin-amd64	
+devpod	windows-x86_64	DevPod_0.6.15_x64-setup.exe	setup
+devpod	windows-x86_64	devpod-windows-amd64.exe	
+dispatch-agent	linux-aarch64	dispatch-agent-linux-aarch64.tar.gz	
+dispatch-agent	linux-aarch64-musl	dispatch-agent-linux-aarch64-musl.tar.gz	
+dispatch-agent	linux-armv7	dispatch-agent-linux-armv7.tar.gz	
+dispatch-agent	linux-armv7-musl	dispatch-agent-linux-armv7-musl.tar.gz	
+dispatch-agent	linux-i686	dispatch-agent-linux-i686.tar.gz	
+dispatch-agent	linux-i686-musl	dispatch-agent-linux-i686-musl.tar.gz	
+dispatch-agent	linux-x86_64	dispatch-agent-linux-x86_64.tar.gz	
+dispatch-agent	linux-x86_64-musl	dispatch-agent-linux-x86_64-musl.tar.gz	
+dispatch-agent	macos-aarch64	dispatch-agent-macos-aarch64.tar.gz	
+dispatch-agent	macos-x86_64	dispatch-agent-macos-x86_64.tar.gz	
+dispatch-agent	windows-aarch64	dispatch-agent-windows-aarch64.exe	
+dispatch-agent	windows-i686	dispatch-agent-windows-i686.exe	
+dispatch-agent	windows-x86_64	dispatch-agent-windows-x86_64.exe	
+eza	linux-aarch64-gnu	eza_aarch64-unknown-linux-gnu.tar.gz	
+eza	linux-aarch64-gnu	eza_aarch64-unknown-linux-gnu.zip	
+eza	linux-aarch64-gnu	eza_aarch64-unknown-linux-gnu_no_libgit.tar.gz	no-libgit
+eza	linux-aarch64-gnu	eza_aarch64-unknown-linux-gnu_no_libgit.zip	no-libgit
+eza	linux-armv7-gnu	eza_arm-unknown-linux-gnueabihf.tar.gz	arm-gnueabihf
+eza	linux-armv7-gnu	eza_arm-unknown-linux-gnueabihf.zip	arm-gnueabihf
+eza	linux-armv7-gnu	eza_arm-unknown-linux-gnueabihf_no_libgit.tar.gz	arm-gnueabihf-no-libgit
+eza	linux-armv7-gnu	eza_arm-unknown-linux-gnueabihf_no_libgit.zip	arm-gnueabihf-no-libgit
+eza	linux-x86_64-gnu	eza_x86_64-unknown-linux-gnu.tar.gz	
+eza	linux-x86_64-gnu	eza_x86_64-unknown-linux-gnu.zip	
+eza	linux-x86_64-musl	eza_x86_64-unknown-linux-musl.tar.gz	
+eza	linux-x86_64-musl	eza_x86_64-unknown-linux-musl.zip	
+eza	windows-x86_64-gnu	eza.exe_x86_64-pc-windows-gnu.tar.gz	exe
+eza	windows-x86_64-gnu	eza.exe_x86_64-pc-windows-gnu.zip	exe
+fastfetch	freebsd-x86_64	fastfetch-freebsd-amd64.tar.gz	freebsd
+fastfetch	freebsd-x86_64	fastfetch-freebsd-amd64.zip	freebsd
+fastfetch	linux-aarch64	fastfetch-linux-aarch64-polyfilled.tar.gz	polyfilled
+fastfetch	linux-aarch64	fastfetch-linux-aarch64-polyfilled.zip	polyfilled
+fastfetch	linux-aarch64	fastfetch-linux-aarch64.tar.gz	
+fastfetch	linux-aarch64	fastfetch-linux-aarch64.zip	
+fastfetch	linux-armv7	fastfetch-linux-armv7l.tar.gz	armv7l
+fastfetch	linux-armv7	fastfetch-linux-armv7l.zip	armv7l
+fastfetch	linux-i686	fastfetch-linux-i686.tar.gz	
+fastfetch	linux-i686	fastfetch-linux-i686.zip	
+fastfetch	linux-x86_64	fastfetch-dragonfly-amd64.tar.gz	dragonfly
+fastfetch	linux-x86_64	fastfetch-haiku-amd64.tar.gz	haiku
+fastfetch	linux-x86_64	fastfetch-linux-amd64-polyfilled.tar.gz	polyfilled
+fastfetch	linux-x86_64	fastfetch-linux-amd64-polyfilled.zip	polyfilled
+fastfetch	linux-x86_64	fastfetch-linux-amd64.tar.gz	
+fastfetch	linux-x86_64	fastfetch-linux-amd64.zip	
+fastfetch	linux-x86_64	fastfetch-netbsd-amd64.tar.gz	netbsd
+fastfetch	linux-x86_64	fastfetch-omnios-amd64.tar.gz	omnios
+fastfetch	linux-x86_64	fastfetch-openbsd-amd64.tar.gz	openbsd
+fastfetch	linux-x86_64	fastfetch-solaris-amd64.tar.gz	solaris
+fastfetch	linux-x86_64-musl	fastfetch-musl-amd64.tar.gz	
+fastfetch	macos-aarch64	fastfetch-macos-aarch64.tar.gz	
+fastfetch	macos-aarch64	fastfetch-macos-aarch64.zip	
+fastfetch	macos-x86_64	fastfetch-macos-amd64.tar.gz	
+fastfetch	macos-x86_64	fastfetch-macos-amd64.zip	
+fastfetch	windows-aarch64	fastfetch-windows-aarch64.7z	
+fastfetch	windows-aarch64	fastfetch-windows-aarch64.zip	
+fastfetch	windows-x86_64	fastfetch-windows-amd64.7z	
+fastfetch	windows-x86_64	fastfetch-windows-amd64.zip	
+fd	linux-aarch64-gnu	fd-v10.5.0-aarch64-unknown-linux-gnu.tar.gz	
+fd	linux-aarch64-musl	fd-v10.5.0-aarch64-unknown-linux-musl.tar.gz	
+fd	linux-armv7-gnu	fd-v10.5.0-arm-unknown-linux-gnueabihf.tar.gz	arm-gnueabihf
+fd	linux-armv7-musl	fd-v10.5.0-arm-unknown-linux-musleabihf.tar.gz	arm-musleabihf
+fd	linux-i686-gnu	fd-v10.5.0-i686-unknown-linux-gnu.tar.gz	
+fd	linux-i686-musl	fd-v10.5.0-i686-unknown-linux-musl.tar.gz	
+fd	linux-x86_64-gnu	fd-v10.5.0-x86_64-unknown-linux-gnu.tar.gz	
+fd	linux-x86_64-musl	fd-v10.5.0-x86_64-unknown-linux-musl.tar.gz	
+fd	macos-aarch64	fd-v10.5.0-aarch64-apple-darwin.tar.gz	
+fd	macos-x86_64	fd-v10.5.0-x86_64-apple-darwin.tar.gz	
+fd	windows-aarch64-msvc	fd-v10.5.0-aarch64-pc-windows-msvc.zip	
+fd	windows-i686-msvc	fd-v10.5.0-i686-pc-windows-msvc.zip	
+fd	windows-x86_64-gnu	fd-v10.5.0-x86_64-pc-windows-gnu.zip	
+fd	windows-x86_64-msvc	fd-v10.5.0-x86_64-pc-windows-msvc.zip	
+fnm	linux-aarch64	fnm-linux.zip	
+fnm	linux-armv7	fnm-linux.zip	
+fnm	linux-i686	fnm-linux.zip	
+fnm	linux-x86_64	fnm-linux.zip	
+fnm	macos-aarch64	fnm-macos.zip	
+fnm	macos-x86_64	fnm-macos.zip	
+fnm	windows-aarch64	fnm-windows.zip	
+fnm	windows-i686	fnm-windows.zip	
+fnm	windows-x86_64	fnm-windows.zip	
+fresh	freebsd-x86_64	fresh-editor-x86_64-unknown-freebsd.tar.xz	editor-freebsd
+fresh	linux-aarch64-gnu	fresh-editor-aarch64-unknown-linux-gnu.tar.xz	editor
+fresh	linux-aarch64-musl	fresh-editor-aarch64-unknown-linux-musl.tar.gz	editor
+fresh	linux-aarch64-musl	fresh-editor-aarch64-unknown-linux-musl.tar.xz	editor
+fresh	linux-aarch64-musl	fresh-min-size-aarch64-unknown-linux-musl.tar.xz	min-size
+fresh	linux-x86_64	fresh-editor-0.5.1-x86_64.flatpak	editor-flatpak
+fresh	linux-x86_64-gnu	fresh-editor-x86_64-unknown-linux-gnu.tar.xz	editor
+fresh	linux-x86_64-musl	fresh-editor-x86_64-unknown-linux-musl.tar.gz	editor
+fresh	linux-x86_64-musl	fresh-editor-x86_64-unknown-linux-musl.tar.xz	editor
+fresh	linux-x86_64-musl	fresh-min-size-x86_64-unknown-linux-musl.tar.xz	min-size
+fresh	macos-aarch64	fresh-editor-aarch64-apple-darwin.tar.xz	editor
+fresh	macos-x86_64	fresh-editor-x86_64-apple-darwin.tar.xz	editor
+fresh	windows-aarch64-msvc	fresh-editor-aarch64-pc-windows-msvc.zip	editor
+fresh	windows-x86_64-msvc	fresh-editor-x86_64-pc-windows-msvc.zip	editor
+fresh	windows-x86_64-msvc	fresh-gui-x86_64-pc-windows-msvc.exe	gui
+fzf	freebsd-x86_64	fzf-0.74.4-freebsd_amd64.tar.gz	freebsd
+fzf	linux-aarch64	fzf-0.74.4-android_arm64.tar.gz	android
+fzf	linux-aarch64	fzf-0.74.4-linux_arm64.tar.gz	
+fzf	linux-armv7	fzf-0.74.4-linux_armv5.tar.gz	armv5
+fzf	linux-armv7	fzf-0.74.4-linux_armv6.tar.gz	armv6
+fzf	linux-armv7	fzf-0.74.4-linux_armv7.tar.gz	
+fzf	linux-x86_64	fzf-0.74.4-linux_amd64.tar.gz	
+fzf	linux-x86_64	fzf-0.74.4-openbsd_amd64.tar.gz	openbsd
+fzf	macos-aarch64	fzf-0.74.4-darwin_arm64.tar.gz	
+fzf	macos-x86_64	fzf-0.74.4-darwin_amd64.tar.gz	
+fzf	windows-aarch64	fzf-0.74.4-windows_arm64.zip	
+fzf	windows-x86_64	fzf-0.74.4-windows_amd64.zip	
+gitlogue	linux-aarch64-gnu	gitlogue-v0.11.0-aarch64-unknown-linux-gnu.tar.gz	
+gitlogue	linux-x86_64-gnu	gitlogue-v0.11.0-x86_64-unknown-linux-gnu.tar.gz	
+gitlogue	macos-aarch64	gitlogue-v0.11.0-aarch64-apple-darwin.tar.gz	
+gitlogue	macos-x86_64	gitlogue-v0.11.0-x86_64-apple-darwin.tar.gz	
+gitlogue	windows-x86_64-msvc	gitlogue-v0.11.0-x86_64-pc-windows-msvc.zip	
+glow	freebsd-aarch64	glow_3.0.0_Freebsd_arm64.tar.gz	Freebsd
+glow	freebsd-x86_64	glow_3.0.0_Freebsd_x86_64.tar.gz	Freebsd
+glow	linux-aarch64	glow_3.0.0_Linux_arm64.tar.gz	
+glow	linux-aarch64	glow_3.0.0_Netbsd_arm64.tar.gz	Netbsd
+glow	linux-aarch64	glow_3.0.0_Openbsd_arm64.tar.gz	Openbsd
+glow	linux-armv7	glow_3.0.0_Linux_arm.tar.gz	arm
+glow	linux-i686	glow_3.0.0_Linux_i386.tar.gz	i386
+glow	linux-i686	glow_3.0.0_Netbsd_i386.tar.gz	Netbsd-i386
+glow	linux-i686	glow_3.0.0_Openbsd_i386.tar.gz	Openbsd-i386
+glow	linux-x86_64	glow_3.0.0_Linux_x86_64.tar.gz	
+glow	linux-x86_64	glow_3.0.0_Netbsd_x86_64.tar.gz	Netbsd
+glow	linux-x86_64	glow_3.0.0_Openbsd_x86_64.tar.gz	Openbsd
+glow	macos-aarch64	glow_3.0.0_Darwin_arm64.tar.gz	
+glow	macos-x86_64	glow_3.0.0_Darwin_x86_64.tar.gz	
+glow	windows-i686	glow_3.0.0_Windows_i386.zip	i386
+glow	windows-x86_64	glow_3.0.0_Windows_x86_64.zip	
+hadolint	linux-aarch64	hadolint-linux-arm64	
+hadolint	linux-x86_64	hadolint-linux-x86_64	
+hadolint	macos-aarch64	hadolint-macos-arm64	
+hadolint	macos-x86_64	hadolint-macos-x86_64	
+hadolint	windows-x86_64	hadolint-windows-x86_64.exe	
+herdr	linux-aarch64	herdr-linux-aarch64	
+herdr	linux-x86_64	herdr-linux-x86_64	
+herdr	macos-aarch64	herdr-macos-aarch64	
+herdr	macos-x86_64	herdr-macos-x86_64	
+herdr	windows-x86_64	herdr-windows-x86_64.zip	
+hexyl	linux-aarch64-gnu	hexyl-v0.17.0-aarch64-unknown-linux-gnu.tar.gz	
+hexyl	linux-armv7-gnu	hexyl-v0.17.0-arm-unknown-linux-gnueabihf.tar.gz	arm-gnueabihf
+hexyl	linux-armv7-musl	hexyl-v0.17.0-arm-unknown-linux-musleabihf.tar.gz	arm-musleabihf
+hexyl	linux-i686-gnu	hexyl-v0.17.0-i686-unknown-linux-gnu.tar.gz	
+hexyl	linux-i686-musl	hexyl-v0.17.0-i686-unknown-linux-musl.tar.gz	
+hexyl	linux-x86_64-gnu	hexyl-v0.17.0-x86_64-unknown-linux-gnu.tar.gz	
+hexyl	linux-x86_64-musl	hexyl-v0.17.0-x86_64-unknown-linux-musl.tar.gz	
+hexyl	macos-aarch64	hexyl-v0.17.0-aarch64-apple-darwin.tar.gz	
+hexyl	macos-x86_64	hexyl-v0.17.0-x86_64-apple-darwin.tar.gz	
+hexyl	windows-i686-msvc	hexyl-v0.17.0-i686-pc-windows-msvc.zip	
+hexyl	windows-x86_64-msvc	hexyl-v0.17.0-x86_64-pc-windows-msvc.zip	
+immich-go	freebsd-aarch64	immich-go_Freebsd_arm64.tar.gz	Freebsd
+immich-go	freebsd-x86_64	immich-go_Freebsd_x86_64.tar.gz	Freebsd
+immich-go	linux-aarch64	immich-go_Linux_arm64.tar.gz	
+immich-go	linux-x86_64	immich-go_Linux_x86_64.tar.gz	
+immich-go	macos-aarch64	immich-go_Darwin_arm64.tar.gz	
+immich-go	macos-x86_64	immich-go_Darwin_x86_64.tar.gz	
+immich-go	windows-aarch64	immich-go_Windows_arm64.zip	
+immich-go	windows-x86_64	immich-go_Windows_x86_64.zip	
+impala	linux-aarch64-musl	impala-aarch64-unknown-linux-musl	
+impala	linux-x86_64-musl	impala-x86_64-unknown-linux-musl	
+inlyne	linux-aarch64-gnu	inlyne-v0.5.3-aarch64-unknown-linux-gnu.tar.gz	
+inlyne	linux-x86_64-gnu	inlyne-v0.5.3-x86_64-unknown-linux-gnu.tar.gz	
+inlyne	macos-aarch64	inlyne-v0.5.3-aarch64-apple-darwin.tar.gz	
+inlyne	macos-x86_64	inlyne-v0.5.3-x86_64-apple-darwin.tar.gz	
+inlyne	windows-x86_64-msvc	inlyne-v0.5.3-x86_64-pc-windows-msvc.zip	
+jq	linux-aarch64	jq-linux-arm64	
+jq	linux-armv7	jq-linux-armel	armel
+jq	linux-armv7	jq-linux-armhf	armhf
+jq	linux-i686	jq-linux-i386	i386
+jq	linux-x86_64	jq-linux-amd64	
+jq	linux-x86_64	jq-linux64	linux64
+jq	macos-aarch64	jq-macos-arm64	
+jq	macos-x86_64	jq-macos-amd64	
+jq	macos-x86_64	jq-osx-amd64	osx
+jq	windows-aarch64	jq-win64.exe	
+jq	windows-aarch64	jq-windows-arm64.exe	
+jq	windows-i686	jq-win64.exe	
+jq	windows-i686	jq-windows-i386.exe	i386
+jq	windows-x86_64	jq-win64.exe	
+jq	windows-x86_64	jq-windows-amd64.exe	
+kube-linter	linux-aarch64	kube-linter-linux	
+kube-linter	linux-aarch64	kube-linter-linux.tar.gz	
+kube-linter	linux-aarch64	kube-linter-linux_arm64	
+kube-linter	linux-aarch64	kube-linter-linux_arm64.tar.gz	
+kube-linter	linux-armv7	kube-linter-linux	
+kube-linter	linux-armv7	kube-linter-linux.tar.gz	
+kube-linter	linux-i686	kube-linter-linux	
+kube-linter	linux-i686	kube-linter-linux.tar.gz	
+kube-linter	linux-x86_64	kube-linter-linux	
+kube-linter	linux-x86_64	kube-linter-linux.tar.gz	
+kube-linter	macos-aarch64	kube-linter-darwin	
+kube-linter	macos-aarch64	kube-linter-darwin.tar.gz	
+kube-linter	macos-aarch64	kube-linter-darwin_arm64	
+kube-linter	macos-aarch64	kube-linter-darwin_arm64.tar.gz	
+kube-linter	macos-x86_64	kube-linter-darwin	
+kube-linter	macos-x86_64	kube-linter-darwin.tar.gz	
+kube-linter	windows-aarch64	kube-linter-windows.tar.gz	
+kube-linter	windows-aarch64	kube-linter-windows_arm64.tar.gz	
+kube-linter	windows-aarch64	kube-linter.exe	
+kube-linter	windows-aarch64	kube-linter_arm64.exe	
+kube-linter	windows-i686	kube-linter-windows.tar.gz	
+kube-linter	windows-i686	kube-linter.exe	
+kube-linter	windows-x86_64	kube-linter-windows.tar.gz	
+kube-linter	windows-x86_64	kube-linter.exe	
+lazyssh	linux-aarch64	lazyssh_Linux_arm64.tar.gz	
+lazyssh	linux-armv7	lazyssh_Linux_armv6.tar.gz	armv6
+lazyssh	linux-i686	lazyssh_Linux_i386.tar.gz	i386
+lazyssh	linux-x86_64	lazyssh_Linux_x86_64.tar.gz	
+lazyssh	macos-aarch64	lazyssh_Darwin_arm64.tar.gz	
+lazyssh	macos-x86_64	lazyssh_Darwin_x86_64.tar.gz	
+lazyssh	windows-aarch64	lazyssh_Windows_arm64.zip	
+lazyssh	windows-i686	lazyssh_Windows_i386.zip	i386
+lazyssh	windows-x86_64	lazyssh_Windows_x86_64.zip	
+m3u8-downloader	linux-aarch64	m3u8-linux-arm64	m3u8
+m3u8-downloader	linux-i686	m3u8-linux-386	m3u8-386
+m3u8-downloader	linux-x86_64	m3u8-linux-amd64	m3u8
+m3u8-downloader	macos-aarch64	m3u8-darwin-arm64	m3u8
+m3u8-downloader	macos-x86_64	m3u8-darwin-amd64	m3u8
+m3u8-downloader	windows-aarch64	m3u8-windows-arm64.exe	m3u8
+m3u8-downloader	windows-i686	m3u8-windows-386.exe	m3u8-386
+m3u8-downloader	windows-x86_64	m3u8-windows-amd64.exe	m3u8
+mise	linux-aarch64	mise-v2026.9.12-linux-arm64	
+mise	linux-aarch64	mise-v2026.9.12-linux-arm64.tar.gz	
+mise	linux-aarch64	mise-v2026.9.12-linux-arm64.tar.xz	
+mise	linux-aarch64	mise-v2026.9.12-linux-arm64.tar.zst	
+mise	linux-aarch64-musl	mise-v2026.9.12-linux-arm64-musl	
+mise	linux-aarch64-musl	mise-v2026.9.12-linux-arm64-musl.tar.gz	
+mise	linux-aarch64-musl	mise-v2026.9.12-linux-arm64-musl.tar.xz	
+mise	linux-aarch64-musl	mise-v2026.9.12-linux-arm64-musl.tar.zst	
+mise	linux-armv7	mise-v2026.9.12-linux-armv7	
+mise	linux-armv7	mise-v2026.9.12-linux-armv7.tar.gz	
+mise	linux-armv7	mise-v2026.9.12-linux-armv7.tar.xz	
+mise	linux-armv7	mise-v2026.9.12-linux-armv7.tar.zst	
+mise	linux-armv7-musl	mise-v2026.9.12-linux-armv7-musl	
+mise	linux-armv7-musl	mise-v2026.9.12-linux-armv7-musl.tar.gz	
+mise	linux-armv7-musl	mise-v2026.9.12-linux-armv7-musl.tar.xz	
+mise	linux-armv7-musl	mise-v2026.9.12-linux-armv7-musl.tar.zst	
+mise	linux-x86_64	mise-v2026.9.12-linux-x64	
+mise	linux-x86_64	mise-v2026.9.12-linux-x64.tar.gz	
+mise	linux-x86_64	mise-v2026.9.12-linux-x64.tar.xz	
+mise	linux-x86_64	mise-v2026.9.12-linux-x64.tar.zst	
+mise	linux-x86_64-musl	mise-v2026.9.12-linux-x64-musl	
+mise	linux-x86_64-musl	mise-v2026.9.12-linux-x64-musl.tar.gz	
+mise	linux-x86_64-musl	mise-v2026.9.12-linux-x64-musl.tar.xz	
+mise	linux-x86_64-musl	mise-v2026.9.12-linux-x64-musl.tar.zst	
+mise	macos-aarch64	mise-v2026.9.12-macos-arm64	
+mise	macos-aarch64	mise-v2026.9.12-macos-arm64.tar.gz	
+mise	macos-aarch64	mise-v2026.9.12-macos-arm64.tar.xz	
+mise	macos-aarch64	mise-v2026.9.12-macos-arm64.tar.zst	
+mise	macos-x86_64	mise-v2026.9.12-macos-x64	
+mise	macos-x86_64	mise-v2026.9.12-macos-x64.tar.gz	
+mise	macos-x86_64	mise-v2026.9.12-macos-x64.tar.xz	
+mise	macos-x86_64	mise-v2026.9.12-macos-x64.tar.zst	
+mise	windows-aarch64	mise-v2026.9.12-windows-arm64.exe	
+mise	windows-aarch64	mise-v2026.9.12-windows-arm64.zip	
+mise	windows-x86_64	mise-v2026.9.12-windows-x64.exe	
+mise	windows-x86_64	mise-v2026.9.12-windows-x64.zip	
+mosh	macos-aarch64	mosh-1.4.0-osx-build-report.tbz	osx-build-report
+mosh	macos-x86_64	mosh-1.4.0-osx-build-report.tbz	osx-build-report
+msstore-cli	linux-aarch64	MSStoreCLI-linux-arm64.tar.gz	MSStoreCLI
+msstore-cli	linux-x86_64	MSStoreCLI-linux-x64.tar.gz	MSStoreCLI
+msstore-cli	macos-aarch64	MSStoreCLI-osx-arm64.tar.gz	MSStoreCLI-osx
+msstore-cli	macos-x86_64	MSStoreCLI-osx-x64.tar.gz	MSStoreCLI-osx
+msstore-cli	windows-aarch64	MSStoreCLI-win-arm64.zip	MSStoreCLI
+msstore-cli	windows-x86_64	MSStoreCLI-win-x64.zip	MSStoreCLI
+neovim	linux-aarch64	nvim-linux-arm64.appimage.zsync	nvim-appimage-zsync
+neovim	linux-aarch64	nvim-linux-arm64.tar.gz	nvim
+neovim	linux-x86_64	nvim-linux-x86_64.appimage.zsync	nvim-appimage-zsync
+neovim	linux-x86_64	nvim-linux-x86_64.tar.gz	nvim
+neovim	macos-aarch64	nvim-macos-arm64.tar.gz	nvim
+neovim	macos-x86_64	nvim-macos-x86_64.tar.gz	nvim
+neovim	windows-aarch64	nvim-win-arm64.zip	nvim
+neovim	windows-aarch64	nvim-win64.zip	nvim
+neovim	windows-i686	nvim-win64.zip	nvim
+neovim	windows-x86_64	nvim-win64.zip	nvim
+nexus-terminal	windows-aarch64	Nexus_Terminal_Setup_0.8.1.exe	Setup
+nexus-terminal	windows-i686	Nexus_Terminal_Setup_0.8.1.exe	Setup
+nexus-terminal	windows-x86_64	Nexus_Terminal_Setup_0.8.1.exe	Setup
+nnn	linux-x86_64	nnn-emoji-static-5.3.x86_64.tar.gz	emoji-static-5-3
+nnn	linux-x86_64	nnn-icons-static-5.3.x86_64.tar.gz	icons-static-5-3
+nnn	linux-x86_64	nnn-nerd-static-5.3.x86_64.tar.gz	nerd-static-5-3
+nnn	linux-x86_64	nnn-static-5.3.x86_64.tar.gz	static-5-3
+nnn	linux-x86_64-musl	nnn-musl-emoji-static-5.3.x86_64.tar.gz	emoji-static-5-3
+nnn	linux-x86_64-musl	nnn-musl-static-5.3.x86_64.tar.gz	static-5-3
+oh-my-pi	linux-aarch64	omp-linux-arm64	omp
+oh-my-pi	linux-aarch64-musl	omp-linux-musl-arm64	omp
+oh-my-pi	linux-x86_64	omp-linux-x64	omp
+oh-my-pi	linux-x86_64-musl	omp-linux-musl-x64	omp
+oh-my-pi	macos-aarch64	omp-darwin-arm64	omp
+oh-my-pi	macos-x86_64	omp-darwin-x64	omp
+oh-my-pi	windows-aarch64	omp-windows-arm64.exe	omp
+oh-my-pi	windows-x86_64	omp-windows-x64.exe	omp
+opencode	linux-aarch64	opencode-linux-arm64.tar.gz	
+opencode	linux-aarch64-musl	opencode-linux-arm64-musl.tar.gz	
+opencode	linux-x86_64	opencode-linux-x64-baseline.tar.gz	baseline
+opencode	linux-x86_64	opencode-linux-x64.tar.gz	
+opencode	linux-x86_64-musl	opencode-linux-x64-baseline-musl.tar.gz	baseline
+opencode	linux-x86_64-musl	opencode-linux-x64-musl.tar.gz	
+opencode	macos-aarch64	opencode-darwin-arm64.zip	
+opencode	macos-aarch64	opencode-desktop-mac-arm64.app.tar.gz	desktop-app
+opencode	macos-aarch64	opencode-desktop-mac-arm64.zip	desktop
+opencode	macos-aarch64	opencode-desktop-mac-arm64.zip.blockmap	desktop-zip-blockmap
+opencode	macos-x86_64	opencode-darwin-x64-baseline.zip	baseline
+opencode	macos-x86_64	opencode-darwin-x64.zip	
+opencode	macos-x86_64	opencode-desktop-mac-x64.app.tar.gz	desktop-app
+opencode	macos-x86_64	opencode-desktop-mac-x64.zip	desktop
+opencode	macos-x86_64	opencode-desktop-mac-x64.zip.blockmap	desktop-zip-blockmap
+opencode	windows-aarch64	opencode-desktop-win-arm64.exe	desktop
+opencode	windows-aarch64	opencode-desktop-win-arm64.exe.blockmap	desktop-exe-blockmap
+opencode	windows-aarch64	opencode-windows-arm64.zip	
+opencode	windows-x86_64	opencode-desktop-win-x64.exe	desktop
+opencode	windows-x86_64	opencode-desktop-win-x64.exe.blockmap	desktop-exe-blockmap
+opencode	windows-x86_64	opencode-windows-x64-baseline.zip	baseline
+opencode	windows-x86_64	opencode-windows-x64.zip	
+opossum	macos-aarch64	opossum_0.34.0_darwin_arm64.tar.gz	
+pi	linux-aarch64	pi-linux-arm64.tar.gz	
+pi	linux-x86_64	pi-linux-x64.tar.gz	
+pi	macos-aarch64	pi-darwin-arm64.tar.gz	
+pi	macos-x86_64	pi-darwin-x64.tar.gz	
+pi	windows-aarch64	pi-windows-arm64.zip	
+pi	windows-x86_64	pi-windows-x64.zip	
+pi-mono	linux-aarch64	pi-linux-arm64.tar.gz	pi
+pi-mono	linux-x86_64	pi-linux-x64.tar.gz	pi
+pi-mono	macos-aarch64	pi-darwin-arm64.tar.gz	pi
+pi-mono	macos-x86_64	pi-darwin-x64.tar.gz	pi
+pi-mono	windows-x86_64	pi-windows-x64.zip	pi
+picoclaw	freebsd-aarch64	picoclaw_Freebsd_arm64.tar.gz	Freebsd
+picoclaw	freebsd-x86_64	picoclaw_Freebsd_x86_64.tar.gz	Freebsd
+picoclaw	linux-aarch64	picoclaw_Linux_arm64.tar.gz	
+picoclaw	linux-aarch64	picoclaw_Netbsd_arm64.tar.gz	Netbsd
+picoclaw	linux-armv7	picoclaw_Linux_armv6.tar.gz	armv6
+picoclaw	linux-armv7	picoclaw_Linux_armv7.tar.gz	
+picoclaw	linux-x86_64	picoclaw_Linux_x86_64.tar.gz	
+picoclaw	linux-x86_64	picoclaw_Netbsd_x86_64.tar.gz	Netbsd
+picoclaw	macos-aarch64	picoclaw_Darwin_arm64.tar.gz	
+picoclaw	macos-x86_64	picoclaw_Darwin_x86_64.tar.gz	
+picoclaw	windows-aarch64	picoclaw_Windows_arm64.zip	
+picoclaw	windows-x86_64	picoclaw_Windows_x86_64.zip	
+podman	linux-aarch64	podman-remote-static-linux_arm64.tar.gz	remote-static
+podman	linux-x86_64	podman-remote-static-linux_amd64.tar.gz	remote-static
+podman	macos-aarch64	podman-remote-release-darwin_arm64.zip	remote-release
+podman	windows-aarch64	podman-remote-release-windows_arm64.zip	remote-release
+podman	windows-x86_64	podman-remote-release-windows_amd64.zip	remote-release
+rclone	freebsd-x86_64	rclone-v1.75.1-freebsd-amd64.zip	freebsd
+rclone	linux-aarch64	rclone-v1.75.1-linux-arm64.zip	
+rclone	linux-armv7	rclone-v1.75.1-linux-arm-v6.zip	arm-v6
+rclone	linux-armv7	rclone-v1.75.1-linux-arm-v7.zip	arm-v7
+rclone	linux-armv7	rclone-v1.75.1-linux-arm.zip	arm
+rclone	linux-i686	rclone-v1.75.1-linux-386.zip	386
+rclone	linux-x86_64	rclone-v1.75.1-linux-amd64.zip	
+rclone	macos-aarch64	rclone-v1.75.1-osx-arm64.zip	osx
+rclone	macos-x86_64	rclone-v1.75.1-osx-amd64.zip	osx
+rclone	windows-aarch64	rclone-v1.75.1-windows-arm64.zip	
+rclone	windows-i686	rclone-v1.75.1-windows-386.zip	386
+rclone	windows-x86_64	rclone-v1.75.1-windows-amd64.zip	
+regclient	freebsd-x86_64	regbot-freebsd-amd64	regbot-freebsd
+regclient	freebsd-x86_64	regctl-freebsd-amd64	regctl-freebsd
+regclient	freebsd-x86_64	regsync-freebsd-amd64	regsync-freebsd
+regclient	linux-aarch64	regbot-linux-arm64	regbot
+regclient	linux-aarch64	regctl-linux-arm64	regctl
+regclient	linux-aarch64	regsync-linux-arm64	regsync
+regclient	linux-x86_64	regbot-linux-amd64	regbot
+regclient	linux-x86_64	regctl-linux-amd64	regctl
+regclient	linux-x86_64	regsync-linux-amd64	regsync
+regclient	macos-aarch64	regbot-darwin-arm64	regbot
+regclient	macos-aarch64	regctl-darwin-arm64	regctl
+regclient	macos-aarch64	regsync-darwin-arm64	regsync
+regclient	macos-x86_64	regbot-darwin-amd64	regbot
+regclient	macos-x86_64	regctl-darwin-amd64	regctl
+regclient	macos-x86_64	regsync-darwin-amd64	regsync
+regclient	windows-x86_64	regbot-windows-amd64.exe	regbot
+regclient	windows-x86_64	regctl-windows-amd64.exe	regctl
+regclient	windows-x86_64	regsync-windows-amd64.exe	regsync
+ripgrep	linux-aarch64-gnu	ripgrep-15.2.0-aarch64-unknown-linux-gnu.tar.gz	
+ripgrep	linux-aarch64-musl	ripgrep-15.2.0-aarch64-unknown-linux-musl.tar.gz	
+ripgrep	linux-armv7-gnu	ripgrep-15.2.0-armv7-unknown-linux-gnueabihf.tar.gz	gnueabihf
+ripgrep	linux-armv7-musl	ripgrep-15.2.0-armv7-unknown-linux-musleabi.tar.gz	musleabi
+ripgrep	linux-armv7-musl	ripgrep-15.2.0-armv7-unknown-linux-musleabihf.tar.gz	musleabihf
+ripgrep	linux-x86_64-musl	ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz	
+ripgrep	macos-aarch64	ripgrep-15.2.0-aarch64-apple-darwin.tar.gz	
+ripgrep	macos-x86_64	ripgrep-15.2.0-x86_64-apple-darwin.tar.gz	
+ripgrep	windows-aarch64-msvc	ripgrep-15.2.0-aarch64-pc-windows-msvc.zip	
+ripgrep	windows-i686-msvc	ripgrep-15.2.0-i686-pc-windows-msvc.zip	
+ripgrep	windows-x86_64-gnu	ripgrep-15.2.0-x86_64-pc-windows-gnu.zip	
+ripgrep	windows-x86_64-msvc	ripgrep-15.2.0-x86_64-pc-windows-msvc.zip	
+rsync-win	windows-aarch64	rsync-win.zip	
+rsync-win	windows-i686	rsync-win.zip	
+rsync-win	windows-x86_64	rsync-win.zip	
+rustdesk	linux-aarch64	rustdesk-1.4.9-aarch64.flatpak	flatpak
+rustdesk	linux-x86_64	rustdesk-1.4.9-x86_64-sciter.flatpak	sciter-flatpak
+rustdesk	linux-x86_64	rustdesk-1.4.9-x86_64.flatpak	flatpak
+rustdesk	windows-aarch64	rustdesk-1.4.9-aarch64.exe	
+rustdesk	windows-i686	rustdesk-1.4.9-x86-sciter.exe	sciter
+rustdesk	windows-x86_64	rustdesk-1.4.9-x86_64.exe	
+rustdesk-server	linux-aarch64	rustdesk-server-linux-arm64v8.zip	arm64v8
+rustdesk-server	linux-armv7	rustdesk-server-linux-armv7.zip	
+rustdesk-server	linux-i686	rustdesk-server-linux-i386.zip	i386
+rustdesk-server	linux-x86_64	rustdesk-server-linux-amd64.zip	
+rustdesk-server	windows-x86_64	rustdesk-server-windows-x86_64-unsigned.zip	unsigned
+scrcpy	linux-x86_64	scrcpy-linux-x86_64-v4.1.tar.gz	
+scrcpy	macos-aarch64	scrcpy-macos-aarch64-v4.1.tar.gz	
+scrcpy	macos-x86_64	scrcpy-macos-x86_64-v4.1.tar.gz	
+scrcpy	windows-aarch64	scrcpy-win64-v4.1.zip	
+scrcpy	windows-i686	scrcpy-win32-v4.1.zip	
+scrcpy	windows-i686	scrcpy-win64-v4.1.zip	
+scrcpy	windows-x86_64	scrcpy-win64-v4.1.zip	
+siyuan	linux-aarch64	siyuan-3.8.5-linux-arm64.tar.gz	
+siyuan	linux-aarch64	siyuan-3.8.5-linux.tar.gz	
+siyuan	linux-armv7	siyuan-3.8.5-linux.tar.gz	
+siyuan	linux-i686	siyuan-3.8.5-linux.tar.gz	
+siyuan	linux-x86_64	siyuan-3.8.5-linux.tar.gz	
+siyuan	windows-aarch64	siyuan-3.8.5-win-arm64.exe	
+siyuan	windows-aarch64	siyuan-3.8.5-win.exe	
+siyuan	windows-i686	siyuan-3.8.5-win.exe	
+siyuan	windows-x86_64	siyuan-3.8.5-win.exe	
+smartmontools	windows-i686	smartmontools-7.5.win32-setup.exe	7-5-setup
+sshi	linux-aarch64	sshi-linux-aarch64.tar.gz	
+sshi	linux-aarch64-musl	sshi-linux-aarch64-musl.tar.gz	
+sshi	linux-armv7	sshi-linux-armv7.tar.gz	
+sshi	linux-armv7-musl	sshi-linux-armv7-musl.tar.gz	
+sshi	linux-i686	sshi-linux-i686.tar.gz	
+sshi	linux-i686-musl	sshi-linux-i686-musl.tar.gz	
+sshi	linux-x86_64	sshi-linux-x86_64.tar.gz	
+sshi	linux-x86_64-musl	sshi-linux-x86_64-musl.tar.gz	
+sshi	macos-aarch64	sshi-macos-aarch64.tar.gz	
+sshi	macos-x86_64	sshi-macos-x86_64.tar.gz	
+sshi	windows-aarch64	sshi-windows-aarch64.exe	
+sshi	windows-i686	sshi-windows-i686.exe	
+sshi	windows-x86_64	sshi-windows-x86_64.exe	
+ssync	linux-aarch64	ssync-linux-aarch64.tar.gz	
+ssync	linux-aarch64-musl	ssync-linux-aarch64-musl.tar.gz	
+ssync	linux-armv7	ssync-linux-armv7.tar.gz	
+ssync	linux-armv7-musl	ssync-linux-armv7-musl.tar.gz	
+ssync	linux-i686	ssync-linux-i686.tar.gz	
+ssync	linux-i686-musl	ssync-linux-i686-musl.tar.gz	
+ssync	linux-x86_64	ssync-linux-x86_64.tar.gz	
+ssync	linux-x86_64-musl	ssync-linux-x86_64-musl.tar.gz	
+ssync	macos-aarch64	ssync-macos-aarch64.tar.gz	
+ssync	macos-x86_64	ssync-macos-x86_64.tar.gz	
+ssync	windows-aarch64	ssync-windows-aarch64.exe	
+ssync	windows-i686	ssync-windows-i686.exe	
+ssync	windows-x86_64	ssync-windows-x86_64.exe	
+television	linux-aarch64-gnu	tv-0.15.9-aarch64-unknown-linux-gnu.tar.gz	tv
+television	linux-i686-gnu	tv-0.15.9-i686-unknown-linux-gnu.tar.gz	tv
+television	linux-x86_64-gnu	tv-0.15.9-x86_64-unknown-linux-gnu.tar.gz	tv
+television	linux-x86_64-musl	tv-0.15.9-x86_64-unknown-linux-musl.tar.gz	tv
+television	macos-aarch64	tv-0.15.9-aarch64-apple-darwin.tar.gz	tv
+television	macos-x86_64	tv-0.15.9-x86_64-apple-darwin.tar.gz	tv
+television	windows-x86_64-msvc	tv-0.15.9-x86_64-pc-windows-msvc.tar.gz	tv
+television	windows-x86_64-msvc	tv-0.15.9-x86_64-pc-windows-msvc.zip	tv
+terminal	windows-aarch64	Microsoft.Windows.Console.ConPTY.1.24.260710001.nupkg	Microsoft-Console-ConPTY-1-24-260710001-nupkg
+terminal	windows-i686	Microsoft.Windows.Console.ConPTY.1.24.260710001.nupkg	Microsoft-Console-ConPTY-1-24-260710001-nupkg
+terminal	windows-x86_64	Microsoft.Windows.Console.ConPTY.1.24.260710001.nupkg	Microsoft-Console-ConPTY-1-24-260710001-nupkg
+tmux-builds	linux-aarch64	tmux-3.7c-linux-arm64.tar.gz	tmux-3-7c
+tmux-builds	linux-x86_64	tmux-3.7c-linux-x86_64.tar.gz	tmux-3-7c
+tmux-builds	macos-aarch64	tmux-3.7c-macos-arm64.tar.gz	tmux-3-7c
+tmux-builds	macos-x86_64	tmux-3.7c-macos-x86_64.tar.gz	tmux-3-7c
+uv	linux-aarch64-gnu	uv-aarch64-unknown-linux-gnu.tar.gz	
+uv	linux-aarch64-musl	uv-aarch64-unknown-linux-musl.tar.gz	
+uv	linux-armv7-gnu	uv-armv7-unknown-linux-gnueabihf.tar.gz	gnueabihf
+uv	linux-armv7-musl	uv-arm-unknown-linux-musleabihf.tar.gz	arm-musleabihf
+uv	linux-armv7-musl	uv-armv7-unknown-linux-musleabihf.tar.gz	musleabihf
+uv	linux-i686-gnu	uv-i686-unknown-linux-gnu.tar.gz	
+uv	linux-i686-musl	uv-i686-unknown-linux-musl.tar.gz	
+uv	linux-x86_64-gnu	uv-x86_64-unknown-linux-gnu.tar.gz	
+uv	linux-x86_64-musl	uv-x86_64-unknown-linux-musl.tar.gz	
+uv	macos-aarch64	uv-aarch64-apple-darwin.tar.gz	
+uv	macos-x86_64	uv-x86_64-apple-darwin.tar.gz	
+uv	windows-aarch64-msvc	uv-aarch64-pc-windows-msvc.zip	
+uv	windows-i686-msvc	uv-i686-pc-windows-msvc.zip	
+uv	windows-x86_64-msvc	uv-x86_64-pc-windows-msvc.zip	
+wappman	linux-aarch64	wappman-linux-v1.0.6.tar.gz	
+wappman	linux-armv7	wappman-linux-v1.0.6.tar.gz	
+wappman	linux-i686	wappman-linux-v1.0.6.tar.gz	
+wappman	linux-x86_64	wappman-linux-v1.0.6.tar.gz	
+waveterm	linux-aarch64	waveterm-linux-aarch64-0.14.5.pacman	0-14-5-pacman
+waveterm	linux-aarch64	waveterm-linux-arm64-0.14.5.zip	
+waveterm	linux-aarch64	waveterm_0.14.5_arm64.snap	snap
+waveterm	linux-x86_64	waveterm-linux-x64-0.14.5.pacman	0-14-5-pacman
+waveterm	linux-x86_64	waveterm-linux-x64-0.14.5.zip	
+waveterm	linux-x86_64	waveterm_0.14.5_amd64.snap	snap
+waveterm	macos-aarch64	Wave-darwin-arm64-0.14.5.zip	Wave
+waveterm	macos-x86_64	Wave-darwin-x64-0.14.5.zip	Wave
+waveterm	windows-x86_64	Wave-win32-x64-0.14.5.exe	Wave
+waveterm	windows-x86_64	Wave-win32-x64-0.14.5.zip	Wave
+wedi	linux-aarch64	wedi-linux-aarch64.tar.gz	
+wedi	linux-aarch64-musl	wedi-linux-aarch64-musl.tar.gz	
+wedi	linux-armv7	wedi-linux-armv7.tar.gz	
+wedi	linux-armv7-musl	wedi-linux-armv7-musl.tar.gz	
+wedi	linux-i686	wedi-linux-i686.tar.gz	
+wedi	linux-i686-musl	wedi-linux-i686-musl.tar.gz	
+wedi	linux-x86_64	wedi-linux-x86_64.tar.gz	
+wedi	linux-x86_64-musl	wedi-linux-x86_64-musl.tar.gz	
+wedi	macos-aarch64	wedi-macos-aarch64.tar.gz	
+wedi	macos-x86_64	wedi-macos-x86_64.tar.gz	
+wedi	windows-i686	wedi-windows-i686.exe	
+wedi	windows-x86_64	wedi-windows-x86_64.exe	
+wemux	windows-i686	wemux-service-windows-i686.exe	service
+wemux	windows-i686	wemux-tray-windows-i686.exe	tray
+wemux	windows-i686	wemux-windows-i686.exe	
+wemux	windows-x86_64	wemux-service-windows-x86_64.exe	service
+wemux	windows-x86_64	wemux-tray-windows-x86_64.exe	tray
+wemux	windows-x86_64	wemux-windows-x86_64.exe	
+wenfo	linux-aarch64	wenfo-linux-aarch64.tar.gz	
+wenfo	linux-aarch64-musl	wenfo-linux-aarch64-musl.tar.gz	
+wenfo	linux-armv7	wenfo-linux-armv7.tar.gz	
+wenfo	linux-armv7-musl	wenfo-linux-armv7-musl.tar.gz	
+wenfo	linux-i686	wenfo-linux-i686.tar.gz	
+wenfo	linux-i686-musl	wenfo-linux-i686-musl.tar.gz	
+wenfo	linux-x86_64	wenfo-linux-x86_64.tar.gz	
+wenfo	linux-x86_64-musl	wenfo-linux-x86_64-musl.tar.gz	
+wenfo	macos-aarch64	wenfo-macos-aarch64.tar.gz	
+wenfo	macos-x86_64	wenfo-macos-x86_64.tar.gz	
+wenfo	windows-i686	wenfo-windows-i686.exe	
+wenfo	windows-x86_64	wenfo-windows-x86_64.exe	
+weni	linux-aarch64	weni-linux-aarch64.tar.gz	
+weni	linux-aarch64-musl	weni-linux-aarch64-musl.tar.gz	
+weni	linux-armv7	weni-linux-armv7.tar.gz	
+weni	linux-armv7-musl	weni-linux-armv7-musl.tar.gz	
+weni	linux-i686	weni-linux-i686.tar.gz	
+weni	linux-i686-musl	weni-linux-i686-musl.tar.gz	
+weni	linux-x86_64	weni-linux-x86_64.tar.gz	
+weni	linux-x86_64-musl	weni-linux-x86_64-musl.tar.gz	
+weni	macos-aarch64	weni-macos-aarch64.tar.gz	
+weni	macos-x86_64	weni-macos-x86_64.tar.gz	
+weni	windows-i686	weni-windows-i686.exe	
+weni	windows-x86_64	weni-windows-x86_64.exe	
+wenv	linux-aarch64	wenv-linux-aarch64.tar.gz	
+wenv	linux-aarch64-musl	wenv-linux-aarch64-musl.tar.gz	
+wenv	linux-armv7	wenv-linux-armv7.tar.gz	
+wenv	linux-armv7-musl	wenv-linux-armv7-musl.tar.gz	
+wenv	linux-i686	wenv-linux-i686.tar.gz	
+wenv	linux-i686-musl	wenv-linux-i686-musl.tar.gz	
+wenv	linux-x86_64	wenv-linux-x86_64.tar.gz	
+wenv	linux-x86_64-musl	wenv-linux-x86_64-musl.tar.gz	
+wenv	macos-aarch64	wenv-macos-aarch64.tar.gz	
+wenv	macos-x86_64	wenv-macos-x86_64.tar.gz	
+wenv	windows-i686	wenv-windows-i686.zip	
+wenv	windows-x86_64	wenv-windows-x86_64.zip	
+wincdu	windows-x86_64	wincdu_1.0.4_x64_free.zip	free
+witr	freebsd-aarch64	witr-freebsd-arm64	freebsd
+witr	freebsd-x86_64	witr-freebsd-amd64	freebsd
+witr	linux-aarch64	witr-linux-arm64	
+witr	linux-x86_64	witr-linux-amd64	
+witr	macos-aarch64	witr-darwin-arm64	
+witr	macos-x86_64	witr-darwin-amd64	
+witr	windows-aarch64	witr-windows-arm64.zip	
+witr	windows-x86_64	witr-windows-amd64.zip	
+yazi	linux-aarch64	yazi-arm64.snap	snap
+yazi	linux-aarch64-gnu	yazi-aarch64-unknown-linux-gnu.zip	
+yazi	linux-aarch64-musl	yazi-aarch64-unknown-linux-musl.zip	
+yazi	linux-i686-gnu	yazi-i686-unknown-linux-gnu.zip	
+yazi	linux-x86_64	yazi-amd64.snap	snap
+yazi	linux-x86_64-gnu	yazi-x86_64-unknown-linux-gnu.zip	
+yazi	linux-x86_64-musl	yazi-x86_64-unknown-linux-musl.zip	
+yazi	macos-aarch64	yazi-aarch64-apple-darwin.zip	
+yazi	macos-x86_64	yazi-x86_64-apple-darwin.zip	
+yazi	windows-aarch64-msvc	yazi-aarch64-pc-windows-msvc.zip	
+yazi	windows-x86_64-msvc	yazi-x86_64-pc-windows-msvc.zip	
+youtube-tui	linux-x86_64	youtube-tui-default_arch-x86_64	default-arch
+youtube-tui	linux-x86_64	youtube-tui-full_arch-x86_64	full-arch
+youtube-tui	linux-x86_64	youtube-tui-minimal_arch-x86_64	minimal-arch
+youtube-tui	linux-x86_64	youtube-tui-mpvonly_arch-x86_64	mpvonly-arch

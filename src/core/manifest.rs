@@ -509,10 +509,51 @@ impl Default for InstalledSet {
     }
 }
 
+/// File extensions stripped from asset names before tokenizing (matched case-insensitively)
+const ASSET_EXTENSIONS: &[&str] = &[
+    ".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".txz", ".tbz", ".zip", ".7z", ".exe",
+    ".msi", ".dmg", ".deb", ".rpm", ".pkg", ".apk", ".gz", ".xz", ".bz2", ".zst",
+];
+
+/// Primary OS, architecture, vendor, and libc tokens that identify the
+/// platform, never the variant. Other OS/arch/ABI words (`netbsd`, `android`,
+/// `i386`, `armel`, `eabihf`, ...) are kept: bucket platforms group such
+/// assets together, and these tokens are what tells the siblings apart.
+const PLATFORM_TOKENS: &[&str] = &[
+    "windows",
+    "win",
+    "win32",
+    "win64",
+    "linux",
+    "darwin",
+    "macos",
+    "macosx",
+    "mac",
+    "apple",
+    "x86_64",
+    "amd64",
+    "x64",
+    "x86",
+    "i686",
+    "arm64",
+    "aarch64",
+    "armv7",
+    "unknown",
+    "pc",
+    "gnu",
+    "musl",
+    "msvc",
+    "universal",
+    "universal2",
+];
+
 /// Extract variant identifier from asset filename
 ///
-/// Removes repo name prefix, platform suffixes, and file extensions
-/// to identify the variant name (e.g., "baseline", "desktop")
+/// Strips known extensions, splits the rest into tokens on `-` and `_`,
+/// drops dotted versions (`1.2.3`, `v0.8`), splits remaining tokens on `.`,
+/// removes the repo name prefix and platform tokens (`PLATFORM_TOKENS`).
+/// The remaining tokens, joined with `-`, are the variant name (e.g.,
+/// "baseline", "desktop").
 ///
 /// # Examples
 /// ```
@@ -523,141 +564,59 @@ impl Default for InstalledSet {
 /// assert_eq!(extract_variant_from_asset("opencode-desktop-windows-x64.exe", "opencode"), Some("desktop".to_string()));
 /// ```
 pub fn extract_variant_from_asset(asset_name: &str, repo_name: &str) -> Option<String> {
-    // Remove file extensions
-    let name = asset_name
-        .trim_end_matches(".zip")
-        .trim_end_matches(".tar.gz")
-        .trim_end_matches(".tar.xz")
-        .trim_end_matches(".exe")
-        .trim_end_matches(".7z")
-        .trim_end_matches(".tgz");
-
-    // Remove repo name prefix (case-insensitive)
-    let repo_lower = repo_name.to_lowercase();
-    let name_lower = name.to_lowercase();
-
-    let without_repo = if name_lower.starts_with(&repo_lower) {
-        &name[repo_lower.len()..]
-    } else {
-        name
+    let is_dotted_version = |t: &str| {
+        let t = t.strip_prefix(['v', 'V']).unwrap_or(t);
+        t.contains('.')
+            && t.split('.')
+                .all(|p| !p.is_empty() && p.bytes().all(|c| c.is_ascii_digit()))
+    };
+    let split = |s: &str| -> Vec<String> {
+        s.split(['-', '_'])
+            .filter(|t| !is_dotted_version(t))
+            .flat_map(|t| t.split('.'))
+            .filter(|t| !t.is_empty())
+            .map(str::to_string)
+            .collect()
     };
 
-    // Remove leading hyphens and underscores
-    let without_repo = without_repo.trim_start_matches('-').trim_start_matches('_');
-
-    // Normalize separators: replace all underscores with hyphens for consistent processing
-    let normalized = without_repo.replace('_', "-");
-
-    // Remove version numbers (improved pattern matching)
-    // Split by '-' and filter out version-like segments (e.g., "1.0.0", "v1.0.0", "2.86.0")
-    let segments: Vec<&str> = normalized.split('-').collect();
-    let filtered_segments: Vec<&str> = segments
-        .into_iter()
-        .filter(|seg| {
-            // Helper to check if a segment is a version number
-            let is_version = |s: &str| -> bool {
-                let s = s.trim_start_matches('v');
-                // Must start with a digit and contain at least one dot
-                s.chars().next().is_some_and(|c| c.is_ascii_digit())
-                    && s.contains('.')
-                    && s.chars().all(|c| c.is_ascii_digit() || c == '.')
-            };
-
-            !is_version(seg)
-        })
-        .collect();
-
-    let without_version = filtered_segments.join("-");
-
-    // Remove "unknown" keyword (common in Rust target triples)
-    let without_unknown = without_version.replace("unknown", "");
-
-    // Platform patterns to remove (ordered by specificity)
-    let platform_patterns = [
-        // OS-arch-variant combinations
-        "windows-x86_64-msvc",
-        "windows-x86_64-gnu",
-        "linux-x86_64-musl",
-        "linux-x86_64-gnu",
-        // OS-arch combinations
-        "windows-x86_64",
-        "windows-amd64",
-        "windows-x64",
-        "windows-i686",
-        "windows-x86",
-        "windows-arm64",
-        "windows-aarch64",
-        "linux-x86_64",
-        "linux-amd64",
-        "linux-x64",
-        "linux-i686",
-        "linux-x86",
-        "linux-arm64",
-        "linux-aarch64",
-        "linux-armv7",
-        "darwin-x86_64",
-        "darwin-amd64",
-        "darwin-x64",
-        "darwin-arm64",
-        "darwin-aarch64",
-        "macos-x86_64",
-        "macos-amd64",
-        "macos-x64",
-        "macos-arm64",
-        "macos-aarch64",
-        "freebsd-x86_64",
-        "freebsd-amd64",
-        "freebsd-x64",
-        // Generic arch patterns
-        "x86_64",
-        "amd64",
-        "x64",
-        "i686",
-        "x86",
-        "arm64",
-        "aarch64",
-        "armv7",
-        // OS-only patterns
-        "windows",
-        "linux",
-        "darwin",
-        "macos",
-        "freebsd",
-        // Other common patterns
-        "win32",
-        "win64",
-        "win",
-        "musl",
-        "gnu",
-        "msvc",
-        "pc", // Common in Rust target triples (e.g., x86_64-pc-windows-msvc)
-    ];
-
-    let mut result = without_unknown;
-
-    // Remove platform patterns, normalized like the name (`x86_64` -> `x86-64`)
-    for pattern in &platform_patterns {
-        let pattern = pattern.replace('_', "-");
-        result = result.replace(&format!("-{}", pattern), "");
-        result = result.replace(&pattern, "");
+    let mut name = asset_name;
+    while let Some(ext) = ASSET_EXTENSIONS
+        .iter()
+        .find(|e| name.to_ascii_lowercase().ends_with(*e))
+    {
+        name = &name[..name.len() - ext.len()];
     }
 
-    // Clean up multiple hyphens/underscores
-    while result.contains("--") {
-        result = result.replace("--", "-");
-    }
-    while result.contains("__") {
-        result = result.replace("__", "_");
+    let mut tokens = split(name);
+    let repo_tokens = split(repo_name);
+    if !repo_tokens.is_empty()
+        && tokens.len() >= repo_tokens.len()
+        && tokens
+            .iter()
+            .zip(&repo_tokens)
+            .all(|(t, r)| t.eq_ignore_ascii_case(r))
+    {
+        tokens.drain(..repo_tokens.len());
     }
 
-    // Trim leading/trailing hyphens and underscores
-    let result = result.trim_matches('-').trim_matches('_').to_string();
+    let is_platform = |t: &str| PLATFORM_TOKENS.iter().any(|p| p.eq_ignore_ascii_case(t));
 
-    if result.is_empty() {
-        None
-    } else {
-        Some(result)
+    let mut kept: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        let t = tokens[i].as_str();
+        // `x86_64` splits into `x86` + `64`
+        if t.eq_ignore_ascii_case("x86") && tokens.get(i + 1).map(String::as_str) == Some("64") {
+            i += 2;
+            continue;
+        }
+        if !is_platform(t) {
+            kept.push(t);
+        }
+        i += 1;
     }
+
+    (!kept.is_empty()).then(|| kept.join("-"))
 }
 
 /// Generate the installed key from repo name and variant
@@ -695,6 +654,47 @@ mod tests {
         );
         assert_eq!(v("confy-x86_64-unknown-linux-gnu.tar.gz"), None);
         assert_eq!(v("confy-x86_64-pc-windows-msvc.zip"), None);
+    }
+
+    /// Golden outputs for every asset in the bundled bucket manifest:
+    /// `package<TAB>platform<TAB>asset<TAB>expected variant` (empty = none)
+    #[test]
+    fn extract_variant_golden() {
+        let golden = include_str!("testdata/variant_golden.tsv");
+        let mut failures = Vec::new();
+        for line in golden.lines() {
+            let mut cols = line.split('\t');
+            let pkg = cols.next().unwrap();
+            let _platform = cols.next().unwrap();
+            let asset = cols.next().unwrap();
+            let expected = cols.next().unwrap_or("");
+            let got = extract_variant_from_asset(asset, pkg).unwrap_or_default();
+            if got != expected {
+                failures.push(format!(
+                    "{asset} ({pkg}): expected {expected:?}, got {got:?}"
+                ));
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[test]
+    fn extract_variant_token_edge_cases() {
+        // Substrings of platform words are not stripped from real tokens
+        assert_eq!(
+            extract_variant_from_asset("tool-winget-linux-x86_64.tar.gz", "tool"),
+            Some("winget".into())
+        );
+        // Capitalized platform words and multi-token repo prefixes
+        assert_eq!(
+            extract_variant_from_asset("Nexus_Terminal_Darwin_arm64.dmg", "nexus-terminal"),
+            None
+        );
+        // Versions (dotted or `v`-prefixed) are dropped
+        assert_eq!(
+            extract_variant_from_asset("bun-v1.2.3-linux-x64-baseline.zip", "bun"),
+            Some("baseline".into())
+        );
     }
 
     #[test]

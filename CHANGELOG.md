@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(manifest): `extract_variant_from_asset` is now a token parser instead of a substring
+  replacement cascade: platform words no longer eat parts of other words (`winget`, `denort`),
+  platform words match case-insensitively (`Linux`, `Darwin`), and extensions like `.tar.zst` no
+  longer leak into names. Some variant names change (e.g. `codex::apple` → `codex`). Packages
+  installed under an old variant name may need a reinstall to update. Golden test covers all 1178
+  bucket assets (SI-10).
 - refactor(core): `bucket` and `cache` modules moved under `core/`, so `core::config` no longer
   depends upward on root-level modules (A-7).
 - refactor(core): interpreter probing moved from `core/manifest.rs` to `installer::script`
