@@ -13,7 +13,6 @@ last checked against the tree — not when it was opened.
 | A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
 | CL-6 | 2026-09-23 | 2026-09-23 | P3 | 24 functions exceed 100 LOC (largest `install_packages` ~650 after CL-8; its plan/render phase is still inline) | `commands/add.rs` `install_packages`; `installer/package.rs` `PackageInstaller::install` (~280); `commands/delete.rs` `run`; `commands/info.rs` `display_package_info` | M | Complex functions refactored into distinct compute and render/presentation passes |
-| SI-6 | 2026-09-23 | 2026-09-23 | P3 | Launcher creation contains `cfg` platform switches at every call site | `commands/add.rs`, `commands/rename.rs`, `installer/local.rs` | S | Unified `installer::create_launcher` and `remove_launcher` abstraction hides platform branches |
 | SI-10 | 2026-09-23 | 2026-09-23 | P3 | `extract_variant_from_asset` uses 141-step substring replacement cascade | `core/manifest.rs` `extract_variant_from_asset` | S | Token-based asset name parser drops version/platform noise; verified with golden tests |
 | B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
 
@@ -122,4 +121,5 @@ last checked against the tree — not when it was opened.
 | B-3 | Dead `FallbackType` variants (already removed by the dead-code sweep; only `Arch32On64`/`X64OnArm` remain) | 21b5b67 |
 | CL-3 | `meta_version` glossary drift and `get_or_create_installed` alias (field is `schema_version` in code, serialized as `meta_version` so older builds keep their version gate; alias removed) | 902deb0 |
 | CL-5 | Deprecated `parent_package` threaded through constructors (field removed; `InstalledSet::migrate` takes legacy parents read from raw JSON) | c2a9cb8 |
+| SI-6 | Launcher creation `cfg` switches duplicated across install/rename/repair (unified in `installer::create_launcher`) | a273e99 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
