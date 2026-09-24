@@ -199,7 +199,7 @@ fn list_all_packages(config: &Config) -> Result<()> {
         .collect();
 
     // Filter scripts that are compatible with current OS
-    let scripts: Vec<_> = cache
+    let mut scripts: Vec<_> = cache
         .scripts
         .values()
         .map(|cs| &cs.script)
@@ -214,6 +214,7 @@ fn list_all_packages(config: &Config) -> Result<()> {
 
     // Sort alphabetically
     packages.sort_by(|a, b| a.name.cmp(&b.name));
+    scripts.sort_by(|a, b| a.name.cmp(&b.name));
 
     // Column widths: NAME(30) + sp + TYPE(12) + sp = 44
     let width = term_width();
