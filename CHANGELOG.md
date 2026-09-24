@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- docs: documentation audit fixes. README: `bucket refresh` (not `update`) refreshes package
+  metadata, `info <name>` costs 1 API call, `del -f` / `repair -f` / `del self` described as they
+  behave, Windows system `bin\` holds `.cmd` shims, `path.json` and `RUST_LOG` documented, the
+  v0.3.0 migration notice removed. `bucket/README.md` drops the removed binary and release
+  trigger. AGENTS.md release steps commit the version bump before tagging and run `cargo test`.
+  CHANGELOG: `3.2.0` placed above `3.1.0`, compare links sorted, `[Unreleased]` link added.
 - fix(add): when a release ships the same build in several archive formats (fastfetch: `.tar.gz`
   and `.zip`), `add -y` installs one (preferred format) instead of installing twice under the same
   name, and the interactive picker lists it once.
@@ -565,20 +571,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Update fallback downgrade prevention**: When GitHub API is unavailable and `update` falls back to cache, versions are now compared to prevent downgrading to older cached versions
 
-## [3.1.0] - 2026-03-18
-
-### Added
-
-- **Automatic version checking**: Wenget now automatically checks for updates on startup and notifies when a new version is available
-- **Script update detection**: Added detection for script file updates, enabling automatic reinstallation when script sources change
-- **Download URL tracking**: Added `download_url` field to `InstalledPackage` for tracking script source URLs
-
-### Changed
-
-- **Removed `update self` command**: Self-update is now automatically detected and prompted instead of requiring manual command
-- **Upgrade success messages**: Updated to use `latest_version` for clearer messaging
-- **Added design documentation**: New design docs included for architectural reference
-
 ## [3.2.0] - 2026-03-20
 
 ### Added
@@ -602,6 +594,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - **Delete fix design documentation**: Added implementation plan and design spec for delete command fix and `installed.json` redesign
+
+## [3.1.0] - 2026-03-18
+
+### Added
+
+- **Automatic version checking**: Wenget now automatically checks for updates on startup and notifies when a new version is available
+- **Script update detection**: Added detection for script file updates, enabling automatic reinstallation when script sources change
+- **Download URL tracking**: Added `download_url` field to `InstalledPackage` for tracking script source URLs
+
+### Changed
+
+- **Removed `update self` command**: Self-update is now automatically detected and prompted instead of requiring manual command
+- **Upgrade success messages**: Updated to use `latest_version` for clearer messaging
+- **Added design documentation**: New design docs included for architectural reference
 
 ## [3.0.4] - 2026-03-09
 
@@ -676,28 +682,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation updated with migration instructions
 - Unit tests updated to reflect new directory structure
 
+[Unreleased]: https://github.com/superyngo/wenget/compare/v3.9.0...HEAD
+[3.9.0]: https://github.com/superyngo/wenget/compare/v3.8.7...v3.9.0
+[3.8.7]: https://github.com/superyngo/wenget/compare/v3.8.6...v3.8.7
+[3.8.6]: https://github.com/superyngo/wenget/compare/v3.8.5...v3.8.6
+[3.8.5]: https://github.com/superyngo/wenget/compare/v3.8.4...v3.8.5
+[3.8.4]: https://github.com/superyngo/wenget/compare/v3.8.3...v3.8.4
+[3.8.3]: https://github.com/superyngo/wenget/compare/v3.8.2...v3.8.3
+[3.8.2]: https://github.com/superyngo/wenget/compare/v3.8.1...v3.8.2
+[3.8.1]: https://github.com/superyngo/wenget/compare/v3.8.0...v3.8.1
+[3.8.0]: https://github.com/superyngo/wenget/compare/v3.7.0...v3.8.0
+[3.7.0]: https://github.com/superyngo/wenget/compare/v3.6.0...v3.7.0
+[3.6.0]: https://github.com/superyngo/wenget/compare/v3.5.0...v3.6.0
+[3.5.0]: https://github.com/superyngo/wenget/compare/v3.4.1...v3.5.0
+[3.4.1]: https://github.com/superyngo/wenget/compare/v3.4.0...v3.4.1
+[3.4.0]: https://github.com/superyngo/wenget/compare/v3.3.3...v3.4.0
+[3.3.3]: https://github.com/superyngo/wenget/compare/v3.3.2...v3.3.3
+[3.3.2]: https://github.com/superyngo/wenget/compare/v3.3.1...v3.3.2
+[3.3.1]: https://github.com/superyngo/wenget/compare/v3.3.0...v3.3.1
+[3.3.0]: https://github.com/superyngo/wenget/compare/v3.2.0...v3.3.0
+[3.2.0]: https://github.com/superyngo/wenget/compare/v3.1.0...v3.2.0
+[3.1.0]: https://github.com/superyngo/wenget/compare/v3.0.4...v3.1.0
 [3.0.4]: https://github.com/superyngo/wenget/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/superyngo/wenget/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/superyngo/wenget/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/superyngo/wenget/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/superyngo/wenget/compare/v2.3.1...v3.0.0
-[3.1.0]: https://github.com/superyngo/wenget/compare/v3.0.4...v3.1.0
-[3.2.0]: https://github.com/superyngo/wenget/compare/v3.1.0...v3.2.0
-[3.3.0]: https://github.com/superyngo/wenget/compare/v3.2.0...v3.3.0
-[3.3.3]: https://github.com/superyngo/wenget/compare/v3.3.2...v3.3.3
-[3.3.2]: https://github.com/superyngo/wenget/compare/v3.3.1...v3.3.2
-[3.3.1]: https://github.com/superyngo/wenget/compare/v3.3.0...v3.3.1
-[3.4.0]: https://github.com/superyngo/wenget/compare/v3.3.3...v3.4.0
-[3.4.1]: https://github.com/superyngo/wenget/compare/v3.4.0...v3.4.1
-[3.5.0]: https://github.com/superyngo/wenget/compare/v3.4.1...v3.5.0
-[3.6.0]: https://github.com/superyngo/wenget/compare/v3.5.0...v3.6.0
-[3.7.0]: https://github.com/superyngo/wenget/compare/v3.6.0...v3.7.0
-[3.8.0]: https://github.com/superyngo/wenget/compare/v3.7.0...v3.8.0
-[3.8.1]: https://github.com/superyngo/wenget/compare/v3.8.0...v3.8.1
-[3.8.2]: https://github.com/superyngo/wenget/compare/v3.8.1...v3.8.2
-[3.8.3]: https://github.com/superyngo/wenget/compare/v3.8.2...v3.8.3
-[3.8.4]: https://github.com/superyngo/wenget/compare/v3.8.3...v3.8.4
-[3.8.5]: https://github.com/superyngo/wenget/compare/v3.8.4...v3.8.5
-[3.8.6]: https://github.com/superyngo/wenget/compare/v3.8.5...v3.8.6
-[3.8.7]: https://github.com/superyngo/wenget/compare/v3.8.6...v3.8.7
-[3.9.0]: https://github.com/superyngo/wenget/compare/v3.8.7...v3.9.0
