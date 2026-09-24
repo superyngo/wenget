@@ -302,6 +302,15 @@ fn print_self_delete_plan(options: &RemovalOptions, paths: &WenPaths, exe_path: 
     println!();
 
     let mut step_num = 1;
+    if options.remove_data {
+        println!(
+            "  {} wenget launchers in {}",
+            format!("{}.", step_num).bold(),
+            paths.bin_dir().display()
+        );
+        println!();
+        step_num += 1;
+    }
 
     if options.remove_data {
         println!(
@@ -355,6 +364,16 @@ fn execute_self_deletion(
         step_num += 1;
     }
 
+    // Step: Remove launchers before the root they point into disappears
+    if options.remove_data {
+        println!("{} Removing launchers...", format!("{}.", step_num).bold());
+        for path in remove_launchers(paths) {
+            println!("   {} Removed: {}", "✓".green(), path.display());
+        }
+        println!();
+        step_num += 1;
+    }
+
     // Step: Delete wenget directories (if selected)
     if options.remove_data {
         println!(
@@ -400,13 +419,42 @@ fn execute_self_deletion(
     Ok(())
 }
 
+/// Remove bin entries that provably launch something inside the wenget root
+///
+/// Covers package launchers (including legacy names) and the `wenget` launcher
+/// written by `install.sh` / `init`. Anything else in the bin directory,
+/// including user files and links elsewhere, is left alone.
+fn remove_launchers(paths: &WenPaths) -> Vec<std::path::PathBuf> {
+    let bin_dir = paths.bin_dir();
+    let root = paths.root();
+    if bin_dir.starts_with(root) {
+        return Vec::new(); // removed together with the root
+    }
+    let Ok(entries) = fs::read_dir(&bin_dir) else {
+        return Vec::new();
+    };
+    let mut removed = Vec::new();
+    for path in entries.filter_map(|e| e.ok()).map(|e| e.path()) {
+        if !crate::commands::repair::points_into_apps(&path, root) {
+            continue;
+        }
+        match fs::remove_file(&path) {
+            Ok(()) => removed.push(path),
+            Err(e) => println!("   {} {}: {}", "⚠".yellow(), path.display(), e),
+        }
+    }
+    removed.sort();
+    removed
+}
+
 /// Delete wenget itself (complete uninstallation)
 fn delete_self(yes: bool) -> Result<()> {
     println!("{}", "wenget Self-Deletion".bold().red());
     println!("{}", "═".repeat(60));
     println!();
 
-    let paths = WenPaths::new()?;
+    // Honour `custom_bin_path` so the launcher step looks in the right place
+    let paths = Config::new()?.paths().clone();
     let exe_path = env::current_exe().context("Failed to get current executable path")?;
 
     // Determine removal options
@@ -757,6 +805,30 @@ fn group_delete_candidates(
 mod tests {
     use super::*;
     use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_SCHEMA_VERSION};
+
+    #[cfg(unix)]
+    #[test]
+    fn test_remove_launchers_only_touches_wenget_links() {
+        use std::os::unix::fs::symlink;
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = tmp.path().join("root");
+        let bin = tmp.path().join("bin");
+        let target = root.join("apps/rg/rg");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(&target, "").unwrap();
+        symlink(&target, bin.join("rg")).unwrap();
+        symlink(root.join("bin/wenget"), bin.join("wenget")).unwrap();
+        symlink("/bin/ls", bin.join("userlink")).unwrap();
+        fs::write(bin.join("userfile"), "").unwrap();
+
+        let paths = WenPaths::with_root_and_bin(root, bin.clone());
+        let removed = remove_launchers(&paths);
+
+        assert_eq!(removed, vec![bin.join("rg"), bin.join("wenget")]);
+        assert!(bin.join("userlink").symlink_metadata().is_ok());
+        assert!(bin.join("userfile").exists());
+    }
 
     fn pkg(variant: Option<&str>) -> InstalledPackage {
         InstalledPackage {

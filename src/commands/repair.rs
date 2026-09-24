@@ -333,7 +333,7 @@ pub fn provable_orphan_shims(paths: &WenPaths, set: &InstalledSet) -> Result<Vec
 }
 
 /// Whether this bin entry is provably a wenget launcher into `apps_dir`
-fn points_into_apps(path: &Path, apps_dir: &Path) -> bool {
+pub(crate) fn points_into_apps(path: &Path, apps_dir: &Path) -> bool {
     #[cfg(unix)]
     {
         let Ok(meta) = std::fs::symlink_metadata(path) else {

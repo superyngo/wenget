@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- fix(delete): `del self` removes the launchers in the bin directory that point into the wenget
+  root (package launchers and the `wenget` launcher) before deleting the root, and honours
+  `custom_bin_path`. Other files in the bin directory are left alone. Closes B-14.
 - docs: documentation audit fixes. README: `bucket refresh` (not `update`) refreshes package
   metadata, `info <name>` costs 1 API call, `del -f` / `repair -f` / `del self` described as they
   behave, Windows system `bin\` holds `.cmd` shims, `path.json` and `RUST_LOG` documented, the

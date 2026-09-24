@@ -560,11 +560,12 @@ wenget del self
 
 This will:
 1. Remove the PATH entries `wenget init` added
-2. Delete the wenget directory (`~/.wenget`) with all installed packages
-3. Remove the wenget executable itself
+2. Remove launchers in `~/.local/bin` (or your configured bin directory) that point into
+   `~/.wenget`, including the `wenget` launcher; other files there are left alone
+3. Delete the wenget directory (`~/.wenget`) with all installed packages
+4. Remove the wenget executable itself
 
-Without `-y`, a menu lets you choose which of these to remove. Launchers in `~/.local/bin` (or your
-configured bin directory) are not removed; delete the `wenget` launcher and package launchers there by hand.
+Without `-y`, a menu lets you choose which of these to remove; launchers go with "Apps & data".
 
 ### Manual Uninstallation
 

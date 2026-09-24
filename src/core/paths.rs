@@ -148,6 +148,15 @@ impl WenPaths {
         }
     }
 
+    /// Like `with_root`, but with the bin directory outside the root
+    #[cfg(test)]
+    pub fn with_root_and_bin(root: PathBuf, bin: PathBuf) -> Self {
+        Self {
+            custom_bin_dir: Some(bin),
+            ..Self::with_root(root)
+        }
+    }
+
     /// Create a WenPaths instance explicitly for system-level installation
     ///
     /// This bypasses the privilege detection and always uses system paths
