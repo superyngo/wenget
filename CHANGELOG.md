@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- perf(list): `list --all` borrows packages from the cache instead of cloning it; removed the
+  now-unused `Config::get_packages_from_cache` and `ManifestCache::{to_source_manifest,get_packages,get_scripts}` (P-3).
 - fix(variant): asset names containing `x86_64` no longer yield bogus variants (confy on
   windows-x86_64 gave `desktop-64`/`64`; now `desktop`/none). Installs recorded under the old names
   need a reinstall.

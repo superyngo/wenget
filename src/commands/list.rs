@@ -176,8 +176,8 @@ fn list_installed_packages(config: &Config) -> Result<()> {
 
 /// List all available packages from cache
 fn list_all_packages(config: &Config) -> Result<()> {
-    // Get packages from cache
-    let manifest = config.get_packages_from_cache()?;
+    // Borrow packages straight from the cache
+    let cache = config.get_or_rebuild_cache()?;
 
     // Load installed packages for marking
     let installed = config.get_or_create_installed()?;
@@ -187,9 +187,10 @@ fn list_all_packages(config: &Config) -> Result<()> {
     let platform_ids = platform.possible_identifiers();
 
     // Filter packages that support current platform
-    let mut packages: Vec<_> = manifest
+    let mut packages: Vec<_> = cache
         .packages
-        .iter()
+        .values()
+        .map(|cp| &cp.package)
         .filter(|pkg| {
             platform_ids
                 .iter()
@@ -198,9 +199,10 @@ fn list_all_packages(config: &Config) -> Result<()> {
         .collect();
 
     // Filter scripts that are compatible with current OS
-    let scripts: Vec<_> = manifest
+    let scripts: Vec<_> = cache
         .scripts
-        .iter()
+        .values()
+        .map(|cs| &cs.script)
         .filter(|script| script.is_compatible_with_current_platform())
         .collect();
 

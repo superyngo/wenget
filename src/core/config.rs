@@ -210,13 +210,6 @@ impl Config {
         self.save_cache(&cache)?;
         Ok(cache)
     }
-
-    /// Get packages from cache
-    /// This is the recommended way to get packages for read operations
-    pub fn get_packages_from_cache(&self) -> Result<SourceManifest> {
-        let cache = self.get_or_rebuild_cache()?;
-        Ok(cache.to_source_manifest())
-    }
 }
 
 /// Return `preferences` if valid, otherwise warn and return the defaults

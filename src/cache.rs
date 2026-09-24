@@ -169,27 +169,6 @@ impl ManifestCache {
         self.scripts.insert(name, CachedScript { script, source });
     }
 
-    /// Get all packages as Vec (for compatibility with SourceManifest)
-    pub fn get_packages(&self) -> Vec<Package> {
-        self.packages
-            .values()
-            .map(|cp| cp.package.clone())
-            .collect()
-    }
-
-    /// Get all scripts as Vec
-    pub fn get_scripts(&self) -> Vec<ScriptItem> {
-        self.scripts.values().map(|cs| cs.script.clone()).collect()
-    }
-
-    /// Convert cache to SourceManifest for compatibility
-    pub fn to_source_manifest(&self) -> SourceManifest {
-        SourceManifest {
-            packages: self.get_packages(),
-            scripts: self.get_scripts(),
-        }
-    }
-
     /// Build a name → cached package index for bulk name-based lookups.
     ///
     /// The `packages` map is keyed by repo URL, but update/check flows look
