@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- fix(add): when a release ships the same build in several archive formats (fastfetch: `.tar.gz`
+  and `.zip`), `add -y` installs one (preferred format) instead of installing twice under the same
+  name, and the interactive picker lists it once.
 - fix(list): a package's command names are shown sorted in `list`, `info`, `rename` and the `add`
   summary instead of in random order per run.
 - build: `src/main.rs` enables `clippy::too_many_lines`, so CI (clippy `-D warnings`) rejects any

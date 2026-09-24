@@ -631,6 +631,31 @@ fn print_available_variants(binaries: &[crate::core::manifest::PlatformBinary], 
     }
 }
 
+/// Keep one binary per variant: the same build shipped in several archive formats
+/// (e.g. `.tar.gz` and `.zip`) would install under the same key and overwrite itself.
+/// The highest `format_score` wins; ties keep manifest order.
+fn dedupe_same_variant(
+    binaries: Vec<crate::core::manifest::PlatformBinary>,
+    pkg_name: &str,
+) -> Vec<crate::core::manifest::PlatformBinary> {
+    use crate::core::platform::FileExtension;
+    let variant = |b: &crate::core::manifest::PlatformBinary| {
+        crate::core::manifest::extract_variant_from_asset(&b.asset_name, pkg_name)
+    };
+    let score = |b: &crate::core::manifest::PlatformBinary| {
+        FileExtension::from_filename(&b.asset_name).format_score()
+    };
+    let mut kept: Vec<crate::core::manifest::PlatformBinary> = Vec::new();
+    for binary in binaries {
+        match kept.iter_mut().find(|k| variant(k) == variant(&binary)) {
+            Some(k) if score(&binary) > score(k) => *k = binary,
+            Some(_) => {}
+            None => kept.push(binary),
+        }
+    }
+    kept
+}
+
 /// Select packages from a platform that has multiple binaries.
 ///
 /// If only one binary: auto-select.
@@ -1285,11 +1310,14 @@ fn prepare_plan_binaries<'a>(
     } else {
         None
     };
-    let filtered_binaries = filter_binaries(
-        binaries,
+    let filtered_binaries = dedupe_same_variant(
+        filter_binaries(
+            binaries,
+            pkg_name,
+            stored_asset.as_deref(),
+            effective_variant_filter,
+        ),
         pkg_name,
-        stored_asset.as_deref(),
-        effective_variant_filter,
     );
 
     if filtered_binaries.is_empty() {
@@ -1607,6 +1635,37 @@ fn install_script_from_bucket(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dedupe_same_variant_keeps_one_format_per_variant() {
+        let bin = |a: &str| crate::core::manifest::PlatformBinary {
+            url: format!("https://example.com/{a}"),
+            size: 1,
+            checksum: None,
+            asset_name: a.to_string(),
+        };
+        let kept = dedupe_same_variant(
+            vec![
+                bin("fastfetch-macos-aarch64.zip"),
+                bin("fastfetch-macos-aarch64.tar.gz"),
+                bin("bun-darwin-aarch64-profile.zip"),
+            ],
+            "fastfetch",
+        );
+        let names: Vec<_> = kept.iter().map(|b| b.asset_name.as_str()).collect();
+        assert_eq!(names.len(), 2, "{names:?}");
+        assert_eq!(names[0], "fastfetch-macos-aarch64.tar.gz");
+
+        // Distinct variants are all kept, in order
+        let kept = dedupe_same_variant(
+            vec![
+                bin("bun-darwin-aarch64.zip"),
+                bin("bun-darwin-aarch64-profile.zip"),
+            ],
+            "bun",
+        );
+        assert_eq!(kept.len(), 2);
+    }
 
     #[test]
     fn test_record_installed_reports_save_failure() {
