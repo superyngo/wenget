@@ -13,12 +13,14 @@ lives under `docs/`.
 | [`docs/plan/BACKLOG.md`](docs/plan/BACKLOG.md) | The one living tracker of open work, pending verification, external blockers, and watched items | No — live state | Never frozen while anything is open |
 | [`docs/debug/`](docs/debug/README.md) | Handoff notes from investigations, with repro scripts | No — historical | Frozen once resolved; only `Status:` changes |
 | [`docs/audit/`](docs/audit/README.md) | Point-in-time sweeps for bugs, dead code, inconsistency, plus assessment / verification runs | No — historical | Frozen once findings are addressed; only `Status:` changes |
-| `docs/tmp/` | Scratch; `<agent>-scratch/` is gitignored | No | Archived to `tmp/archive/YYYY-MM.tar.gz` when stale |
+| `docs/tmp/` | Scratch; `<agent>-scratch/` is gitignored | No | Archived to `docs/tmp/archive/YYYY-MM.tar.gz` when stale |
 
 ## Reading order
 
 1. [`docs/reference/glossary.md`](docs/reference/glossary.md) — the vocabulary every other file uses.
-2. [`docs/reference/README.md`](docs/reference/README.md) — the subsystem map.
+2. [`docs/reference/README.md`](docs/reference/README.md) — index of the reference documents
+   (asset-filtering rules, archived changelogs). There is no architecture document; module
+   structure lives in each file's `//!` docs.
 3. [`docs/adr/README.md`](docs/adr/README.md) — why the shape is what it is.
 4. `CHANGELOG.md` — what changed recently; older series in
    [`docs/reference/changelog/`](docs/reference/changelog/README.md).

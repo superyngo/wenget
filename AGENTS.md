@@ -32,7 +32,7 @@ cargo test test_add_bucket -- --nocapture
 # Code quality
 cargo fmt                # Format code
 cargo fmt --check        # Check formatting without changing
-cargo clippy             # Run linter
+cargo clippy --all-targets -- -D warnings  # Run linter (as CI does)
 
 # Run development build
 cargo run -- <command> [args]
@@ -42,7 +42,7 @@ cargo run -- list --all
 
 ## Project Structure
 
-See [`CONTEXT.md`](CONTEXT.md) and [`docs/reference/`](docs/reference/) for architecture, module structure, and data flow.
+See [`CONTEXT.md`](CONTEXT.md) for the documentation index. [`docs/reference/`](docs/reference/) holds the glossary and the asset-filtering rules; there is no separate architecture document, so read each module's `//!` docs for structure.
 Note that `src/core/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
 
 ## Code Style Guidelines
@@ -71,7 +71,7 @@ use crate::providers::GitHubProvider;
 - Use `anyhow::Result<T>` for functions that can fail
 - Use `anyhow::bail!()` for early error returns
 - Add context with `.context()` or `.with_context()`
-- Use `anyhow` as the codebase standard; use `thiserror` only if a typed error is genuinely needed
+- Use `anyhow` as the codebase standard; the crate has no typed error enums (`thiserror` is not a dependency)
 
 ```rust
 pub fn load_config(path: &Path) -> Result<Config> {
@@ -86,7 +86,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
 ### Naming Conventions
 
 - **Types/Structs/Enums**: `PascalCase` (`InstalledPackage`, `ScriptType`)
-- **Functions/Methods**: `snake_case` (`fetch_latest_release`, `install_package`)
+- **Functions/Methods**: `snake_case` (`fetch_latest_release`, `install_packages`)
 - **Function length**: `src/main.rs` enables `clippy::too_many_lines` (100 lines) and CI fails on it; split long functions into phase helpers
 - **Constants**: `SCREAMING_SNAKE_CASE` (`INTERPRETER_CACHE`)
 - **Modules**: `snake_case` (`package_resolver.rs`)
@@ -155,14 +155,17 @@ pub struct Cli {
 
 ### Platform-Specific Code
 
-Use conditional compilation for platform differences:
+Use conditional compilation for platform differences, behind one cross-platform entry point where
+possible. Launchers go through `installer::create_launcher` (symlink on Unix, `.cmd` shim on Windows):
 
 ```rust
-#[cfg(unix)]
-use crate::installer::create_symlink;
+crate::installer::create_launcher(&target, &bin_path, command)?;
 
+// inside create_launcher:
+#[cfg(unix)]
+create_symlink(target, bin_path)
 #[cfg(windows)]
-use crate::installer::create_shim;
+create_shim(target, bin_path, command)
 ```
 
 ### Logging
@@ -182,18 +185,16 @@ eprintln!("{} {}", "Error:".red().bold(), e);
 - `Config` coordinates path management, preferences, and bucket/manifest caching
 - `WenPaths` manages all directory paths (user vs system level), with `WENGET_ROOT` override for testing
 - Platform detection uses fuzzy matching for binary names
-- Cache has 24-hour TTL; invalidate after bucket changes
-- Write one package record per install/rename (`InstalledStore::save_package`); deleting an app
-  directory removes its record with it. There is no global installed index
-- JSON config files have auto-repair on parse errors with backup (`repair.rs`), and corrupt package records are quarantined per package (`store.rs`)
+- Manifest cache has a 24-hour TTL; rebuild or invalidate it (`wenget bucket refresh` or `Config::invalidate_cache`) after bucket changes
+- Write one package record per install/rename (`InstalledStore::save_package`) at `{app_dir}/.wenget/package.json`;
+  deleting an app directory removes its record with it. There is no global installed index
+- JSON config files have auto-repair on parse errors with backup (`src/core/repair.rs`; the `wenget repair` command is `src/commands/repair.rs`), and corrupt package records are quarantined per package (`src/core/store.rs`)
 
 ## Gotchas
 
 - **Sandbox manual runs**: Always pass `env WENGET_ROOT=/tmp/wg-...` when testing the real binary locally so operations do not touch the developer's real `~/.wenget`.
 - **GitHub rate limits**: Unauthenticated requests are limited to 60/hr. Set `GITHUB_TOKEN` in the environment to raise the limit to 5000/hr during multi-package testing.
-- **Platform launchers**: User installs place launchers in `~/.local/bin/` (or custom bin dir): Unix uses symlinks (`installer::symlink`), Windows uses `.cmd` shims (`installer::shim`). Shims must quote paths to handle spaces.
-- **Per-package records**: Each installed package owns its record at `{app_dir}/.wenget/package.json`. There is no global installed index; removing an app directory removes its tracking record.
-- **Cache freshness**: Manifest cache has a 24-hour TTL. Rebuild or invalidate cache (`wenget bucket refresh` or `Config::invalidate_cache`) after bucket changes.
+- **Platform launchers**: User installs place launchers in `~/.local/bin/` (or custom bin dir) via `installer::create_launcher`: Unix uses symlinks (`installer::symlink`), Windows uses `.cmd` shims (`installer::shim`). Shims must quote paths to handle spaces.
 - **Self-deletion**: `wenget del self` uninstalls wenget itself, with platform-specific handling for running executables.
 
 ## Release Workflow
@@ -209,13 +210,17 @@ cargo fmt
 cargo fmt --check  # Verify no formatting issues remain
 
 # Lint code (must resolve all clippy warnings)
-cargo clippy -- -D warnings  # Fail on any warnings
+cargo clippy --all-targets -- -D warnings  # Fail on any warnings
 # Fix all clippy warnings before proceeding
+
+# Run the full test suite (release.yml builds artifacts but runs no tests)
+cargo test
 ```
 
 **DO NOT proceed with release if:**
 - `cargo fmt --check` shows formatting differences
 - `cargo clippy` reports any warnings or errors
+- `cargo test` has any failure
 
 ### 2. Commit All Updates (MANDATORY)
 **MUST ensure all changes are committed before proceeding:**
@@ -243,7 +248,7 @@ git status  # Should show "nothing to commit, working tree clean"
 **Important Notes:**
 - All code changes must be committed before starting the release process
 - Organize commit messages clearly describing the updates
-- Verify code quality checks pass (fmt and clippy) for all committed code
+- Verify code quality checks pass (fmt, clippy, and tests) for all committed code
 - The release process will create additional commits for version updates
 
 ### 3. Determine Version Number
@@ -265,16 +270,27 @@ git status  # Should show "nothing to commit, working tree clean"
   - Update feature descriptions if behavior changed
 - Update `CHANGELOG.md`:
   - During development, entries accumulate under `## [Unreleased]` → `### YYYY-MM-DD`.
-  - At release, rename the day's heading under `## [Unreleased]` to:
+  - At release, move **every** entry under `## [Unreleased]` (all of its `### YYYY-MM-DD` day
+    headings) into one new section directly below it:
     ```markdown
     ## [X.Y.Z] - YYYY-MM-DD
     ```
     (Ensure an empty `## [Unreleased]` heading remains at the top for future development).
-  - Add the version comparison link at the bottom of `CHANGELOG.md`:
+  - Add the version comparison link at the bottom of `CHANGELOG.md` (newest first, below the
+    `[Unreleased]` link) and point `[Unreleased]` at `compare/vX.Y.Z...HEAD`:
     ```markdown
     [X.Y.Z]: https://github.com/superyngo/wenget/compare/vPREV...vX.Y.Z
     ```
-- **Changelog Archiving Rule**: Root `CHANGELOG.md` keeps `[Unreleased]` plus the current major series only (e.g. 3.x). When cutting the first release of a new major series (e.g. `v4.0.0`), move the entire preceding major series verbatim into `docs/reference/changelog/` (e.g. `docs/reference/changelog/v3.x.md`) and update the index in `docs/reference/changelog/README.md`. Never archive the series the next tag belongs to.
+- **Changelog archiving**: follow [`docs/reference/changelog/README.md`](docs/reference/changelog/README.md) (keep `[Unreleased]` plus the current major series; archive the previous series on the first release of a new major).
+
+### 5b. Commit the Version Bump (MANDATORY)
+The tag must point at the commit that contains the new version:
+
+```bash
+git add Cargo.toml Cargo.lock README.md CHANGELOG.md
+git commit -m "chore: release vX.Y.Z"
+git status  # Must be clean before tagging
+```
 
 ### 6. Create Tag and Release
 ```bash
