@@ -28,7 +28,7 @@ pub fn run(force: bool) -> Result<()> {
     let mut issues = 0usize;
 
     println!("{}", "Installed packages:".bold());
-    let entries = store.scan_app_dirs()?;
+    let (set, entries) = store.load_scanned()?;
     let mut residue = Vec::new();
     let mut package_count = 0usize;
 
@@ -78,7 +78,7 @@ pub fn run(force: bool) -> Result<()> {
         println!("  (none)");
     }
 
-    for (key, dirs) in store.duplicate_keys()? {
+    for (key, dirs) in InstalledStore::duplicate_keys(&entries) {
         println!(
             "  {} {} is claimed by {} directories:",
             "✗".red(),
@@ -99,8 +99,6 @@ pub fn run(force: bool) -> Result<()> {
         }
         issues += residue.len();
     }
-
-    let set = store.load()?;
 
     println!();
     println!("{}", "Command launchers:".bold());

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- perf(repair): `repair` scans `apps/` once (`InstalledStore::load_scanned`) instead of three times;
+  `duplicate_keys` now works on that scan (OP-3).
 - fix(list): `list --all` sorts scripts by name, so their order no longer changes between runs.
 - perf(list): `list --all` borrows packages from the cache instead of cloning it; removed the
   now-unused `Config::get_packages_from_cache` and `ManifestCache::{to_source_manifest,get_packages,get_scripts}` (P-3).

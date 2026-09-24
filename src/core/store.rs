@@ -61,13 +61,21 @@ impl InstalledStore {
     /// Performs no writes to `bin_dir` and never re-links a shim — drift is a
     /// `repair` finding, not a load-time repair.
     pub fn load(&self) -> Result<InstalledSet> {
+        Ok(self.load_scanned()?.0)
+    }
+
+    /// `load`, also returning the scan it was built from
+    ///
+    /// Lets `repair` report on the same single pass over `apps/`.
+    pub fn load_scanned(&self) -> Result<(InstalledSet, Vec<ScanEntry>)> {
         self.migrate_legacy();
 
+        let entries = self.scan_app_dirs()?;
         let mut set = InstalledSet::new();
 
-        for entry in self.scan_app_dirs()? {
+        for entry in &entries {
             if let ScanEntry::Loaded { key, package, .. } = entry {
-                if set.packages.contains_key(&key) {
+                if set.packages.contains_key(key) {
                     log::warn!(
                         "Two app directories describe package '{}'; keeping the first. \
                          Run `wenget repair` for details.",
@@ -75,11 +83,11 @@ impl InstalledStore {
                     );
                     continue;
                 }
-                set.upsert_package(key, package);
+                set.upsert_package(key.clone(), package.clone());
             }
         }
 
-        Ok(set)
+        Ok((set, entries))
     }
 
     /// Convert a legacy `{root}/installed.json` into per-package records, once
@@ -324,18 +332,18 @@ impl InstalledStore {
         write_record_atomically(&final_path, pkg)
     }
 
-    /// Installed keys claimed by more than one app directory
-    pub fn duplicate_keys(&self) -> Result<Vec<(String, Vec<PathBuf>)>> {
+    /// Installed keys claimed by more than one app directory in `entries`
+    pub fn duplicate_keys(entries: &[ScanEntry]) -> Vec<(String, Vec<PathBuf>)> {
         let mut by_key: HashMap<String, Vec<PathBuf>> = HashMap::new();
-        for entry in self.scan_app_dirs()? {
+        for entry in entries {
             if let ScanEntry::Loaded { key, dir, .. } = entry {
-                by_key.entry(key).or_default().push(dir);
+                by_key.entry(key.clone()).or_default().push(dir.clone());
             }
         }
-        Ok(by_key
+        by_key
             .into_iter()
             .filter(|(_, dirs)| dirs.len() > 1)
-            .collect())
+            .collect()
     }
 
     /// Refuse to install `key` into an app directory another package occupies
@@ -628,7 +636,7 @@ mod tests {
         let set = s.load().unwrap();
         assert_eq!(set.packages.len(), 1, "no silent shadowing");
 
-        let dup_dirs = s.duplicate_keys().unwrap();
+        let dup_dirs = InstalledStore::duplicate_keys(&s.scan_app_dirs().unwrap());
         assert_eq!(dup_dirs.len(), 1);
         assert_eq!(dup_dirs[0].0, "dup");
         assert_eq!(dup_dirs[0].1.len(), 2, "both directories are reported");
@@ -820,7 +828,7 @@ mod tests {
         std::fs::remove_dir_all(s.paths().app_dir("doomed")).unwrap();
 
         assert!(s.load().unwrap().packages.is_empty());
-        assert!(s.duplicate_keys().unwrap().is_empty());
+        assert!(InstalledStore::duplicate_keys(&s.scan_app_dirs().unwrap()).is_empty());
     }
 
     #[test]
