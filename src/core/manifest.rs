@@ -387,9 +387,9 @@ pub enum PackageSource {
 ///
 /// A record above this version is skipped on load, never rewritten: a downgrade
 /// must be read-only toward data it cannot interpret.
-pub const CURRENT_META_VERSION: u32 = 1;
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
-fn default_meta_version() -> u32 {
+fn default_schema_version() -> u32 {
     1
 }
 
@@ -397,8 +397,11 @@ fn default_meta_version() -> u32 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstalledPackage {
     /// Schema version of this package record. Absent means version 1.
-    #[serde(default = "default_meta_version")]
-    pub meta_version: u32,
+    ///
+    /// Stored under the historical key `meta_version`: older wenget builds read
+    /// that key to skip records newer than they understand.
+    #[serde(rename = "meta_version", default = "default_schema_version")]
+    pub schema_version: u32,
 
     /// Canonical repository name (e.g., "bun", "cli")
     /// This is the base name from the repository, without variant suffix
@@ -961,7 +964,7 @@ mod tests {
         executables.insert("bin/test.exe".to_string(), "test".to_string());
 
         let package = InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "test".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -995,7 +998,7 @@ mod tests {
         executables.insert("bin/rg-doc".to_string(), "rg-doc".to_string());
 
         let pkg = InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "ripgrep".to_string(),
             variant: None,
             version: "14.0.0".to_string(),
@@ -1037,7 +1040,7 @@ mod tests {
         manifest.upsert_package(
             "ripgrep".to_string(),
             InstalledPackage {
-                meta_version: CURRENT_META_VERSION,
+                schema_version: CURRENT_SCHEMA_VERSION,
                 repo_name: "ripgrep".to_string(),
                 variant: None,
                 version: "14.0.0".to_string(),
@@ -1061,7 +1064,7 @@ mod tests {
         manifest.upsert_package(
             "fzf".to_string(),
             InstalledPackage {
-                meta_version: CURRENT_META_VERSION,
+                schema_version: CURRENT_SCHEMA_VERSION,
                 repo_name: "fzf".to_string(),
                 variant: None,
                 version: "0.44.0".to_string(),
@@ -1126,7 +1129,7 @@ mod tests {
         executables.insert("bin/test".to_string(), "test".to_string());
 
         let pkg = InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "test".to_string(),
             variant: None,
             version: "1.0.0".to_string(),
@@ -1237,7 +1240,7 @@ mod tests {
     /// A minimal, valid installed package for tests.
     fn sample_package() -> InstalledPackage {
         InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "ripgrep".to_string(),
             variant: None,
             version: "14.0.0".to_string(),
@@ -1272,8 +1275,8 @@ mod tests {
         }"#;
 
         let pkg: InstalledPackage = serde_json::from_str(json).unwrap();
-        assert_eq!(pkg.meta_version, 1);
-        assert_eq!(pkg.meta_version, CURRENT_META_VERSION);
+        assert_eq!(pkg.schema_version, 1);
+        assert_eq!(pkg.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
@@ -1281,6 +1284,6 @@ mod tests {
         let json = serde_json::to_string(&sample_package()).unwrap();
         assert!(json.contains("\"meta_version\":1"));
         let back: InstalledPackage = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.meta_version, 1);
+        assert_eq!(back.schema_version, 1);
     }
 }

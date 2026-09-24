@@ -519,7 +519,7 @@ impl PackageInstaller<'_> {
 
         // Create installed package info
         let inst_pkg = InstalledPackage {
-            meta_version: crate::core::manifest::CURRENT_META_VERSION,
+            schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
             repo_name,
             variant,
             version: version.to_string(),

@@ -458,12 +458,12 @@ fn repair_cache(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_META_VERSION};
+    use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_SCHEMA_VERSION};
     use tempfile::TempDir;
 
     fn package_with_command(command: &str) -> InstalledPackage {
         InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "tool".to_string(),
             variant: None,
             version: "1.0.0".to_string(),

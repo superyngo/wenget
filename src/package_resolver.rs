@@ -149,7 +149,7 @@ impl<'a> PackageResolver<'a> {
         // Not found in cache - check if it's an installed package from direct URL
         // Note: Only check for exact name match, not glob patterns
         if !is_glob(name) {
-            let installed = self.config.get_or_create_installed()?;
+            let installed = self.config.load_installed()?;
             if let Some(inst_pkg) = installed.get_package(name) {
                 // Check if it's a DirectRepo source
                 if let PackageSource::DirectRepo { url } = &inst_pkg.source {

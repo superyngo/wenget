@@ -13,7 +13,7 @@ use chrono::Utc;
 use colored::Colorize;
 
 use crate::core::manifest::{
-    generate_installed_key, InstalledPackage, InstalledSet, CURRENT_META_VERSION,
+    generate_installed_key, InstalledPackage, InstalledSet, CURRENT_SCHEMA_VERSION,
 };
 use crate::core::paths::WenPaths;
 
@@ -148,7 +148,7 @@ impl InstalledStore {
             }
 
             let mut to_write = package.clone();
-            to_write.meta_version = CURRENT_META_VERSION;
+            to_write.schema_version = CURRENT_SCHEMA_VERSION;
 
             if let Err(e) = fs::create_dir_all(app_dir.join(".wenget")) {
                 log::warn!("Could not create record dir for '{}': {}", key, e);
@@ -271,7 +271,7 @@ impl InstalledStore {
                 .get("meta_version")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(1) as u32;
-            if version > CURRENT_META_VERSION {
+            if version > CURRENT_SCHEMA_VERSION {
                 log::warn!(
                     "Skipping {}: package record version {} is newer than this wenget understands",
                     dir.display(),
@@ -460,7 +460,7 @@ mod tests {
 
     fn pkg(repo: &str, variant: Option<&str>) -> InstalledPackage {
         InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: repo.to_string(),
             variant: variant.map(|v| v.to_string()),
             version: "1.0.0".to_string(),

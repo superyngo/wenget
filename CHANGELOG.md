@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(manifest): `InstalledPackage::meta_version` is now `schema_version` in code (the on-disk
+  key stays `meta_version` for older builds); the `get_or_create_installed` alias is removed (CL-3).
 - fix(launcher): Unix script wrappers single-quote the script path (no `$`/backtick expansion);
   Windows `.cmd` shims only double `%` inside the quoted path, and package shims now escape it too.
   The old `^` escapes were kept literally inside quotes and broke such paths (S-7).

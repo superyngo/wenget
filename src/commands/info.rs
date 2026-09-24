@@ -25,7 +25,7 @@ pub fn run(names: Vec<String>) -> Result<()> {
     }
 
     // Load installed packages for status checking
-    let installed = config.get_or_create_installed()?;
+    let installed = config.load_installed()?;
 
     // Load cache once for both script lookup and package resolution
     let cache = config.get_or_rebuild_cache()?;

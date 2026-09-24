@@ -102,7 +102,7 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
         config.init()?;
     }
 
-    let mut installed = config.get_or_create_installed()?;
+    let mut installed = config.load_installed()?;
     run_with(&config, &mut installed, None, names, opts)
 }
 
@@ -396,7 +396,7 @@ fn install_single_script(
 
     // Create installed package info
     let inst_pkg = InstalledPackage {
-        meta_version: crate::core::manifest::CURRENT_META_VERSION,
+        schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
         repo_name: name.to_string(),
         variant: None,
         version: "script".to_string(),
@@ -1441,7 +1441,7 @@ fn install_script_from_bucket(
 
     // Create installed package info
     let inst_pkg = InstalledPackage {
-        meta_version: crate::core::manifest::CURRENT_META_VERSION,
+        schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
         repo_name: command_name.to_string(),
         variant: None,
         version: "script".to_string(),
@@ -1477,7 +1477,7 @@ mod tests {
         fs::create_dir_all(paths.record_dir("hello").join("package.json")).unwrap();
         let mut installed = crate::core::InstalledSet::default();
         let pkg = InstalledPackage {
-            meta_version: crate::core::manifest::CURRENT_META_VERSION,
+            schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
             repo_name: "hello".to_string(),
             variant: None,
             version: "1.0.0".to_string(),

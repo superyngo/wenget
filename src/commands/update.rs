@@ -153,7 +153,7 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
     }
 
     let config = Config::new()?;
-    let mut installed = config.get_or_create_installed()?;
+    let mut installed = config.load_installed()?;
 
     if installed.packages.is_empty() {
         println!("{}", "No packages installed".yellow());

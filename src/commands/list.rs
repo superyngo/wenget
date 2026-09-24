@@ -41,7 +41,7 @@ fn truncate_desc(desc: &str, max_width: usize) -> String {
 /// List only installed packages
 fn list_installed_packages(config: &Config) -> Result<()> {
     // Load the installed set
-    let manifest = config.get_or_create_installed()?;
+    let manifest = config.load_installed()?;
 
     if manifest.packages.is_empty() {
         println!("{}", "No packages installed".yellow());
@@ -180,7 +180,7 @@ fn list_all_packages(config: &Config) -> Result<()> {
     let cache = config.get_or_rebuild_cache()?;
 
     // Load installed packages for marking
-    let installed = config.get_or_create_installed()?;
+    let installed = config.load_installed()?;
 
     // Get current platform
     let platform = Platform::current();

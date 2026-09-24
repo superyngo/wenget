@@ -81,18 +81,10 @@ impl Config {
     ///
     /// Migration from a legacy `installed.json`, quarantine of unparseable
     /// records, and skipping of future-version records all happen inside
-    /// `InstalledStore::load`.
+    /// `InstalledStore::load`. Never initializes: an absent root simply means
+    /// nothing is installed.
     pub fn load_installed(&self) -> Result<InstalledSet> {
         self.store().load()
-    }
-
-    /// Load the set of installed packages
-    ///
-    /// No longer initializes: with no file that must exist for reads to work, an
-    /// absent root simply means nothing is installed. Initialization happens on
-    /// `add` and on `wenget init`.
-    pub fn get_or_create_installed(&self) -> Result<InstalledSet> {
-        self.load_installed()
     }
 
     /// Load bucket config
@@ -270,7 +262,7 @@ mod tests {
     /// A minimal, valid installed package for tests.
     fn sample_installed_package() -> crate::core::manifest::InstalledPackage {
         crate::core::manifest::InstalledPackage {
-            meta_version: crate::core::manifest::CURRENT_META_VERSION,
+            schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
             repo_name: "ripgrep".to_string(),
             variant: None,
             version: "14.0.0".to_string(),
@@ -311,16 +303,12 @@ mod tests {
     }
 
     #[test]
-    fn test_get_or_create_installed_does_not_initialize() {
+    fn test_load_installed_does_not_initialize() {
         let tmp = TempDir::new().unwrap();
         let root = tmp.path().join("absent");
         let config = Config::with_paths(WenPaths::with_root(root.clone()));
 
-        assert!(config
-            .get_or_create_installed()
-            .unwrap()
-            .packages
-            .is_empty());
+        assert!(config.load_installed().unwrap().packages.is_empty());
         assert!(!root.exists(), "a read must not create the root");
     }
 

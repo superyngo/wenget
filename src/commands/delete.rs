@@ -24,7 +24,7 @@ pub fn run(
     let paths = config.paths().clone();
 
     // Load the installed set
-    let mut installed = config.get_or_create_installed()?;
+    let mut installed = config.load_installed()?;
 
     if installed.packages.is_empty() {
         println!("{}", "No packages installed".yellow());
@@ -720,11 +720,11 @@ fn group_delete_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_META_VERSION};
+    use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_SCHEMA_VERSION};
 
     fn pkg(variant: Option<&str>) -> InstalledPackage {
         InstalledPackage {
-            meta_version: CURRENT_META_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             repo_name: "opencode".to_string(),
             variant: variant.map(str::to_string),
             version: "1.0.0".to_string(),
