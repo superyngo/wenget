@@ -296,3 +296,17 @@ fn list_all_packages(config: &Config) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_desc;
+
+    #[test]
+    fn truncate_desc_bounds() {
+        assert_eq!(truncate_desc("abc", 3), "");
+        assert_eq!(truncate_desc("abcd", 4), "abcd");
+        assert_eq!(truncate_desc("abcdef", 5), "ab...");
+        assert_eq!(truncate_desc("", 10), "");
+        assert_eq!(truncate_desc("中文說明很長", 5), "中文...");
+    }
+}

@@ -703,3 +703,42 @@ fn add_wenget_bucket(config: &Config) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(all(test, not(windows)))]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn detect_shell_configs_prefers_existing_files() {
+        let home = TempDir::new().unwrap();
+        assert_eq!(
+            detect_shell_configs(home.path()),
+            [home.path().join(".profile")]
+        );
+        fs::write(home.path().join(".zshrc"), "").unwrap();
+        fs::write(home.path().join(".bashrc"), "").unwrap();
+        assert_eq!(
+            detect_shell_configs(home.path()),
+            [home.path().join(".bashrc"), home.path().join(".zshrc")]
+        );
+    }
+
+    #[test]
+    fn update_shell_config_appends_once() {
+        let home = TempDir::new().unwrap();
+        let rc = home.path().join(".zshrc");
+        fs::write(&rc, "alias x=y\n").unwrap();
+        let line = "\nexport PATH=\"/opt/wg/bin:$PATH\"\n";
+        assert!(update_shell_config(&rc, line, "/opt/wg/bin").unwrap());
+        assert!(!update_shell_config(&rc, line, "/opt/wg/bin").unwrap());
+        assert_eq!(
+            fs::read_to_string(&rc).unwrap(),
+            format!("alias x=y\n{line}")
+        );
+
+        let fresh = home.path().join(".profile");
+        assert!(update_shell_config(&fresh, line, "/opt/wg/bin").unwrap());
+        assert_eq!(fs::read_to_string(&fresh).unwrap(), line);
+    }
+}

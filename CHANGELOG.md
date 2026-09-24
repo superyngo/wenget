@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- test: cover `init`, `bucket`, `info`, and `list` with unit tests and offline end-to-end tests
+  in `tests/cli.rs` (T-6).
 - refactor(add): `install_package` becomes `installer::package::PackageInstaller::install`, taking
   an `InstallRequest`; executable selection is its own method with scripted-UI tests (CL-8, 3/3).
 - refactor(add): the install flow asks and reports through an `InstallUi` trait

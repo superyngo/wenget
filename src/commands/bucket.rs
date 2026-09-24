@@ -904,3 +904,138 @@ fn merge_manifests(mut existing: BucketManifest, new: BucketManifest) -> BucketM
 
     existing
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn generator() -> ManifestGenerator {
+        ManifestGenerator::with_token(None).unwrap()
+    }
+
+    fn package(name: &str, desc: &str, platform: &str) -> Package {
+        serde_json::from_value(serde_json::json!({
+            "name": name, "description": desc, "repo": format!("https://github.com/o/{name}"),
+            "platforms": { platform: [{
+                "url": "https://example.com/a.tar.gz", "size": 1, "asset_name": "a.tar.gz"
+            }] }
+        }))
+        .unwrap()
+    }
+
+    fn script(name: &str, desc: &str, ty: &str) -> ScriptItem {
+        serde_json::from_value(serde_json::json!({
+            "name": name, "description": desc, "repo": "r",
+            "platforms": { ty: { "url": "https://example.com/s" } }
+        }))
+        .unwrap()
+    }
+
+    fn manifest(packages: Vec<Package>, scripts: Vec<ScriptItem>) -> BucketManifest {
+        let mut m: BucketManifest =
+            serde_json::from_value(serde_json::json!({"packages": []})).unwrap();
+        m.packages = packages;
+        m.scripts = scripts;
+        m
+    }
+
+    #[test]
+    fn classifies_urls() {
+        let g = generator();
+        let gist = "https://gist.github.com/user/0123456789abcdef0123456789abcdef/";
+        assert!(g.is_gist_url(gist));
+        assert_eq!(
+            g.parse_gist_url(gist).as_deref(),
+            Some("0123456789abcdef0123456789abcdef")
+        );
+        assert_eq!(g.parse_gist_url("https://gist.github.com/user/short"), None);
+        assert_eq!(
+            g.parse_gist_url("https://github.com/o/0123456789abcdef01234"),
+            None
+        );
+
+        let raw = "https://raw.githubusercontent.com/o/r/main/x.sh";
+        assert!(g.is_raw_script_url(raw));
+        assert!(!g.is_github_repo_url(raw));
+        assert!(g.is_github_repo_url("https://github.com/sharkdp/fd"));
+        assert!(!g.is_github_repo_url(gist));
+        assert!(!g.is_gist_url("https://github.com/sharkdp/fd"));
+    }
+
+    #[test]
+    fn detects_script_types() {
+        let g = generator();
+        assert_eq!(g.detect_script_type("A.PS1"), Some(ScriptType::PowerShell));
+        assert_eq!(g.detect_script_type("a.sh"), Some(ScriptType::Bash));
+        assert_eq!(g.detect_script_type("a.cmd"), Some(ScriptType::Batch));
+        assert_eq!(g.detect_script_type("a.bat"), Some(ScriptType::Batch));
+        assert_eq!(g.detect_script_type("a.py"), Some(ScriptType::Python));
+        assert_eq!(g.detect_script_type("a.txt"), None);
+
+        let c = |s| g.detect_script_type_from_content(s);
+        assert_eq!(c("#!/bin/sh\necho"), Some(ScriptType::Bash));
+        assert_eq!(c("#!/usr/bin/env bash"), Some(ScriptType::Bash));
+        assert_eq!(c("#!/usr/bin/env python3"), Some(ScriptType::Python));
+        assert_eq!(c("#!/usr/bin/env pwsh"), Some(ScriptType::PowerShell));
+        assert_eq!(c("echo hi\n#!/bin/sh"), None);
+        assert_eq!(c(""), None);
+
+        assert_eq!(g.extract_script_name("tool.ps1"), "tool");
+        assert_eq!(g.extract_script_name("my.tool.sh"), "my.tool");
+        assert_eq!(g.extract_script_name("noext"), "noext");
+    }
+
+    #[test]
+    fn load_sources_skips_comments_and_blanks() {
+        let dir = TempDir::new().unwrap();
+        let f = dir.path().join("src.txt");
+        fs::write(
+            &f,
+            "# header\n\n  https://github.com/a/b  \n#x\nhttps://github.com/c/d\n",
+        )
+        .unwrap();
+        let urls = generator().load_sources(f.to_str().unwrap()).unwrap();
+        assert_eq!(urls, ["https://github.com/a/b", "https://github.com/c/d"]);
+        assert!(generator().load_sources("/nonexistent/src.txt").is_err());
+    }
+
+    #[test]
+    fn merge_combines_platforms_and_fills_description() {
+        let mut g = generator();
+        g.merge_package(package("fd", "", "linux-x86_64"));
+        g.merge_package(package("fd", "find", "windows-x86_64"));
+        g.merge_package(package("fd", "other", "macos-aarch64"));
+        let fd = &g.packages["fd"];
+        assert_eq!(fd.platforms.len(), 3);
+        assert_eq!(fd.description, "find");
+
+        g.merge_script(script("s", "", "bash"));
+        g.merge_script(script("s", "desc", "powershell"));
+        assert_eq!(g.scripts.len(), 1);
+        assert_eq!(g.scripts["s"].platforms.len(), 2);
+        assert_eq!(g.scripts["s"].description, "desc");
+    }
+
+    #[test]
+    fn merge_manifests_replaces_same_names_and_keeps_others() {
+        let existing = manifest(
+            vec![
+                package("fd", "old", "linux-x86_64"),
+                package("rg", "keep", "linux-x86_64"),
+            ],
+            vec![script("s", "old", "bash")],
+        );
+        let new = manifest(vec![package("fd", "new", "linux-x86_64")], vec![]);
+        let merged = merge_manifests(existing, new);
+        let mut names: Vec<_> = merged
+            .packages
+            .iter()
+            .map(|p| (&*p.name, &*p.description))
+            .collect();
+        names.sort();
+        assert_eq!(names, [("fd", "new"), ("rg", "keep")]);
+        assert_eq!(merged.scripts.len(), 1);
+        assert!(merged.last_updated.is_some());
+    }
+}
