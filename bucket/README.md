@@ -6,17 +6,17 @@ This directory contains the bucket configuration and manifest for the default we
 
 - **`sources_repos.txt`** - List of GitHub repository URLs for binary packages
 - **`sources_scripts.txt`** - List of Gist and raw script URLs
-- **`wenget`** - Pre-compiled wenget binary (x86_64-musl) for manifest generation
 - **`manifest.json`** - Generated package manifest (auto-updated)
 
 ## Manifest Generation
 
-The manifest is automatically generated and updated by GitHub Actions:
+The manifest is automatically generated and updated by the `Update Bucket Manifest` GitHub Actions
+workflow, which downloads the latest wenget release binary (checked against its `SHA256SUMS`) to run
+`wenget bucket create`:
 
-1. **On Release**: When a new version is released, the `wenget` binary is updated
-2. **On Schedule**: Weekly on Monday at 00:00 UTC
-3. **On Manual Trigger**: Via GitHub Actions workflow_dispatch
-4. **On Source Changes**: When `sources_repos.txt` or `sources_scripts.txt` are modified
+1. **On Schedule**: Weekly on Monday at 00:00 UTC
+2. **On Manual Trigger**: Via GitHub Actions workflow_dispatch
+3. **On Source Changes**: When `sources_repos.txt` or `sources_scripts.txt` change on `main`
 
 ## Bucket URL
 
