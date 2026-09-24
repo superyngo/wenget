@@ -124,4 +124,7 @@ last checked against the tree — not when it was opened.
 | CL-6 | Oversized functions without compute/render separation (`install_packages` → `resolve_inputs`/`plan_packages`/`install_plan_item`/`install_bucket_scripts` with a `Session`; `PackageInstaller::install` → `plan_launchers`/`remove_obsolete_commands`; `delete::run` → `match_installed`/`print_delete_plan`/`choose_variants`; `info` → `print_platforms`/`binary_status`; real-binary output identical to 934eede) | 9a5e7e4, 17a97ef, 41dcc85 |
 | B-11 | `del` plan order and group label changed between runs (HashMap order; label was the first matched key) | cf8b107 |
 | CL-9 | 13 functions still over clippy `too_many_lines` after CL-6 (split per file group; `cargo clippy -- -W clippy::too_many_lines` reports none; real-binary add/search/list/info/update/repair/bucket create/del/del self output identical to f5cb25e) | 35f91f2, c971601, ec23ae6, 1a8744a |
+| LINT | Enforce clippy `too_many_lines` crate-wide (`#![warn]` in main.rs) | 8c0cea4 |
+| B-12 | `list`/`info` command names in random HashMap order (`InstalledPackage::get_command_names` now sorts) | 506e4e5 |
+| B-13 | `add -y` installed same-variant builds in two archive formats twice under one key (`add::dedupe_same_variant`) | a8a031b |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
