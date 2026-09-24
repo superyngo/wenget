@@ -173,13 +173,15 @@ pub enum Compiler {
 
 /// Detected libc type on the current system
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub enum LibcType {
     /// musl libc (Alpine, Void Linux musl, etc.)
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     Musl,
     /// GNU libc (most Linux distributions)
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     Glibc,
     /// Unknown or not applicable (non-Linux)
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
     Unknown,
 }
 
