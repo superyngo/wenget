@@ -122,4 +122,5 @@ last checked against the tree — not when it was opened.
 | A-7 | `core/` modules depended upward on root-level `bucket`/`cache` (both moved into `core/`; they only depended on `core` themselves) | 3e65ac9 |
 | SI-10 | `extract_variant_from_asset` used a substring replacement cascade (now tokenized on `-`/`_`/`.` with `PLATFORM_TOKENS`; golden fixture `core/testdata/variant_golden.tsv` over all bucket assets; no new sibling-variant collisions vs the old parser) | 4087167 |
 | CL-6 | Oversized functions without compute/render separation (`install_packages` → `resolve_inputs`/`plan_packages`/`install_plan_item`/`install_bucket_scripts` with a `Session`; `PackageInstaller::install` → `plan_launchers`/`remove_obsolete_commands`; `delete::run` → `match_installed`/`print_delete_plan`/`choose_variants`; `info` → `print_platforms`/`binary_status`; real-binary output identical to 934eede) | 9a5e7e4, 17a97ef, 41dcc85 |
+| B-11 | `del` plan order and group label changed between runs (HashMap order; label was the first matched key) | cf8b107 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
