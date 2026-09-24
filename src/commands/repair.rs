@@ -16,23 +16,58 @@ use crate::core::repair::{check_json_file, create_backup, FileStatus};
 use crate::core::store::{InstalledStore, ScanEntry};
 use crate::core::Config;
 
-/// Run the repair command
-pub fn run(force: bool) -> Result<()> {
-    println!("{}", "Checking wenget state...".cyan());
-    println!();
+/// Findings from inspecting the wenget installation state
+struct RepairFindings {
+    set: InstalledSet,
+    entries: Vec<ScanEntry>,
+    duplicates: Vec<(String, Vec<PathBuf>)>,
+    residue: Vec<PathBuf>,
+    orphans: Vec<PathBuf>,
+    missing: Vec<(String, PathBuf)>,
+    buckets_status: FileStatus,
+    cache_status: FileStatus,
+}
 
-    let config = Config::new()?;
-    let paths = config.paths().clone();
-    let store = InstalledStore::new(paths.clone());
+/// Scan the filesystem and compute findings (the scan itself reports corrupt records)
+fn compute_findings(paths: &WenPaths, store: &InstalledStore) -> Result<RepairFindings> {
+    let (set, entries) = store.load_scanned()?;
+    let duplicates = InstalledStore::duplicate_keys(&entries);
+    let mut residue = Vec::new();
+    for entry in &entries {
+        if let ScanEntry::Residue(path) = entry {
+            residue.push(path.clone());
+        }
+    }
+    let orphans = provable_orphan_shims(paths, &set)?;
+    let missing = missing_shims(paths, &set);
+    let buckets_path = paths.buckets_json();
+    let cache_path = paths.manifest_cache_json();
+    let buckets_status = check_json_file::<BucketConfig>(&buckets_path);
+    let cache_status = check_json_file::<ManifestCache>(&cache_path);
 
+    Ok(RepairFindings {
+        set,
+        entries,
+        duplicates,
+        residue,
+        orphans,
+        missing,
+        buckets_status,
+        cache_status,
+    })
+}
+
+/// Print findings for installed packages, returning the number of issues found
+fn print_installed_findings(
+    entries: &[ScanEntry],
+    duplicates: &[(String, Vec<PathBuf>)],
+    residue: &[PathBuf],
+) -> usize {
     let mut issues = 0usize;
 
-    println!("{}", "Installed packages:".bold());
-    let (set, entries) = store.load_scanned()?;
-    let mut residue = Vec::new();
     let mut package_count = 0usize;
 
-    for entry in &entries {
+    for entry in entries {
         match entry {
             ScanEntry::Loaded { key, .. } => {
                 package_count += 1;
@@ -70,7 +105,7 @@ pub fn run(force: bool) -> Result<()> {
                     version
                 );
             }
-            ScanEntry::Residue(path) => residue.push(path.clone()),
+            ScanEntry::Residue(_) => {}
         }
     }
 
@@ -78,7 +113,7 @@ pub fn run(force: bool) -> Result<()> {
         println!("  (none)");
     }
 
-    for (key, dirs) in InstalledStore::duplicate_keys(&entries) {
+    for (key, dirs) in duplicates {
         println!(
             "  {} {} is claimed by {} directories:",
             "✗".red(),
@@ -94,20 +129,25 @@ pub fn run(force: bool) -> Result<()> {
     if !residue.is_empty() {
         println!();
         println!("{}", "Interrupted installs:".bold());
-        for path in &residue {
+        for path in residue {
             println!("  {} {}", "!".yellow(), path.display());
         }
         issues += residue.len();
     }
 
+    issues
+}
+
+/// Print findings for command launchers, returning the number of issues found
+fn print_launcher_findings(orphans: &[PathBuf], missing: &[(String, PathBuf)]) -> usize {
+    let mut issues = 0usize;
+
     println!();
     println!("{}", "Command launchers:".bold());
-    let orphans = provable_orphan_shims(&paths, &set)?;
-    let missing = missing_shims(&paths, &set);
     if orphans.is_empty() && missing.is_empty() {
         println!("  {} all launchers match installed packages", "✓".green());
     }
-    for path in &orphans {
+    for path in orphans {
         println!(
             "  {} {} - points into apps/ but no installed package owns it",
             "!".yellow(),
@@ -115,7 +155,7 @@ pub fn run(force: bool) -> Result<()> {
         );
         issues += 1;
     }
-    for (command, path) in &missing {
+    for (command, path) in missing {
         let problem = if path.is_dir() {
             "launcher path is blocked by a directory:"
         } else {
@@ -131,13 +171,15 @@ pub fn run(force: bool) -> Result<()> {
         issues += 1;
     }
 
-    // Global config files that legitimately remain global.
+    issues
+}
+
+/// Print findings for configuration files, returning the number of issues found
+fn print_config_findings(buckets_status: &FileStatus, cache_status: &FileStatus) -> usize {
+    let mut issues = 0usize;
+
     println!();
     println!("{}", "Configuration files:".bold());
-    let buckets_path = paths.buckets_json();
-    let cache_path = paths.manifest_cache_json();
-    let buckets_status = check_json_file::<BucketConfig>(&buckets_path);
-    let cache_status = check_json_file::<ManifestCache>(&cache_path);
     println!("  buckets.json:        {}", buckets_status);
     println!("  manifest-cache.json: {}", cache_status);
 
@@ -148,13 +190,27 @@ pub fn run(force: bool) -> Result<()> {
         issues += 1;
     }
 
-    println!();
-    if issues == 0 && !force {
-        println!("{}", "Everything looks healthy.".green());
-        return Ok(());
-    }
+    issues
+}
 
-    if !residue.is_empty()
+/// Print all findings across packages, launchers, and configuration files
+fn print_findings(findings: &RepairFindings) -> usize {
+    let mut issues = 0;
+    issues += print_installed_findings(&findings.entries, &findings.duplicates, &findings.residue);
+    issues += print_launcher_findings(&findings.orphans, &findings.missing);
+    issues += print_config_findings(&findings.buckets_status, &findings.cache_status);
+    issues
+}
+
+/// Apply fixes for interrupted installs, orphaned shims, missing launchers, and config files
+fn apply_repairs(
+    config: &Config,
+    paths: &WenPaths,
+    store: &InstalledStore,
+    findings: &RepairFindings,
+    force: bool,
+) -> Result<()> {
+    if !findings.residue.is_empty()
         && (force || crate::utils::prompt::confirm("Remove interrupted-install leftovers?")?)
     {
         for path in store.sweep_residue()? {
@@ -162,7 +218,7 @@ pub fn run(force: bool) -> Result<()> {
         }
     }
 
-    for path in &orphans {
+    for path in &findings.orphans {
         let question = format!("Remove orphaned launcher {}?", path.display());
         if force || crate::utils::prompt::confirm_no_default(&question)? {
             match std::fs::remove_file(path) {
@@ -172,7 +228,7 @@ pub fn run(force: bool) -> Result<()> {
         }
     }
 
-    for (command, shim) in &missing {
+    for (command, shim) in &findings.missing {
         if shim.is_dir() {
             println!(
                 "  {} {} is a directory; remove it, then run repair again",
@@ -183,19 +239,49 @@ pub fn run(force: bool) -> Result<()> {
         }
         let question = format!("Recreate launcher for '{}'?", command);
         if force || crate::utils::prompt::confirm(&question)? {
-            match recreate_launcher(&paths, &set, command) {
+            match recreate_launcher(paths, &findings.set, command) {
                 Ok(()) => println!("  {} Recreated launcher: {}", "✓".green(), command),
                 Err(e) => println!("  {} {}: {:#}", "✗".red(), command, e),
             }
         }
     }
 
-    if force || matches!(buckets_status, FileStatus::Corrupted(_)) {
-        repair_buckets(&config, &buckets_path, &buckets_status)?;
+    if force || matches!(findings.buckets_status, FileStatus::Corrupted(_)) {
+        repair_buckets(config, &paths.buckets_json(), &findings.buckets_status)?;
     }
-    if force || matches!(cache_status, FileStatus::Corrupted(_)) {
-        repair_cache(&config, &cache_path, &cache_status, force)?;
+    if force || matches!(findings.cache_status, FileStatus::Corrupted(_)) {
+        repair_cache(
+            config,
+            &paths.manifest_cache_json(),
+            &findings.cache_status,
+            force,
+        )?;
     }
+
+    Ok(())
+}
+
+/// Run the repair command
+pub fn run(force: bool) -> Result<()> {
+    println!("{}", "Checking wenget state...".cyan());
+    println!();
+
+    let config = Config::new()?;
+    let paths = config.paths().clone();
+    let store = InstalledStore::new(paths.clone());
+
+    // The scan reports corrupt records as it loads them, so the header comes first
+    println!("{}", "Installed packages:".bold());
+    let findings = compute_findings(&paths, &store)?;
+    let issues = print_findings(&findings);
+
+    println!();
+    if issues == 0 && !force {
+        println!("{}", "Everything looks healthy.".green());
+        return Ok(());
+    }
+
+    apply_repairs(&config, &paths, &store, &findings, force)?;
 
     println!();
     println!("{}", "Repair complete.".green());

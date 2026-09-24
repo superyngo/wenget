@@ -695,6 +695,112 @@ impl ManifestGenerator {
     }
 }
 
+/// Resolve the final manifest by handling overwrite or incremental merge if the output file exists
+fn resolve_output_manifest(
+    new_manifest: BucketManifest,
+    output_path: &Path,
+    update_mode: Option<UpdateMode>,
+) -> Result<BucketManifest> {
+    if !output_path.exists() {
+        return Ok(new_manifest);
+    }
+
+    let mode = match update_mode {
+        Some(m) => m,
+        None => {
+            // Interactive prompt
+            use dialoguer::Select;
+            let choice = Select::new()
+                .with_prompt("Output file exists. How should it be updated?")
+                .items(&[
+                    "Overwrite (replace entire file)",
+                    "Incremental (merge with existing)",
+                ])
+                .default(0)
+                .interact()?;
+            if choice == 0 {
+                UpdateMode::Overwrite
+            } else {
+                UpdateMode::Incremental
+            }
+        }
+    };
+
+    match mode {
+        UpdateMode::Overwrite => {
+            println!("{}", "  Mode: Overwrite".yellow());
+            Ok(new_manifest)
+        }
+        UpdateMode::Incremental => {
+            println!("{}", "  Mode: Incremental merge".cyan());
+            // Load existing manifest
+            let existing_content = fs::read_to_string(output_path)?;
+            let existing: BucketManifest = serde_json::from_str(&existing_content)
+                .context("Failed to parse existing manifest")?;
+
+            // Merge manifests
+            Ok(merge_manifests(existing, new_manifest))
+        }
+    }
+}
+
+/// Print the generation summary, platform coverage, script types, and next steps
+fn print_create_summary(manifest: &BucketManifest, output_file: &str) {
+    println!();
+    println!("{}", "═".repeat(60).green());
+    println!("{}", "Manifest generated successfully!".green().bold());
+    println!("{}", "═".repeat(60).green());
+    println!();
+    println!("  {} {}", "Output file:".bold(), output_file.cyan());
+    println!(
+        "  {} {} package(s), {} script(s)",
+        "Contents:".bold(),
+        manifest.packages.len(),
+        manifest.scripts.len()
+    );
+
+    // Platform statistics
+    if !manifest.packages.is_empty() {
+        let mut platform_stats: HashMap<String, usize> = HashMap::new();
+        for pkg in &manifest.packages {
+            for platform in pkg.platforms.keys() {
+                *platform_stats.entry(platform.clone()).or_insert(0) += 1;
+            }
+        }
+        println!();
+        println!("{}", "Platform coverage:".bold());
+        let mut sorted: Vec<_> = platform_stats.iter().collect();
+        sorted.sort_by_key(|(k, _)| k.as_str());
+        for (platform, count) in sorted {
+            println!("    {}: {} packages", platform, count);
+        }
+    }
+
+    // Script type statistics
+    if !manifest.scripts.is_empty() {
+        let mut type_stats: HashMap<String, usize> = HashMap::new();
+        for script in &manifest.scripts {
+            for script_type in script.platforms.keys() {
+                *type_stats
+                    .entry(script_type.display_name().to_string())
+                    .or_insert(0) += 1;
+            }
+        }
+        println!();
+        println!("{}", "Script types:".bold());
+        for (script_type, count) in &type_stats {
+            println!("    {}: {} scripts", script_type, count);
+        }
+    }
+
+    println!();
+    println!("{}", "Next steps:".bold());
+    println!("  1. Upload the manifest to a GitHub repository");
+    println!("  2. Get the raw URL of the manifest file");
+    println!("  3. Add it as a bucket: wenget bucket add <name> <url>");
+    println!();
+}
+
 /// Create a bucket manifest from source files or direct URLs
 fn run_create(
     repos_src: Vec<String>,
@@ -725,7 +831,7 @@ fn run_create(
     // Try to get token from environment variable if not provided
     let auth_token = token.or_else(|| std::env::var("GITHUB_TOKEN").ok());
 
-    if let Some(ref _token) = auth_token {
+    if auth_token.is_some() {
         println!(
             "{}",
             "ℹ Using GitHub authentication (rate limit: 5000/hour)".cyan()
@@ -765,50 +871,8 @@ fn run_create(
 
     // Determine output path
     let output_file = output_path.unwrap_or_else(|| "manifest.json".to_string());
-    let output_path = Path::new(&output_file);
-
-    // Check if file exists and determine update mode
-    let final_manifest = if output_path.exists() {
-        let mode = match update_mode {
-            Some(m) => m,
-            None => {
-                // Interactive prompt
-                use dialoguer::Select;
-                let choice = Select::new()
-                    .with_prompt("Output file exists. How should it be updated?")
-                    .items(&[
-                        "Overwrite (replace entire file)",
-                        "Incremental (merge with existing)",
-                    ])
-                    .default(0)
-                    .interact()?;
-                if choice == 0 {
-                    UpdateMode::Overwrite
-                } else {
-                    UpdateMode::Incremental
-                }
-            }
-        };
-
-        match mode {
-            UpdateMode::Overwrite => {
-                println!("{}", "  Mode: Overwrite".yellow());
-                new_manifest
-            }
-            UpdateMode::Incremental => {
-                println!("{}", "  Mode: Incremental merge".cyan());
-                // Load existing manifest
-                let existing_content = fs::read_to_string(output_path)?;
-                let existing: BucketManifest = serde_json::from_str(&existing_content)
-                    .context("Failed to parse existing manifest")?;
-
-                // Merge manifests
-                merge_manifests(existing, new_manifest)
-            }
-        }
-    } else {
-        new_manifest
-    };
+    let final_manifest =
+        resolve_output_manifest(new_manifest, Path::new(&output_file), update_mode)?;
 
     // Serialize and write
     let json =
@@ -816,60 +880,7 @@ fn run_create(
     fs::write(&output_file, &json)
         .with_context(|| format!("Failed to write to {}", output_file))?;
 
-    // Summary
-    println!();
-    println!("{}", "═".repeat(60).green());
-    println!("{}", "Manifest generated successfully!".green().bold());
-    println!("{}", "═".repeat(60).green());
-    println!();
-    println!("  {} {}", "Output file:".bold(), output_file.cyan());
-    println!(
-        "  {} {} package(s), {} script(s)",
-        "Contents:".bold(),
-        final_manifest.packages.len(),
-        final_manifest.scripts.len()
-    );
-
-    // Platform statistics
-    if !final_manifest.packages.is_empty() {
-        let mut platform_stats: HashMap<String, usize> = HashMap::new();
-        for pkg in &final_manifest.packages {
-            for platform in pkg.platforms.keys() {
-                *platform_stats.entry(platform.clone()).or_insert(0) += 1;
-            }
-        }
-        println!();
-        println!("{}", "Platform coverage:".bold());
-        let mut sorted: Vec<_> = platform_stats.iter().collect();
-        sorted.sort_by_key(|(k, _)| k.as_str());
-        for (platform, count) in sorted {
-            println!("    {}: {} packages", platform, count);
-        }
-    }
-
-    // Script type statistics
-    if !final_manifest.scripts.is_empty() {
-        let mut type_stats: HashMap<String, usize> = HashMap::new();
-        for script in &final_manifest.scripts {
-            for script_type in script.platforms.keys() {
-                *type_stats
-                    .entry(script_type.display_name().to_string())
-                    .or_insert(0) += 1;
-            }
-        }
-        println!();
-        println!("{}", "Script types:".bold());
-        for (script_type, count) in &type_stats {
-            println!("    {}: {} scripts", script_type, count);
-        }
-    }
-
-    println!();
-    println!("{}", "Next steps:".bold());
-    println!("  1. Upload the manifest to a GitHub repository");
-    println!("  2. Get the raw URL of the manifest file");
-    println!("  3. Add it as a bucket: wenget bucket add <name> <url>");
-    println!();
+    print_create_summary(&final_manifest, &output_file);
 
     Ok(())
 }

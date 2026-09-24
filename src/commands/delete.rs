@@ -296,35 +296,8 @@ fn show_removal_menu() -> Result<RemovalOptions> {
     })
 }
 
-/// Delete wenget itself (complete uninstallation)
-fn delete_self(yes: bool) -> Result<()> {
-    println!("{}", "wenget Self-Deletion".bold().red());
-    println!("{}", "═".repeat(60));
-    println!();
-
-    let paths = WenPaths::new()?;
-    let exe_path = env::current_exe().context("Failed to get current executable path")?;
-
-    // Determine removal options
-    let options = if yes {
-        // When -y flag is used, remove everything (current behavior)
-        RemovalOptions::all()
-    } else {
-        // Show interactive menu
-        show_removal_menu()?
-    };
-
-    // Check if user selected nothing
-    if !options.remove_data && !options.remove_path && !options.remove_binary {
-        println!();
-        println!(
-            "{}",
-            "Nothing selected for removal. Deletion cancelled.".yellow()
-        );
-        return Ok(());
-    }
-
-    // Show what will be removed
+/// Print what will be removed based on selected options
+fn print_self_delete_plan(options: &RemovalOptions, paths: &WenPaths, exe_path: &Path) {
     println!("{}", "The following will be removed:".yellow());
     println!();
 
@@ -357,20 +330,14 @@ fn delete_self(yes: bool) -> Result<()> {
         println!("     {}", exe_path.display());
         println!();
     }
+}
 
-    // Confirm deletion (only if -y not used)
-    if !yes {
-        println!("{}", "═".repeat(60));
-        println!();
-        println!("{}", "Are you sure you want to proceed?".bold().red());
-
-        if !crate::utils::prompt::confirm_no_default("")? {
-            println!();
-            println!("{}", "Deletion cancelled".green());
-            return Ok(());
-        }
-    }
-
+/// Execute the removal steps for self-deletion
+fn execute_self_deletion(
+    options: &RemovalOptions,
+    paths: &WenPaths,
+    exe_path: &Path,
+) -> Result<()> {
     println!();
     println!("{}", "Proceeding with uninstallation...".cyan());
     println!();
@@ -381,7 +348,7 @@ fn delete_self(yes: bool) -> Result<()> {
     // Step: Remove from PATH (if selected)
     if options.remove_path {
         println!("{} Removing from PATH...", format!("{}.", step_num).bold());
-        if let Err(e) = remove_from_path(&paths) {
+        if let Err(e) = remove_from_path(paths) {
             println!("   {} Failed to update PATH: {}", "⚠".yellow(), e);
         }
         println!();
@@ -426,9 +393,57 @@ fn delete_self(yes: bool) -> Result<()> {
                 exe_path.display()
             );
         } else {
-            delete_executable(&exe_path, exe_in_wenget, paths.root())?;
+            delete_executable(exe_path, exe_in_wenget, paths.root())?;
         }
     }
+
+    Ok(())
+}
+
+/// Delete wenget itself (complete uninstallation)
+fn delete_self(yes: bool) -> Result<()> {
+    println!("{}", "wenget Self-Deletion".bold().red());
+    println!("{}", "═".repeat(60));
+    println!();
+
+    let paths = WenPaths::new()?;
+    let exe_path = env::current_exe().context("Failed to get current executable path")?;
+
+    // Determine removal options
+    let options = if yes {
+        // When -y flag is used, remove everything (current behavior)
+        RemovalOptions::all()
+    } else {
+        // Show interactive menu
+        show_removal_menu()?
+    };
+
+    // Check if user selected nothing
+    if !options.remove_data && !options.remove_path && !options.remove_binary {
+        println!();
+        println!(
+            "{}",
+            "Nothing selected for removal. Deletion cancelled.".yellow()
+        );
+        return Ok(());
+    }
+
+    print_self_delete_plan(&options, &paths, &exe_path);
+
+    // Confirm deletion (only if -y not used)
+    if !yes {
+        println!("{}", "═".repeat(60));
+        println!();
+        println!("{}", "Are you sure you want to proceed?".bold().red());
+
+        if !crate::utils::prompt::confirm_no_default("")? {
+            println!();
+            println!("{}", "Deletion cancelled".green());
+            return Ok(());
+        }
+    }
+
+    execute_self_deletion(&options, &paths, &exe_path)?;
 
     println!();
     println!("{}", "═".repeat(60));

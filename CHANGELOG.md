@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- refactor: the 13 remaining functions over 100 lines (clippy `too_many_lines`) are split into
+  phase helpers: `add` (`install_scripts`, `plan_packages`, `install_plan_item`), `update` (`run`,
+  `find_upgradeable`, `upgrade_self_with_provider`), `installer` (`install`, `select_executables`,
+  `find_executable_candidates`), `del self`, `bucket create`, `repair` and `search`. Real-binary
+  output is unchanged (CL-9).
 - fix(add): when the GitHub API lookup fails and the bucket's cached download links are used,
   `add`/`update` now say so ("⚠ Using cached download links (GitHub API unavailable)") and no longer
   write the stale package back into the cache. Before 158afd5 this fallback was silent.
