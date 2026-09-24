@@ -6,17 +6,6 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
-
-fn shared_client() -> &'static reqwest::blocking::Client {
-    static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        reqwest::blocking::Client::builder()
-            .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
-            .build()
-            .expect("Failed to create HTTP client")
-    })
-}
 
 /// Removes a downloaded file or scratch directory when dropped
 ///
@@ -70,7 +59,7 @@ pub fn download_file(url: &str, dest: &Path) -> Result<()> {
     log::info!("Downloading: {}", url);
     log::debug!("Destination: {}", dest.display());
 
-    let client = shared_client();
+    let client = crate::utils::http::shared_client();
 
     // Send GET request
     let response = client

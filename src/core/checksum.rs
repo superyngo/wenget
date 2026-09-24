@@ -49,7 +49,7 @@ enum Probe {
 }
 
 fn probe(client: &reqwest::blocking::Client, url: &str) -> Probe {
-    match client.get(url).send() {
+    match client.get(url).timeout(PROBE_TIMEOUT).send() {
         Ok(resp) if resp.status().is_success() => match resp.text() {
             Ok(text) => Probe::Found(text),
             Err(_) => Probe::NetworkError,
@@ -74,12 +74,7 @@ fn lookup_checksum(asset_url: &str, asset_name: &str) -> Lookup {
         return Lookup::NotApplicable;
     };
 
-    let Ok(client) = reqwest::blocking::Client::builder()
-        .timeout(PROBE_TIMEOUT)
-        .build()
-    else {
-        return Lookup::ProbeFailed;
-    };
+    let client = crate::utils::http::shared_client();
 
     let candidates: [(String, bool); 3] = [
         (format!("{}.sha256", asset_name), true),
@@ -91,7 +86,7 @@ fn lookup_checksum(asset_url: &str, asset_name: &str) -> Lookup {
 
     for (name, scoped_to_asset) in &candidates {
         let url = format!("{}/{}", dir, name);
-        match probe(&client, &url) {
+        match probe(client, &url) {
             Probe::Found(content) => {
                 if let Some(hash) = extract_hash(&content, asset_name, *scoped_to_asset) {
                     return Lookup::Found(hash);

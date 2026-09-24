@@ -3,12 +3,28 @@
 use anyhow::{Context, Result};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
+use std::sync::OnceLock;
 use std::time::Duration;
 
-/// HTTP client wrapper
+/// Process-wide HTTP client: one connection pool, `wenget/<version>` User-Agent, no total timeout
+///
+/// Callers set per-request timeouts. It never carries credentials; only [`HttpClient`] adds
+/// the GitHub token, so downloads from arbitrary asset hosts cannot leak it.
+pub fn shared_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        Client::builder()
+            .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
+            .build()
+            .expect("Failed to create HTTP client")
+    })
+}
+
+/// HTTP client wrapper over [`shared_client`] with a per-request timeout and optional GitHub token
 #[derive(Clone)]
 pub struct HttpClient {
-    client: Client,
+    client: &'static Client,
+    timeout: Duration,
     token: Option<String>,
 }
 
@@ -30,20 +46,18 @@ impl HttpClient {
 
     /// Create a new HTTP client with optional token and custom timeout
     pub fn with_options(token: Option<String>, timeout: Duration) -> Result<Self> {
-        let client = Client::builder()
-            .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
-            .timeout(timeout)
-            .build()
-            .context("Failed to create HTTP client")?;
-
-        Ok(Self { client, token })
+        Ok(Self {
+            client: shared_client(),
+            timeout,
+            token,
+        })
     }
 
     /// Send a GET request and return the response as text
     pub fn get_text(&self, url: &str) -> Result<String> {
         log::debug!("GET {}", url);
 
-        let mut request = self.client.get(url);
+        let mut request = self.client.get(url).timeout(self.timeout);
 
         // Add authorization header if token is available
         if let Some(ref token) = self.token {
@@ -69,7 +83,11 @@ impl HttpClient {
     pub fn get_json<T: DeserializeOwned>(&self, url: &str) -> Result<T> {
         log::debug!("GET {} (JSON)", url);
 
-        let mut request = self.client.get(url).header("Accept", "application/json");
+        let mut request = self
+            .client
+            .get(url)
+            .timeout(self.timeout)
+            .header("Accept", "application/json");
 
         // Add authorization header if token is available
         if let Some(ref token) = self.token {
@@ -199,6 +217,17 @@ impl RateLimit {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn per_request_timeout_fires_on_silent_server() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/", listener.local_addr().unwrap());
+        let client = HttpClient::with_timeout(Duration::from_millis(300)).unwrap();
+        let start = std::time::Instant::now();
+        assert!(client.get_text(&url).is_err());
+        assert!(start.elapsed() < Duration::from_secs(5));
+        drop(listener);
+    }
 
     #[test]
     fn test_http_client_creation() {
