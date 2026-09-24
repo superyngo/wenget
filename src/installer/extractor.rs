@@ -619,104 +619,8 @@ pub fn find_executable_candidates(
 
         log::trace!("Evaluating candidate: {} (filename: {})", file, filename);
 
-        let name_without_ext = filename.trim_end_matches(".exe");
-        let mut score = 0u32;
-        let mut reasons = Vec::new();
-
-        // One open per candidate: permission and head bytes together
-        let (has_exec_perm, head) = match extract_dir {
-            Some(dir) => probe_file(&dir.join(file)),
-            None => (false, Vec::new()),
-        };
-
-        // Rule 0: Has executable permission (Unix only; always false elsewhere)
-        if has_exec_perm {
-            score += 35;
-            reasons.push("has exec permission");
-        }
-
-        // Rule 0b: Content-based detection via magic bytes (strongest signal)
-        {
-            if let Some(exe_type) = detect_executable_type(&head) {
-                score += 60;
-                reasons.push(match exe_type {
-                    "ELF" => "ELF binary",
-                    "PE" => "PE binary",
-                    "Mach-O" | "Mach-O fat" => "Mach-O binary",
-                    _ => "native binary",
-                });
-            } else if let Some(script_type) = detect_script_type(&head) {
-                score += 30;
-                reasons.push(match script_type {
-                    "Shell script" => "shell script (shebang)",
-                    "Python script" => "python script (shebang)",
-                    "Node.js script" => "node.js script (shebang)",
-                    "Ruby script" => "ruby script (shebang)",
-                    "Perl script" => "perl script (shebang)",
-                    _ => "script (shebang)",
-                });
-            }
-        }
-
-        // Rule 1: Exact match with package name (highest priority)
-        if name_without_ext == package_name {
-            score += 100;
-            reasons.push("exact name match");
-        }
-        // Rule 2: Partial match or package name contains file name
-        else if name_without_ext.contains(package_name) || package_name.contains(name_without_ext)
-        {
-            score += 50;
-            reasons.push("partial name match");
-        }
-        // Rule 3: Common abbreviation patterns (e.g., ripgrep -> rg)
-        else if is_likely_abbreviation(package_name, name_without_ext) {
-            score += 40;
-            reasons.push("likely abbreviation");
-        }
-
-        // Rule 4: Located in bin/ directory - strong signal that file is an executable
-        if file.contains("bin/") {
-            score += 40;
-            reasons.push("in bin/ directory");
-        }
-
-        // Rule 5: Located in target/release/ (Rust projects)
-        if file.contains("target/release/") {
-            score += 25;
-            reasons.push("in target/release/");
-        }
-
-        // Rule 6: Shallow directory depth (prefer files closer to root)
-        let depth = file.matches('/').count() + file.matches('\\').count();
-        if depth <= 1 {
-            score += 20;
-        } else if depth <= 2 {
-            score += 10;
-        }
-
-        // Rule 7: Simple filename (fewer special characters)
-        if !name_without_ext.contains('-') && !name_without_ext.contains('_') {
-            score += 5;
-            reasons.push("simple name");
-        }
-
-        // Only add if score is above threshold (or has exec permission on Unix)
-        // Note: has_exec_perm is always false on non-Unix, so this works cross-platform
-        let should_add = score > 0 || has_exec_perm;
-
-        if should_add {
-            let reason = if reasons.is_empty() {
-                "potential executable".to_string()
-            } else {
-                reasons.join(", ")
-            };
-
-            candidates.push(ExecutableCandidate {
-                path: file.clone(),
-                score,
-                reason,
-            });
+        if let Some(candidate) = score_candidate(file, filename, package_name, extract_dir) {
+            candidates.push(candidate);
         }
     }
 
@@ -724,6 +628,113 @@ pub fn find_executable_candidates(
     candidates.sort_by_key(|a| std::cmp::Reverse(a.score));
 
     candidates
+}
+
+/// Score a single candidate file against executable heuristics.
+fn score_candidate(
+    file: &str,
+    filename: &str,
+    package_name: &str,
+    extract_dir: Option<&Path>,
+) -> Option<ExecutableCandidate> {
+    let name_without_ext = filename.trim_end_matches(".exe");
+    let mut score = 0u32;
+    let mut reasons = Vec::new();
+
+    // One open per candidate: permission and head bytes together
+    let (has_exec_perm, head) = match extract_dir {
+        Some(dir) => probe_file(&dir.join(file)),
+        None => (false, Vec::new()),
+    };
+
+    // Rule 0: Has executable permission (Unix only; always false elsewhere)
+    if has_exec_perm {
+        score += 35;
+        reasons.push("has exec permission");
+    }
+
+    // Rule 0b: Content-based detection via magic bytes (strongest signal)
+    if let Some(exe_type) = detect_executable_type(&head) {
+        score += 60;
+        reasons.push(match exe_type {
+            "ELF" => "ELF binary",
+            "PE" => "PE binary",
+            "Mach-O" | "Mach-O fat" => "Mach-O binary",
+            _ => "native binary",
+        });
+    } else if let Some(script_type) = detect_script_type(&head) {
+        score += 30;
+        reasons.push(match script_type {
+            "Shell script" => "shell script (shebang)",
+            "Python script" => "python script (shebang)",
+            "Node.js script" => "node.js script (shebang)",
+            "Ruby script" => "ruby script (shebang)",
+            "Perl script" => "perl script (shebang)",
+            _ => "script (shebang)",
+        });
+    }
+
+    // Rule 1: Exact match with package name (highest priority)
+    if name_without_ext == package_name {
+        score += 100;
+        reasons.push("exact name match");
+    }
+    // Rule 2: Partial match or package name contains file name
+    else if name_without_ext.contains(package_name) || package_name.contains(name_without_ext) {
+        score += 50;
+        reasons.push("partial name match");
+    }
+    // Rule 3: Common abbreviation patterns (e.g., ripgrep -> rg)
+    else if is_likely_abbreviation(package_name, name_without_ext) {
+        score += 40;
+        reasons.push("likely abbreviation");
+    }
+
+    // Rule 4: Located in bin/ directory - strong signal that file is an executable
+    if file.contains("bin/") {
+        score += 40;
+        reasons.push("in bin/ directory");
+    }
+
+    // Rule 5: Located in target/release/ (Rust projects)
+    if file.contains("target/release/") {
+        score += 25;
+        reasons.push("in target/release/");
+    }
+
+    // Rule 6: Shallow directory depth (prefer files closer to root)
+    let depth = file.matches('/').count() + file.matches('\\').count();
+    if depth <= 1 {
+        score += 20;
+    } else if depth <= 2 {
+        score += 10;
+    }
+
+    // Rule 7: Simple filename (fewer special characters)
+    if !name_without_ext.contains('-') && !name_without_ext.contains('_') {
+        score += 5;
+        reasons.push("simple name");
+    }
+
+    // Only add if score is above threshold (or has exec permission on Unix)
+    // Note: has_exec_perm is always false on non-Unix, so this works cross-platform
+    let should_add = score > 0 || has_exec_perm;
+
+    if should_add {
+        let reason = if reasons.is_empty() {
+            "potential executable".to_string()
+        } else {
+            reasons.join(", ")
+        };
+
+        Some(ExecutableCandidate {
+            path: file.to_string(),
+            score,
+            reason,
+        })
+    } else {
+        None
+    }
 }
 
 /// Check if name2 is likely an abbreviation of name1

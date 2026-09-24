@@ -285,24 +285,104 @@ impl PackageInstaller<'_> {
         installed: &InstalledSet,
         req: &InstallRequest,
     ) -> Result<InstalledPackage> {
-        let InstallRequest {
-            package: pkg,
-            platform_match,
-            binary,
-            version,
-            source,
-            installed_key,
-        } = *req;
         let (paths, ui) = (self.paths, self.ui);
 
         // Log if using fallback
-        if let Some(fallback_type) = &platform_match.fallback_type {
+        if let Some(fallback_type) = &req.platform_match.fallback_type {
             log::info!(
                 "Using fallback platform {} ({})",
-                platform_match.platform_id,
+                req.platform_match.platform_id,
                 fallback_type.description()
             );
         }
+
+        let (staged, extracted_files) = self.download_and_stage(req.binary, req.installed_key)?;
+
+        // Find executable candidates (pass the staging dir for Unix permission checks)
+        let candidates =
+            find_executable_candidates(&extracted_files, &req.package.name, Some(staged.path()));
+
+        if candidates.is_empty() {
+            anyhow::bail!(
+                "Failed to find executable in archive. Extracted files:\n{}",
+                extracted_files.join("\n")
+            );
+        }
+
+        let selected_executables =
+            self.select_executables(installed, req.installed_key, &candidates)?;
+
+        // Resolve every command name before the swap: anything that can fail here must
+        // fail while the previous install and its record are still in place.
+        let launchers = self.plan_launchers(
+            installed,
+            req.installed_key,
+            staged.path(),
+            selected_executables,
+        )?;
+        let old_executables = installed
+            .get_package(req.installed_key)
+            .map(|p| p.executables.clone());
+        let mut executables: HashMap<String, String> = HashMap::new();
+
+        // Every remaining step reads from the final location: swap now, so the
+        // launchers point at the app directory rather than the staging path.
+        let app_dir = staged.commit()?;
+
+        // From here on the previous install is gone, so a launcher failure must not skip
+        // writing the new record: collect failures and report them after saving it.
+        let mut launcher_errors: Vec<String> = Vec::new();
+        for (exe_relative, resolved_name) in launchers {
+            let exe_path = app_dir.join(&exe_relative);
+            let bin_path = paths.bin_shim_path(&resolved_name);
+
+            ui.line(&format!("  Creating launcher at {}...", bin_path.display()));
+
+            let created = crate::installer::create_launcher(&exe_path, &bin_path, &resolved_name);
+
+            if let Err(e) = created {
+                launcher_errors.push(format!("{}: {:#}", bin_path.display(), e));
+            }
+
+            executables.insert(exe_relative, resolved_name);
+        }
+
+        // Clean up symlinks/shims for old executables that no longer exist in the new version
+        if let Some(old_exes) = &old_executables {
+            self.remove_obsolete_commands(old_exes, &executables);
+        }
+
+        let inst_pkg = Self::build_package_record(req, &app_dir, executables);
+
+        if !launcher_errors.is_empty() {
+            // Keep the package tracked; `wenget repair` reports the missing launchers
+            crate::core::InstalledStore::new(paths.clone())
+                .save_package(req.installed_key, &inst_pkg)
+                .with_context(|| {
+                    format!(
+                        "Failed to save the package record for {}",
+                        req.installed_key
+                    )
+                })?;
+            anyhow::bail!(
+                "Installed {} but could not create its launcher(s): {}. Fix the path, then run \
+             `wenget del {}` and `wenget add` again",
+                req.installed_key,
+                launcher_errors.join("; "),
+                req.installed_key
+            );
+        }
+
+        Ok(inst_pkg)
+    }
+
+    /// Download binary archive, verify its checksum, and extract it into a staging directory.
+    fn download_and_stage(
+        &self,
+        binary: &PlatformBinary,
+        installed_key: &str,
+    ) -> Result<(crate::installer::StagedInstall, Vec<String>)> {
+        let (paths, ui) = (self.paths, self.ui);
 
         // Download binary
         ui.line(&format!("  Downloading from {}...", binary.url));
@@ -339,106 +419,43 @@ impl PackageInstaller<'_> {
 
         let extracted_files = extract_archive(&download_path, staged.path())?;
 
-        // Find executable candidates (pass the staging dir for Unix permission checks)
-        let candidates =
-            find_executable_candidates(&extracted_files, &pkg.name, Some(staged.path()));
+        Ok((staged, extracted_files))
+    }
 
-        if candidates.is_empty() {
-            anyhow::bail!(
-                "Failed to find executable in archive. Extracted files:\n{}",
-                extracted_files.join("\n")
-            );
-        }
-
-        let selected_executables =
-            self.select_executables(installed, installed_key, &candidates)?;
-
-        // Resolve every command name before the swap: anything that can fail here must
-        // fail while the previous install and its record are still in place.
-        let launchers = self.plan_launchers(
-            installed,
-            installed_key,
-            staged.path(),
-            selected_executables,
-        )?;
-        let old_executables = installed
-            .get_package(installed_key)
-            .map(|p| p.executables.clone());
-        let mut executables: HashMap<String, String> = HashMap::new();
-
-        // Every remaining step reads from the final location: swap now, so the
-        // launchers point at the app directory rather than the staging path.
-        let app_dir = staged.commit()?;
-
-        // From here on the previous install is gone, so a launcher failure must not skip
-        // writing the new record: collect failures and report them after saving it.
-        let mut launcher_errors: Vec<String> = Vec::new();
-        for (exe_relative, resolved_name) in launchers {
-            let exe_path = app_dir.join(&exe_relative);
-            let bin_path = paths.bin_shim_path(&resolved_name);
-
-            ui.line(&format!("  Creating launcher at {}...", bin_path.display()));
-
-            let created = crate::installer::create_launcher(&exe_path, &bin_path, &resolved_name);
-
-            if let Err(e) = created {
-                launcher_errors.push(format!("{}: {:#}", bin_path.display(), e));
-            }
-
-            executables.insert(exe_relative, resolved_name);
-        }
-
-        // Clean up symlinks/shims for old executables that no longer exist in the new version
-        if let Some(ref old_exes) = old_executables {
-            self.remove_obsolete_commands(old_exes, &executables);
-        }
-
+    /// Construct the installed package record for persistence.
+    fn build_package_record(
+        req: &InstallRequest,
+        app_dir: &Path,
+        executables: HashMap<String, String>,
+    ) -> InstalledPackage {
         // Extract repo_name and variant from installed_key
         // installed_key format: "repo_name" or "repo_name::variant"
-        let (repo_name, variant) = if let Some(pos) = installed_key.find("::") {
+        let (repo_name, variant) = if let Some(pos) = req.installed_key.find("::") {
             (
-                installed_key[..pos].to_string(),
-                Some(installed_key[pos + 2..].to_string()),
+                req.installed_key[..pos].to_string(),
+                Some(req.installed_key[pos + 2..].to_string()),
             )
         } else {
-            (installed_key.to_string(), None)
+            (req.installed_key.to_string(), None)
         };
 
         // Create installed package info
-        let inst_pkg = InstalledPackage {
+        InstalledPackage {
             schema_version: crate::core::manifest::CURRENT_SCHEMA_VERSION,
             repo_name,
             variant,
-            version: version.to_string(),
-            platform: platform_match.platform_id.clone(),
+            version: req.version.to_string(),
+            platform: req.platform_match.platform_id.clone(),
             installed_at: Utc::now(),
             install_path: app_dir.to_string_lossy().to_string(),
             executables,
-            source: source.clone(),
-            description: pkg.description.clone(),
+            source: req.source.clone(),
+            description: req.package.description.clone(),
             command_names: vec![],
             command_name: None,
-            asset_name: binary.asset_name.clone(),
+            asset_name: req.binary.asset_name.clone(),
             download_url: None,
-        };
-
-        if !launcher_errors.is_empty() {
-            // Keep the package tracked; `wenget repair` reports the missing launchers
-            crate::core::InstalledStore::new(paths.clone())
-                .save_package(installed_key, &inst_pkg)
-                .with_context(|| {
-                    format!("Failed to save the package record for {}", installed_key)
-                })?;
-            anyhow::bail!(
-                "Installed {} but could not create its launcher(s): {}. Fix the path, then run \
-             `wenget del {}` and `wenget add` again",
-                installed_key,
-                launcher_errors.join("; "),
-                installed_key
-            );
         }
-
-        Ok(inst_pkg)
     }
 
     /// Pick a command name for each selected executable: `(exe_relative, command name)`.
@@ -561,195 +578,226 @@ impl PackageInstaller<'_> {
         installed_key: &str,
         candidates: &[ExecutableCandidate],
     ) -> Result<Vec<String>> {
-        let (ui, yes, update_mode) = (self.ui, self.yes, self.update_mode);
-        Ok(if candidates.len() == 1 {
+        if candidates.len() == 1 {
             // Single candidate - auto-select
             let selected = &candidates[0];
-            ui.line(&format!(
+            self.ui.line(&format!(
                 "  Found executable: {} ({})",
                 selected.path, selected.reason
             ));
-            vec![candidates[0].path.clone()]
-        } else if update_mode {
-            // Update mode: keep previously installed executables, ignore new ones,
-            // prompt for replacement when old executables disappear
-            let old_exes = installed
-                .get_package(installed_key)
-                .map(|p| p.executables.clone());
-
-            if let Some(ref old) = old_exes {
-                let old_paths: std::collections::HashSet<_> = old.keys().cloned().collect();
-
-                // Separate: previously installed vs new candidates
-                let mut kept: Vec<&ExecutableCandidate> = Vec::new();
-                let mut new_candidates: Vec<&ExecutableCandidate> = Vec::new();
-
-                for c in candidates {
-                    if old_paths.contains(&c.path) {
-                        kept.push(c);
-                    } else if c.score > 0 {
-                        new_candidates.push(c);
-                    }
-                }
-
-                if kept.is_empty() && new_candidates.is_empty() {
-                    ui.line(&format!(
-                        "  {} No matching executables found for update, skipping {}",
-                        "⚠".yellow(),
-                        installed_key
-                    ));
-                    anyhow::bail!(
-                        "No matching executables found for update of {}",
-                        installed_key
-                    );
-                }
-
-                let mut selected: Vec<String> = kept.iter().map(|c| c.path.clone()).collect();
-
-                // Detect disappeared executables: old paths not found in any candidate
-                let disappeared: Vec<(&String, &String)> = old
-                    .iter()
-                    .filter(|(path, _)| !kept.iter().any(|c| &c.path == *path))
-                    .collect();
-
-                if !disappeared.is_empty() {
-                    for (old_path, old_cmd) in &disappeared {
-                        let old_filename = Path::new(old_path).file_name().and_then(|s| s.to_str());
-
-                        // Try auto-match by filename in new candidates
-                        let auto_match = old_filename.and_then(|old_fname| {
-                            new_candidates.iter().find(|c| {
-                                Path::new(&c.path)
-                                    .file_name()
-                                    .and_then(|s| s.to_str())
-                                    .map(|f| f == old_fname)
-                                    .unwrap_or(false)
-                            })
-                        });
-
-                        if let Some(matched) = auto_match {
-                            // Auto-matched by filename — select silently
-                            if !selected.contains(&matched.path) {
-                                ui.line(&format!(
-                                    "  {} Executable '{}' relocated to '{}' (auto-matched)",
-                                    "ℹ".cyan(),
-                                    old_path,
-                                    matched.path
-                                ));
-                                selected.push(matched.path.clone());
-                            }
-                        } else if !new_candidates.is_empty() && !yes {
-                            // No auto-match — prompt user to pick a replacement
-                            ui.line(&format!(
-                            "  {} Executable '{}' (command: {}) is no longer available in this release",
-                            "⚠".yellow(),
-                            old_path,
-                            old_cmd
-                        ));
-
-                            let mut items: Vec<String> = new_candidates
-                                .iter()
-                                .filter(|c| !selected.contains(&c.path))
-                                .map(|c| format!("{} ({})", c.path, c.reason))
-                                .collect();
-                            items.push("Skip (remove this command)".to_string());
-
-                            let selection = ui.select(
-                                &format!("    Select replacement for '{}'", old_cmd),
-                                &items,
-                                items.len() - 1,
-                            )?;
-
-                            if selection < items.len() - 1 {
-                                // User picked a replacement from new candidates
-                                let available: Vec<_> = new_candidates
-                                    .iter()
-                                    .filter(|c| !selected.contains(&c.path))
-                                    .collect();
-                                if selection < available.len() {
-                                    selected.push(available[selection].path.clone());
-                                }
-                            }
-                            // else: user chose "Skip" — old command will be cleaned up
-                        } else {
-                            // --yes mode or no new candidates: warn and auto-cleanup
-                            ui.line(&format!(
-                            "  {} Executable '{}' (command: {}) no longer available, will be removed",
-                            "⚠".yellow(),
-                            old_path,
-                            old_cmd
-                        ));
-                        }
-                    }
-                }
-
-                // New executables not in old install are silently ignored during updates
-
-                ui.line(&format!(
-                    "  Found {} executables (update mode):",
-                    selected.len()
-                ));
-                for s in &selected {
-                    let reason = candidates
-                        .iter()
-                        .find(|c| c.path == *s)
-                        .map(|c| c.reason.as_str())
-                        .unwrap_or("matched");
-                    ui.line(&format!("    {} ({})", s, reason));
-                }
-                selected
-            } else {
-                // No old executables — fall through to normal auto-select
-                let auto_select: Vec<_> = candidates.iter().filter(|c| c.score > 0).collect();
-                ui.line(&format!("  Found {} executables:", auto_select.len()));
-                for c in &auto_select {
-                    ui.line(&format!("    {} ({})", c.path, c.reason));
-                }
-                auto_select.into_iter().map(|c| c.path.clone()).collect()
-            }
+            Ok(vec![candidates[0].path.clone()])
+        } else if self.update_mode {
+            self.select_executables_update(installed, installed_key, candidates)
         } else {
-            // Multiple candidates - select all with valid scores (exec permission or name match)
-            // On Unix, exec permission gives +35 score, name match gives +50
-            // Files without any match get score 0 and should be filtered out
-            let auto_select: Vec<_> = candidates
+            self.select_executables_multi(candidates)
+        }
+    }
+
+    /// Select executables during package update, preserving previously chosen paths.
+    fn select_executables_update(
+        &self,
+        installed: &InstalledSet,
+        installed_key: &str,
+        candidates: &[ExecutableCandidate],
+    ) -> Result<Vec<String>> {
+        let ui = self.ui;
+        // Update mode: keep previously installed executables, ignore new ones,
+        // prompt for replacement when old executables disappear
+        let old_exes = installed
+            .get_package(installed_key)
+            .map(|p| p.executables.clone());
+
+        if let Some(old) = &old_exes {
+            let old_paths: std::collections::HashSet<_> = old.keys().cloned().collect();
+
+            // Separate: previously installed vs new candidates
+            let mut kept: Vec<&ExecutableCandidate> = Vec::new();
+            let mut new_candidates: Vec<&ExecutableCandidate> = Vec::new();
+
+            for c in candidates {
+                if old_paths.contains(&c.path) {
+                    kept.push(c);
+                } else if c.score > 0 {
+                    new_candidates.push(c);
+                }
+            }
+
+            if kept.is_empty() && new_candidates.is_empty() {
+                ui.line(&format!(
+                    "  {} No matching executables found for update, skipping {}",
+                    "⚠".yellow(),
+                    installed_key
+                ));
+                anyhow::bail!(
+                    "No matching executables found for update of {}",
+                    installed_key
+                );
+            }
+
+            let mut selected: Vec<String> = kept.iter().map(|c| c.path.clone()).collect();
+
+            // Detect disappeared executables: old paths not found in any candidate
+            let disappeared: Vec<(&String, &String)> = old
                 .iter()
-                .filter(|c| c.score > 0) // All valid candidates
+                .filter(|(path, _)| !kept.iter().any(|c| &c.path == *path))
                 .collect();
 
-            if auto_select.len() <= 3 || yes {
-                // Auto-select if reasonable count (<=3) or --yes flag
-                ui.line(&format!("  Found {} executables:", auto_select.len()));
-                for c in &auto_select {
-                    ui.line(&format!("    {} ({})", c.path, c.reason));
-                }
-                auto_select.into_iter().map(|c| c.path.clone()).collect()
-            } else {
-                // Too many candidates - show interactive selection
-                ui.line(&format!(
-                    "  Found {} possible executables:",
-                    candidates.len()
-                ));
-
-                let items: Vec<String> = candidates
-                    .iter()
-                    .map(|c| format!("{} (score: {}, {})", c.path, c.score, c.reason))
-                    .collect();
-
-                let selections = ui.multi_select(
-                    "Select executables to install (Space to select, Enter to confirm)",
-                    &items,
+            for &(old_path, old_cmd) in &disappeared {
+                self.resolve_disappeared_executable(
+                    old_path,
+                    old_cmd,
+                    &new_candidates,
+                    &mut selected,
                 )?;
-
-                if selections.is_empty() {
-                    anyhow::bail!("No executables selected");
-                }
-
-                selections
-                    .into_iter()
-                    .map(|i| candidates[i].path.clone())
-                    .collect()
             }
-        })
+
+            // New executables not in old install are silently ignored during updates
+            ui.line(&format!(
+                "  Found {} executables (update mode):",
+                selected.len()
+            ));
+            for s in &selected {
+                let reason = candidates
+                    .iter()
+                    .find(|c| c.path == *s)
+                    .map(|c| c.reason.as_str())
+                    .unwrap_or("matched");
+                ui.line(&format!("    {} ({})", s, reason));
+            }
+            Ok(selected)
+        } else {
+            // No old executables — fall through to normal auto-select
+            let auto_select: Vec<_> = candidates.iter().filter(|c| c.score > 0).collect();
+            ui.line(&format!("  Found {} executables:", auto_select.len()));
+            for c in &auto_select {
+                ui.line(&format!("    {} ({})", c.path, c.reason));
+            }
+            Ok(auto_select.into_iter().map(|c| c.path.clone()).collect())
+        }
+    }
+    /// Resolve replacement or removal for an executable missing from an updated release.
+    fn resolve_disappeared_executable(
+        &self,
+        old_path: &str,
+        old_cmd: &str,
+        new_candidates: &[&ExecutableCandidate],
+        selected: &mut Vec<String>,
+    ) -> Result<()> {
+        let (ui, yes) = (self.ui, self.yes);
+        let old_filename = Path::new(old_path).file_name().and_then(|s| s.to_str());
+
+        // Try auto-match by filename in new candidates
+        let auto_match = old_filename.and_then(|old_fname| {
+            new_candidates.iter().find(|c| {
+                Path::new(&c.path)
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|f| f == old_fname)
+                    .unwrap_or(false)
+            })
+        });
+
+        if let Some(matched) = auto_match {
+            // Auto-matched by filename — select silently
+            if !selected.contains(&matched.path) {
+                ui.line(&format!(
+                    "  {} Executable '{}' relocated to '{}' (auto-matched)",
+                    "ℹ".cyan(),
+                    old_path,
+                    matched.path
+                ));
+                selected.push(matched.path.clone());
+            }
+        } else if !new_candidates.is_empty() && !yes {
+            // No auto-match — prompt user to pick a replacement
+            ui.line(&format!(
+                "  {} Executable '{}' (command: {}) is no longer available in this release",
+                "⚠".yellow(),
+                old_path,
+                old_cmd
+            ));
+
+            let mut items: Vec<String> = new_candidates
+                .iter()
+                .filter(|c| !selected.contains(&c.path))
+                .map(|c| format!("{} ({})", c.path, c.reason))
+                .collect();
+            items.push("Skip (remove this command)".to_string());
+
+            let selection = ui.select(
+                &format!("    Select replacement for '{}'", old_cmd),
+                &items,
+                items.len() - 1,
+            )?;
+
+            if selection < items.len() - 1 {
+                // User picked a replacement from new candidates
+                let available: Vec<_> = new_candidates
+                    .iter()
+                    .filter(|c| !selected.contains(&c.path))
+                    .collect();
+                if selection < available.len() {
+                    selected.push(available[selection].path.clone());
+                }
+            }
+            // else: user chose "Skip" — old command will be cleaned up
+        } else {
+            // --yes mode or no new candidates: warn and auto-cleanup
+            ui.line(&format!(
+                "  {} Executable '{}' (command: {}) no longer available, will be removed",
+                "⚠".yellow(),
+                old_path,
+                old_cmd
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Choose executables when multiple candidates are available during initial install.
+    fn select_executables_multi(&self, candidates: &[ExecutableCandidate]) -> Result<Vec<String>> {
+        let (ui, yes) = (self.ui, self.yes);
+        // Multiple candidates - select all with valid scores (exec permission or name match)
+        // On Unix, exec permission gives +35 score, name match gives +50
+        // Files without any match get score 0 and should be filtered out
+        let auto_select: Vec<_> = candidates
+            .iter()
+            .filter(|c| c.score > 0) // All valid candidates
+            .collect();
+
+        if auto_select.len() <= 3 || yes {
+            // Auto-select if reasonable count (<=3) or --yes flag
+            ui.line(&format!("  Found {} executables:", auto_select.len()));
+            for c in &auto_select {
+                ui.line(&format!("    {} ({})", c.path, c.reason));
+            }
+            Ok(auto_select.into_iter().map(|c| c.path.clone()).collect())
+        } else {
+            // Too many candidates - show interactive selection
+            ui.line(&format!(
+                "  Found {} possible executables:",
+                candidates.len()
+            ));
+
+            let items: Vec<String> = candidates
+                .iter()
+                .map(|c| format!("{} (score: {}, {})", c.path, c.score, c.reason))
+                .collect();
+
+            let selections = ui.multi_select(
+                "Select executables to install (Space to select, Enter to confirm)",
+                &items,
+            )?;
+
+            if selections.is_empty() {
+                anyhow::bail!("No executables selected");
+            }
+
+            Ok(selections
+                .into_iter()
+                .map(|i| candidates[i].path.clone())
+                .collect())
+        }
     }
 }
 
