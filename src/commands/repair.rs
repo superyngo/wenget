@@ -385,13 +385,13 @@ fn repair_buckets(config: &Config, path: &std::path::Path, status: &FileStatus) 
 
     match status {
         FileStatus::Corrupted(_) => {
-            // Create backup before repair
-            if let Ok(backup_path) = create_backup(path) {
-                println!(
-                    "{}",
-                    format!("backup created: {}", backup_path.display()).yellow()
-                );
-            }
+            // Create backup before repair; never reset without one
+            let backup_path = create_backup(path)
+                .context("Could not back up the corrupt buckets.json; leaving it unchanged")?;
+            println!(
+                "{}",
+                format!("backup created: {}", backup_path.display()).yellow()
+            );
 
             // Reset to empty
             let new_config = BucketConfig::new();

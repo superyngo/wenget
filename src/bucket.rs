@@ -4,6 +4,7 @@
 //! They use the same manifest format as local sources.
 
 use anyhow::{Context, Result};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -70,8 +71,20 @@ impl BucketConfig {
             Err(parse_error) => {
                 log::warn!("Failed to parse buckets.json: {}", parse_error);
 
-                // Create backup of corrupted file
-                let backup_path = create_backup(path).ok();
+                // Create backup of corrupted file. Without one, leave the file untouched
+                // so its contents are not lost, and run with an empty config this time.
+                let backup_path = match create_backup(path) {
+                    Ok(p) => Some(p),
+                    Err(e) => {
+                        eprintln!(
+                            "{} buckets.json is corrupt and could not be backed up ({}); \
+                             leaving it unchanged and using no buckets for this run",
+                            "⚠".yellow(),
+                            e
+                        );
+                        return Ok(Self::new());
+                    }
+                };
 
                 // Create new empty config
                 let new_config = Self::new();
