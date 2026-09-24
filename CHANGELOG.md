@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(update): self-update picks the new wenget executable with on-disk permission and magic-byte
+  checks, like package installs (IM-11).
 - perf(platform): asset names are lowercased once per asset and the arch/exclude keyword tables
   are `const` slices (OP-4).
 - perf(extractor): executable candidates are opened once; permission, magic bytes and shebang

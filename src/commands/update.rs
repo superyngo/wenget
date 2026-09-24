@@ -850,8 +850,8 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
     println!("{}", "Extracting...".cyan());
     let extracted_files = extract_archive(&download_path, &extract_dir)?;
 
-    // Find the wenget executable
-    let exe_relative_path = find_executable(&extracted_files, "wenget")
+    // Find the wenget executable, checking permissions and magic bytes on disk
+    let exe_relative_path = find_executable(&extracted_files, "wenget", Some(&extract_dir))
         .ok_or_else(|| anyhow::anyhow!("Could not find wenget executable in archive"))?;
 
     let new_exe_path = extract_dir.join(&exe_relative_path);

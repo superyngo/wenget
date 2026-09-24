@@ -749,8 +749,12 @@ fn is_likely_abbreviation(full_name: &str, abbrev: &str) -> bool {
 
 /// Find the main executable in extracted files
 /// Returns the best candidate if found
-pub fn find_executable(extracted_files: &[String], package_name: &str) -> Option<String> {
-    let candidates = find_executable_candidates(extracted_files, package_name, None);
+pub fn find_executable(
+    extracted_files: &[String],
+    package_name: &str,
+    extract_dir: Option<&Path>,
+) -> Option<String> {
+    let candidates = find_executable_candidates(extracted_files, package_name, extract_dir);
     candidates.first().map(|c| c.path.clone())
 }
 
@@ -1025,7 +1029,7 @@ mod tests {
             "ripgrep-15.1.0/doc/guide.md".to_string(),
         ];
 
-        let exe = find_executable(&files, "rg");
+        let exe = find_executable(&files, "rg", None);
         assert_eq!(exe, Some("ripgrep-15.1.0/bin/rg.exe".to_string()));
     }
 
@@ -1049,7 +1053,7 @@ mod tests {
             "ripgrep-15.1.0-aarch64-unknown-linux-gnu/rg".to_string(),
         ];
 
-        let exe = find_executable(&files, "ripgrep");
+        let exe = find_executable(&files, "ripgrep", None);
         // Should find 'rg' even though package name is 'ripgrep'
         // rg is an abbreviation of ripgrep (r + g from rip-grep)
         assert_eq!(
@@ -1073,7 +1077,7 @@ mod tests {
             "ripgrep-15.1.0-x86_64-pc-windows-msvc/rg.exe".to_string(),
         ];
 
-        let exe = find_executable(&files, "ripgrep");
+        let exe = find_executable(&files, "ripgrep", None);
         // Should find 'rg.exe' even though package name is 'ripgrep'
         assert_eq!(
             exe,
