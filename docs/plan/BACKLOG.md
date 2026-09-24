@@ -14,7 +14,6 @@ last checked against the tree — not when it was opened.
 | A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
 | Q-9 | 2026-09-03 | 2026-09-23 | P3 | Backup failures swallowed before mutating repair actions | `commands/repair.rs` `repair_buckets`, `core/config.rs` `create_backup` | XS | Backup failure produces a visible warning or prompts user before destructive repair |
-| OP-4 (P-6) | 2026-09-03 | 2026-09-23 | P3 | Asset filenames lowercased repeatedly and keyword arrays rebuilt per call | `core/platform.rs` `BinarySelector::score_parsed`, `contains_unknown_arch_pattern` | XS | Filenames lowercased once in `ParsedAsset` and keyword tables hoisted to `const` slices |
 | IM-11 | 2026-09-23 | 2026-09-23 | P3 | Self-update skips executable permission and magic-byte checks | `commands/update.rs` `upgrade_self_with_provider`, `installer/extractor.rs` `find_executable` | XS | `find_executable_candidates` called with extraction directory during self-update |
 | IM-15 | 2026-09-23 | 2026-09-23 | P3 | Download filename parsed from URL path instead of using known asset name | `commands/add.rs` `install_package`, `commands/update.rs` `upgrade_self_with_provider` | XS | Sanitized `PlatformBinary.asset_name` used directly as target download filename |
 | CL-3 | 2026-09-23 | 2026-09-23 | P3 | Glossary drift in `meta_version` and misleading `get_or_create_installed` method name | `core/manifest.rs` `CURRENT_META_VERSION`, `core/config.rs` `get_or_create_installed` | XS | Fields renamed to `schema_version` with serde alias; legacy alias method removed |
@@ -122,4 +121,5 @@ last checked against the tree — not when it was opened.
 | BUG (list order) | `list --all` printed scripts in random HashMap order (now sorted by name) | e8dfe08 |
 | OP-3 | `repair` scanned `apps/` three times (`InstalledStore::load_scanned` returns set and entries; `duplicate_keys` takes the entries) | 8cb3ed3 |
 | OP-5 | Candidate executables opened up to three times (`probe_file` reads permission and head bytes through one handle) | c763b1f |
+| OP-4 (P-6) | Asset names lowercased repeatedly, keyword arrays rebuilt per call (`ParsedAsset::from_lower`; helpers take lowercase; `const` tables) | 1b24ee2 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
