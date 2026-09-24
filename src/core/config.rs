@@ -280,7 +280,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "ripgrep-linux.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         }
     }

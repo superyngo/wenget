@@ -122,9 +122,23 @@ impl InstalledStore {
             }
         };
 
+        // `parent_package` is no longer a field; pull it from the raw JSON for migrate
+        let legacy_parents: HashMap<String, String> =
+            serde_json::from_str::<serde_json::Value>(&content)
+                .ok()
+                .and_then(|v| v.get("packages")?.as_object().cloned())
+                .map(|pkgs| {
+                    pkgs.into_iter()
+                        .filter_map(|(k, p)| {
+                            Some((k, p.get("parent_package")?.as_str()?.to_string()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
         // Run the historical fixups (`::` path rename, command_names -> executables)
         // exactly once, here, so freshly written records never carry legacy fields.
-        legacy.migrate();
+        legacy.migrate(&legacy_parents);
 
         let mut written = 0usize;
         let mut dropped: Vec<String> = Vec::new();
@@ -475,7 +489,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "x.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         }
     }

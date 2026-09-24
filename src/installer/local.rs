@@ -161,7 +161,6 @@ pub fn install_local_file(
         command_names: vec![],
         command_name: None,
         asset_name: filename.to_string(),
-        parent_package: None,
         download_url: None,
     })
 }

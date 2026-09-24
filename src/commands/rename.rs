@@ -403,7 +403,6 @@ mod tests {
                 command_names: vec![],
                 command_name: None,
                 asset_name: "hello.py".to_string(),
-                parent_package: None,
                 download_url: None,
             },
         );
@@ -441,7 +440,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "pkg1.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         };
         manifest.packages.insert("pkg1".to_string(), package);
@@ -473,7 +471,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "pkg1.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         };
         manifest.packages.insert("pkg1".to_string(), package1);
@@ -498,7 +495,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "pkg2.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         };
         manifest.packages.insert("pkg2".to_string(), package2);
@@ -577,7 +573,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "confy-windows-x86_64.exe".to_string(),
-            parent_package: None,
             download_url: None,
         };
         manifest.packages.insert("confy-64".to_string(), pkg_cli);
@@ -600,7 +595,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "confy-desktop-windows-x86_64.exe".to_string(),
-            parent_package: None,
             download_url: None,
         };
         manifest

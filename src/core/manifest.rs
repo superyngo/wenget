@@ -454,11 +454,6 @@ pub struct InstalledPackage {
     /// Original asset filename (for variant identification)
     pub asset_name: String,
 
-    /// DEPRECATED: Parent package name (if this is a variant)
-    /// Kept for backward compatibility during migration
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_package: Option<String>,
-
     /// Download URL used to install the package/script
     /// Used for scripts from buckets to detect updates via URL change
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -596,9 +591,10 @@ impl InstalledSet {
     }
 
     /// Migrate old format (single command_name) to new format (command_names vec)
-    /// Also migrates parent_package to repo_name/variant
+    /// Also migrates the legacy `parent_package` field to repo_name/variant;
+    /// `legacy_parents` maps key -> `parent_package`, read from the raw legacy JSON.
     /// Also migrates install paths with `::` to use `-` separator (for Windows compatibility)
-    pub fn migrate(&mut self) {
+    pub fn migrate(&mut self, legacy_parents: &HashMap<String, String>) {
         use std::path::Path;
 
         for (key, package) in self.packages.iter_mut() {
@@ -616,16 +612,9 @@ impl InstalledSet {
                     // New format key: "repo::variant"
                     package.repo_name = key[..pos].to_string();
                     package.variant = Some(key[pos + 2..].to_string());
-                } else if key.contains('-') && package.parent_package.is_some() {
+                } else if let Some(parent) = legacy_parents.get(key).filter(|_| key.contains('-')) {
                     // Old format with parent_package
-                    package.repo_name = package.parent_package.clone().unwrap_or_else(|| {
-                        // Try to extract from key by removing variant suffix
-                        if let Some(pos) = key.rfind('-') {
-                            key[..pos].to_string()
-                        } else {
-                            key.clone()
-                        }
-                    });
+                    package.repo_name = parent.clone();
 
                     // Extract variant from key
                     if let Some(pos) = key.rfind('-') {
@@ -979,7 +968,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "test-windows-x64.zip".to_string(),
-            parent_package: None,
             download_url: None,
         };
 
@@ -1013,7 +1001,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "ripgrep-linux-x64.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         };
 
@@ -1055,7 +1042,6 @@ mod tests {
                 command_names: vec![],
                 command_name: None,
                 asset_name: "rg.tar.gz".to_string(),
-                parent_package: None,
                 download_url: None,
             },
         );
@@ -1079,7 +1065,6 @@ mod tests {
                 command_names: vec!["fzf".to_string()],
                 command_name: None,
                 asset_name: "fzf.tar.gz".to_string(),
-                parent_package: None,
                 download_url: None,
             },
         );
@@ -1144,7 +1129,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "test.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         };
 
@@ -1196,7 +1180,7 @@ mod tests {
         );
 
         let mut manifest: InstalledSet = serde_json::from_str(&json).unwrap();
-        manifest.migrate();
+        manifest.migrate(&HashMap::new());
 
         let pkg = manifest.get_package("myapp").unwrap();
         // executables should now have the mapping
@@ -1226,7 +1210,7 @@ mod tests {
         }"#;
 
         let mut manifest: InstalledSet = serde_json::from_str(json).unwrap();
-        manifest.migrate();
+        manifest.migrate(&HashMap::new());
 
         let pkg = manifest.get_package("gone").unwrap();
         // Fallback: command_name used as both key and value
@@ -1255,7 +1239,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: "ripgrep-linux.tar.gz".to_string(),
-            parent_package: None,
             download_url: None,
         }
     }

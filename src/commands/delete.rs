@@ -739,7 +739,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: String::new(),
-            parent_package: None,
             download_url: None,
         }
     }

@@ -532,7 +532,6 @@ impl PackageInstaller<'_> {
             command_names: vec![],
             command_name: None,
             asset_name: binary.asset_name.clone(),
-            parent_package: None, // Deprecated field
             download_url: None,
         };
 

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(manifest): the deprecated `parent_package` field is gone from `InstalledPackage`; legacy
+  `installed.json` migration reads it from the raw JSON, and new records no longer write it (CL-5).
 - refactor(manifest): `InstalledPackage::meta_version` is now `schema_version` in code (the on-disk
   key stays `meta_version` for older builds); the `get_or_create_installed` alias is removed (CL-3).
 - fix(launcher): Unix script wrappers single-quote the script path (no `$`/backtick expansion);

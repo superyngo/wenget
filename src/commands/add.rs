@@ -412,7 +412,6 @@ fn install_single_script(
         command_names: vec![],
         command_name: None,
         asset_name: format!("{}.{}", name, script_type.extension()),
-        parent_package: None,
         download_url: None,
     };
 
@@ -1457,7 +1456,6 @@ fn install_script_from_bucket(
         command_names: vec![],
         command_name: None,
         asset_name: format!("{}.{}", name, script_type.extension()),
-        parent_package: None,
         download_url: Some(url.to_string()),
     };
     record_installed(paths, installed, name.to_string(), inst_pkg)?;
@@ -1492,7 +1490,6 @@ mod tests {
             command_names: vec![],
             command_name: None,
             asset_name: String::new(),
-            parent_package: None,
             download_url: None,
         };
 
