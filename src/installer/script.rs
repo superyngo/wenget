@@ -257,30 +257,42 @@ pub fn create_script_launcher(
     Ok(())
 }
 
-/// Escape special characters in a path string for use in Windows batch scripts.
+/// Escape text placed inside a double-quoted string in a `.cmd` file
 ///
-/// Batch scripts interpret characters like &, |, <, >, ^, and % specially.
-/// This function escapes them to ensure paths with these characters work correctly.
-#[cfg(windows)]
-fn escape_batch_path(path: &str) -> String {
-    path.chars()
-        .flat_map(|c| match c {
-            // ^ is the escape character in batch, so double it
-            '^' => vec!['^', '^'],
-            // & needs escaping
-            '&' => vec!['^', '&'],
-            // | needs escaping
-            '|' => vec!['^', '|'],
-            // < and > need escaping
-            '<' => vec!['^', '<'],
-            '>' => vec!['^', '>'],
-            // % needs to be doubled in batch scripts
-            '%' => vec!['%', '%'],
-            // ! needs escaping when delayed expansion is enabled (rare but possible)
-            '!' => vec!['^', '!'],
-            _ => vec![c],
-        })
-        .collect()
+/// Inside quotes cmd treats `& | < > ^` literally, so only `%` (variable
+/// expansion) must be doubled; a `"` cannot occur in a Windows path.
+#[cfg(any(windows, test))]
+pub(crate) fn escape_cmd_quoted(text: &str) -> String {
+    text.replace('%', "%%")
+}
+
+/// Quote `text` as one POSIX shell word
+#[cfg(any(unix, test))]
+pub(crate) fn sh_single_quote(text: &str) -> String {
+    format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+#[cfg(test)]
+mod quoting_tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_cmd_quoted() {
+        assert_eq!(
+            escape_cmd_quoted(r"..\apps\a&b^c\x.exe"),
+            r"..\apps\a&b^c\x.exe"
+        );
+        assert_eq!(
+            escape_cmd_quoted(r"..\apps\100%\x.exe"),
+            r"..\apps\100%%\x.exe"
+        );
+    }
+
+    #[test]
+    fn test_sh_single_quote() {
+        assert_eq!(sh_single_quote("/a b/$x`y`\\z"), "'/a b/$x`y`\\z'");
+        assert_eq!(sh_single_quote("/it's"), r"'/it'\''s'");
+    }
 }
 
 /// Create script shim on Windows
@@ -298,8 +310,8 @@ fn create_script_shim_windows(
         .context("Failed to calculate relative path")?;
     let relative_path_str = relative_path.display().to_string().replace('/', "\\");
 
-    // Escape special batch characters in the path
-    let escaped_path = escape_batch_path(&relative_path_str);
+    // Escape for use inside the quoted "%~dp0..." argument
+    let escaped_path = escape_cmd_quoted(&relative_path_str);
 
     let shim_content = match script_type {
         ScriptType::PowerShell => {
@@ -361,14 +373,14 @@ fn create_script_shim_unix(
             let wrapper_content = match script_type {
                 ScriptType::PowerShell => {
                     format!(
-                        "#!/bin/sh\nexec pwsh -NoProfile -File \"{}\" \"$@\"\n",
-                        script_path.display()
+                        "#!/bin/sh\nexec pwsh -NoProfile -File {} \"$@\"\n",
+                        sh_single_quote(&script_path.display().to_string())
                     )
                 }
                 ScriptType::Python => {
                     format!(
-                        "#!/bin/sh\nexec python3 \"{}\" \"$@\"\n",
-                        script_path.display()
+                        "#!/bin/sh\nexec python3 {} \"$@\"\n",
+                        sh_single_quote(&script_path.display().to_string())
                     )
                 }
                 ScriptType::Batch => {

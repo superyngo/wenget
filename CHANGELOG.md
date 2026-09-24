@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(launcher): Unix script wrappers single-quote the script path (no `$`/backtick expansion);
+  Windows `.cmd` shims only double `%` inside the quoted path, and package shims now escape it too.
+  The old `^` escapes were kept literally inside quotes and broke such paths (S-7).
 - fix(repair): a corrupt `buckets.json` is never reset without a backup; if the backup fails,
   `repair` stops with an error and normal commands warn and leave the file untouched (Q-9).
 - fix(download): downloads are saved under the sanitized release asset name instead of the last

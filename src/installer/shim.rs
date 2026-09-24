@@ -15,7 +15,9 @@ pub fn create_shim(target: &Path, shim: &Path, _name: &str) -> Result<()> {
 
     let shim_content = format!(
         "@echo off\r\n\"%~dp0{}\" %*\r\n",
-        relative_path.display().to_string().replace('/', "\\")
+        crate::installer::script::escape_cmd_quoted(
+            &relative_path.display().to_string().replace('/', "\\")
+        )
     );
 
     // Create parent directory
