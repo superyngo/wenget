@@ -1,5 +1,6 @@
 //! Add (Install) command implementation
 
+use crate::cache::ManifestCache;
 use crate::core::manifest::{PackageSource, ScriptType};
 use crate::core::{Config, InstalledPackage, Platform, WenPaths};
 use crate::downloader;
@@ -94,10 +95,7 @@ impl BatchReport {
 
 /// Install packages (smart detection: package names from cache or GitHub URLs)
 pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
-    let yes = opts.yes;
-    let script_name = opts.script_name.clone();
     let config = Config::new()?;
-    let paths = config.paths().clone();
 
     // Ensure initialized
     if !config.is_initialized() {
@@ -105,6 +103,23 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     }
 
     let mut installed = config.get_or_create_installed()?;
+    run_with(&config, &mut installed, None, names, opts)
+}
+
+/// Install with state the caller already loaded
+///
+/// `update` passes its `InstalledSet` and freshly synced `ManifestCache` so neither is
+/// re-read from disk; `cache: None` loads (or rebuilds) the cache as needed.
+pub fn run_with(
+    config: &Config,
+    installed: &mut crate::core::InstalledSet,
+    cache: Option<ManifestCache>,
+    names: Vec<String>,
+    opts: InstallOptions,
+) -> Result<()> {
+    let yes = opts.yes;
+    let script_name = opts.script_name.clone();
+    let paths = config.paths().clone();
 
     if names.is_empty() {
         println!("{}", "No package names or URLs provided".yellow());
@@ -143,9 +158,9 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     // Handle script installations
     if !script_inputs.is_empty() {
         failures += install_scripts(
-            &config,
+            config,
             &paths,
-            &mut installed,
+            installed,
             script_inputs,
             yes,
             script_name.as_deref(),
@@ -155,9 +170,9 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     // Handle local file installations
     if !local_inputs.is_empty() {
         failures += install_local_files(
-            &config,
+            config,
             &paths,
-            &mut installed,
+            installed,
             local_inputs,
             yes,
             script_name.as_deref(),
@@ -167,9 +182,9 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     // Handle direct URL installations
     if !url_inputs.is_empty() {
         failures += install_from_urls(
-            &config,
+            config,
             &paths,
-            &mut installed,
+            installed,
             url_inputs,
             yes,
             script_name.as_deref(),
@@ -179,12 +194,13 @@ pub fn run(names: Vec<String>, opts: InstallOptions) -> Result<()> {
     // Handle package installations (existing logic)
     if !package_inputs.is_empty() {
         failures += install_packages(
-            &config,
+            config,
             &paths,
-            &mut installed,
+            installed,
             package_inputs,
             &opts,
             &crate::utils::prompt::TerminalUi,
+            cache,
         )?;
     }
 
@@ -674,6 +690,7 @@ fn install_packages(
     names: Vec<&String>,
     opts: &InstallOptions,
     ui: &dyn InstallUi,
+    cache: Option<ManifestCache>,
 ) -> Result<usize> {
     let yes = opts.yes;
     let custom_name = opts.script_name.as_deref();
@@ -700,7 +717,10 @@ fn install_packages(
         custom_platform.or_else(|| config.preferences().preferred_platform.as_deref());
 
     // Load cache once for both script lookup and package resolution
-    let cache = config.get_or_rebuild_cache()?;
+    let mut cache = match cache {
+        Some(cache) => cache,
+        None => config.get_or_rebuild_cache()?,
+    };
 
     // Resolve all inputs and collect packages/scripts to install
     let resolver = PackageResolver::new(config, &cache)?;
@@ -1272,7 +1292,7 @@ fn install_packages(
 
     // Update cache with latest package info from GitHub API
     if !packages_to_cache.is_empty() {
-        match update_cache_with_packages(config, packages_to_cache) {
+        match update_cache_with_packages(config, &mut cache, packages_to_cache) {
             Ok(count) => {
                 log::info!("Updated cache with {} latest package(s)", count);
             }
@@ -1325,11 +1345,9 @@ fn install_packages(
 /// Update manifest cache with latest package info from GitHub API
 fn update_cache_with_packages(
     config: &Config,
+    cache: &mut ManifestCache,
     packages: Vec<(crate::core::Package, PackageSource)>,
 ) -> Result<usize> {
-    // Load current cache
-    let mut cache = config.get_or_rebuild_cache()?;
-
     // Save count before moving packages
     let count = packages.len();
 
@@ -1343,7 +1361,7 @@ fn update_cache_with_packages(
     }
 
     // Save updated cache
-    config.save_cache(&cache)?;
+    config.save_cache(cache)?;
 
     Ok(count)
 }

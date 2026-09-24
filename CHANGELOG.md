@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- perf(update): `update` hands its loaded Installed set and synced cache to the install step, and
+  `add` reuses its in-memory cache when recording new versions, so neither is re-read from disk (OP-2).
 - refactor: remove dead code previously hidden by `#[allow(dead_code)]`; the remaining allows are
   scoped to the platform or test build that needs them (SI-7).
 - refactor(http): one process-wide `reqwest` client shared by `HttpClient`, downloads, and checksum

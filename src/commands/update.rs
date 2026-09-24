@@ -153,7 +153,7 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
     }
 
     let config = Config::new()?;
-    let installed = config.get_or_create_installed()?;
+    let mut installed = config.get_or_create_installed()?;
 
     if installed.packages.is_empty() {
         println!("{}", "No packages installed".yellow());
@@ -319,7 +319,10 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
     // Use add command to upgrade (reinstall). The platform override (if any)
     // is threaded through so updates honor an explicit `-p` target; when None,
     // the add path falls back to the `preferred_platform` config setting.
-    add::run(
+    add::run_with(
+        &config,
+        &mut installed,
+        Some(cache),
         to_run,
         add::InstallOptions {
             yes,
