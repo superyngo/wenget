@@ -37,24 +37,7 @@ pub fn run(
         return Ok(());
     }
 
-    // Compile glob patterns
-    let glob_patterns: Vec<Pattern> = names
-        .iter()
-        .map(|p| Pattern::new(p))
-        .collect::<Result<_, _>>()?;
-
-    // Find matching packages (match against both key and repo_name)
-    let matching_packages: Vec<String> = installed
-        .packages
-        .iter()
-        .filter(|(key, pkg)| {
-            glob_patterns
-                .iter()
-                .any(|pattern| pattern.matches(key) || pattern.matches(&pkg.repo_name))
-        })
-        .map(|(key, _)| key.clone())
-        .collect();
-
+    let matching_packages = match_installed(&installed, &names)?;
     if matching_packages.is_empty() {
         println!(
             "{}",
@@ -78,71 +61,16 @@ pub fn run(
         &matching_packages,
         variant_filter.as_deref(),
     );
-    let mut final_to_delete: Vec<String> = Vec::new();
+    print_delete_plan(&installed, &packages_to_delete, variant_filter.as_deref());
 
-    // Show packages to delete
-    println!("{}", "Packages to delete:".bold());
-    for (repo_name, variants) in &packages_to_delete {
-        // Show repo name with variant filter info if applicable
-        if let Some(ref filter) = variant_filter {
-            println!("  • {} (variant: {})", repo_name.red(), filter);
-        } else {
-            println!("  • {} (all variants)", repo_name.red());
-        }
-        for variant_key in variants {
-            let var_pkg = installed.get_package(variant_key).unwrap();
-            let variant_label = var_pkg.variant.as_deref().unwrap_or("(default)");
-            println!("    └─ {} v{}", variant_label.dimmed(), var_pkg.version);
-        }
-    }
-
-    // If there are variants and not using -y, ask which ones to delete
-    if !yes {
-        for (repo_name, variants) in &packages_to_delete {
-            if variants.len() == 1 {
-                // Only one variant, just add it
-                final_to_delete.push(variants[0].clone());
-            } else {
-                // Has multiple variants, show selection dialog
-                use dialoguer::MultiSelect;
-
-                let items: Vec<String> = variants
-                    .iter()
-                    .map(|key| {
-                        let pkg = installed.get_package(key).unwrap();
-                        let variant_label = pkg.variant.as_deref().unwrap_or("(default)");
-                        format!("{} ({})", variant_label, pkg.asset_name)
-                    })
-                    .collect();
-
-                println!(
-                    "\nFound {} variant(s) of '{}'. Select which to remove:",
-                    variants.len(),
-                    repo_name
-                );
-
-                let selections = MultiSelect::new()
-                    .with_prompt("Space to select, Enter to confirm")
-                    .items(&items)
-                    .defaults(&vec![true; items.len()]) // Default: all selected
-                    .interact()?;
-
-                if selections.is_empty() {
-                    println!("  Skipped {}", repo_name);
-                    continue;
-                }
-
-                for &idx in &selections {
-                    final_to_delete.push(variants[idx].clone());
-                }
-            }
-        }
+    let final_to_delete = if yes {
+        packages_to_delete
+            .into_iter()
+            .flat_map(|(_, v)| v)
+            .collect()
     } else {
-        // -y flag: delete all
-        for (_repo_name, variants) in &packages_to_delete {
-            final_to_delete.extend(variants.clone());
-        }
-    }
+        choose_variants(&installed, &packages_to_delete)?
+    };
 
     if final_to_delete.is_empty() {
         println!("No packages selected for deletion");
@@ -157,7 +85,6 @@ pub fn run(
 
     println!();
 
-    // Delete each package
     let mut success_count = 0;
     let mut fail_count = 0;
 
@@ -190,6 +117,90 @@ pub fn run(
     }
 
     Ok(())
+}
+
+/// Installed keys whose key or repo name matches any of the glob patterns in `names`
+fn match_installed(installed: &crate::core::InstalledSet, names: &[String]) -> Result<Vec<String>> {
+    let glob_patterns: Vec<Pattern> = names
+        .iter()
+        .map(|p| Pattern::new(p))
+        .collect::<Result<_, _>>()?;
+
+    Ok(installed
+        .packages
+        .iter()
+        .filter(|(key, pkg)| {
+            glob_patterns
+                .iter()
+                .any(|pattern| pattern.matches(key) || pattern.matches(&pkg.repo_name))
+        })
+        .map(|(key, _)| key.clone())
+        .collect())
+}
+
+/// Print each repo about to be deleted with its installed variants
+fn print_delete_plan(
+    installed: &crate::core::InstalledSet,
+    packages_to_delete: &[(String, Vec<String>)],
+    variant_filter: Option<&str>,
+) {
+    println!("{}", "Packages to delete:".bold());
+    for (repo_name, variants) in packages_to_delete {
+        if let Some(filter) = variant_filter {
+            println!("  • {} (variant: {})", repo_name.red(), filter);
+        } else {
+            println!("  • {} (all variants)", repo_name.red());
+        }
+        for variant_key in variants {
+            let var_pkg = installed.get_package(variant_key).unwrap();
+            let variant_label = var_pkg.variant.as_deref().unwrap_or("(default)");
+            println!("    └─ {} v{}", variant_label.dimmed(), var_pkg.version);
+        }
+    }
+}
+
+/// Ask which variants to remove for every repo that has more than one
+fn choose_variants(
+    installed: &crate::core::InstalledSet,
+    packages_to_delete: &[(String, Vec<String>)],
+) -> Result<Vec<String>> {
+    use dialoguer::MultiSelect;
+
+    let mut chosen = Vec::new();
+    for (repo_name, variants) in packages_to_delete {
+        if variants.len() == 1 {
+            chosen.push(variants[0].clone());
+            continue;
+        }
+
+        let items: Vec<String> = variants
+            .iter()
+            .map(|key| {
+                let pkg = installed.get_package(key).unwrap();
+                let variant_label = pkg.variant.as_deref().unwrap_or("(default)");
+                format!("{} ({})", variant_label, pkg.asset_name)
+            })
+            .collect();
+
+        println!(
+            "\nFound {} variant(s) of '{}'. Select which to remove:",
+            variants.len(),
+            repo_name
+        );
+
+        let selections = MultiSelect::new()
+            .with_prompt("Space to select, Enter to confirm")
+            .items(&items)
+            .defaults(&vec![true; items.len()]) // Default: all selected
+            .interact()?;
+
+        if selections.is_empty() {
+            println!("  Skipped {}", repo_name);
+            continue;
+        }
+        chosen.extend(selections.into_iter().map(|idx| variants[idx].clone()));
+    }
+    Ok(chosen)
 }
 
 /// Delete a single package

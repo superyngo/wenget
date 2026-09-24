@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(delete, info): `delete::run` split into `match_installed`, `print_delete_plan` and
+  `choose_variants`; the platform list of `info` moved to `print_platforms` with a pure
+  `binary_status` helper. Output is unchanged (CL-6).
 - refactor(installer): command-name planning and obsolete-launcher cleanup moved out of
   `PackageInstaller::install` into `plan_launchers` and `remove_obsolete_commands` (CL-6).
 - refactor(add): `install_packages` (~650 lines) split into phases: `resolve_inputs`,

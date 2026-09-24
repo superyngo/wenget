@@ -198,7 +198,33 @@ fn display_package_info(
         println!("  {} {}", "Status:".bold(), "Not installed".yellow());
     }
 
-    // Supported platforms (enhanced: show multiple packages per platform)
+    print_platforms(pkg, installed);
+    Ok(())
+}
+
+/// The binary's variant and the ` [Installed: cmds]` marker when that variant is
+/// installed for this platform (empty otherwise)
+fn binary_status(
+    installed: &crate::core::InstalledSet,
+    pkg_name: &str,
+    asset_name: &str,
+    platform: &str,
+) -> (Option<String>, String) {
+    let variant = crate::core::manifest::extract_variant_from_asset(asset_name, pkg_name);
+    let installed_key = crate::core::manifest::generate_installed_key(pkg_name, variant.as_deref());
+    let status = match installed.get_package(&installed_key) {
+        Some(inst_pkg) if inst_pkg.platform == platform => {
+            format!(" [Installed: {}]", inst_pkg.get_command_names().join(", "))
+                .green()
+                .to_string()
+        }
+        _ => String::new(),
+    };
+    (variant, status)
+}
+
+/// Supported platforms, listing every binary where a platform has several
+fn print_platforms(pkg: &crate::core::Package, installed: &crate::core::InstalledSet) {
     println!();
     println!(
         "  {} {} platform(s)",
@@ -211,27 +237,8 @@ fn display_package_info(
 
     for platform in platforms {
         let binaries = &pkg.platforms[platform];
-        if binaries.len() == 1 {
-            let b = &binaries[0];
-
-            // Check if this binary is installed
-            let variant =
-                crate::core::manifest::extract_variant_from_asset(&b.asset_name, &pkg.name);
-            let installed_key =
-                crate::core::manifest::generate_installed_key(&pkg.name, variant.as_deref());
-            let install_status = if let Some(inst_pkg) = installed.get_package(&installed_key) {
-                // Only show [Installed] if the platform matches
-                if inst_pkg.platform == *platform {
-                    format!(" [Installed: {}]", inst_pkg.get_command_names().join(", "))
-                        .green()
-                        .to_string()
-                } else {
-                    String::new()
-                }
-            } else {
-                String::new()
-            };
-
+        if let [b] = binaries.as_slice() {
+            let (_, install_status) = binary_status(installed, &pkg.name, &b.asset_name, platform);
             println!(
                 "    {} {} ({:.2} MB){}",
                 "•".cyan(),
@@ -239,47 +246,27 @@ fn display_package_info(
                 b.size as f64 / 1_048_576.0,
                 install_status
             );
-        } else {
+            continue;
+        }
+        println!(
+            "    {} {} [{} packages]",
+            "•".cyan(),
+            platform,
+            binaries.len()
+        );
+        for b in binaries {
+            let (variant, install_status) =
+                binary_status(installed, &pkg.name, &b.asset_name, platform);
             println!(
-                "    {} {} [{} packages]",
-                "•".cyan(),
-                platform,
-                binaries.len()
+                "      {} {} ({:.2} MB) [{}]{}",
+                "─".dimmed(),
+                b.asset_name,
+                b.size as f64 / 1_048_576.0,
+                variant.as_deref().unwrap_or("(default)"),
+                install_status
             );
-            for b in binaries {
-                // Extract variant and check installation status
-                let variant =
-                    crate::core::manifest::extract_variant_from_asset(&b.asset_name, &pkg.name);
-                let installed_key =
-                    crate::core::manifest::generate_installed_key(&pkg.name, variant.as_deref());
-
-                let variant_label = variant.as_deref().unwrap_or("(default)");
-                let install_status = if let Some(inst_pkg) = installed.get_package(&installed_key) {
-                    // Only show [Installed] if the platform matches
-                    if inst_pkg.platform == *platform {
-                        format!(" [Installed: {}]", inst_pkg.get_command_names().join(", "))
-                            .green()
-                            .to_string()
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                };
-
-                println!(
-                    "      {} {} ({:.2} MB) [{}]{}",
-                    "─".dimmed(),
-                    b.asset_name,
-                    b.size as f64 / 1_048_576.0,
-                    variant_label,
-                    install_status
-                );
-            }
         }
     }
-
-    Ok(())
 }
 
 /// Display detailed information for a single script
