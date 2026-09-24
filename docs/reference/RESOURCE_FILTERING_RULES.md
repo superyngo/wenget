@@ -4,13 +4,14 @@
 > 未來新增或修改任何資源分析／篩選規則時，須先更新本文件，再修改對應程式碼。
 > 每條規則均以 `檔案:函式`（含行號僅供參考，以函式名為準）標註實作位置。
 
-分析流程分為三大階段，另有數個輔助分類機制：
+分析流程主要涵蓋以下階段，另有數個輔助分類機制：
 
 | 階段 | 內容 | 主要程式位置 |
 |------|------|-------------|
 | **階段一** | Release assets → 各平台分桶（platform buckets） | `src/core/platform.rs` — `BinarySelector::extract_platforms` → `score_parsed` |
 | **階段二** | 目前平台 → 選定要安裝的平台分桶 | `src/core/platform.rs` — `possible_identifiers` / `find_best_match` / `fallback_identifiers` / `match_override` |
-| **階段三** | 解壓後檔案 → 選定可執行檔 | `src/installer/extractor.rs` — `find_executable_candidates` |
+| **候選選定** | 平台候選二進位檔 → 選定下載資產（過濾／去重／選取） | `src/installer/package.rs` — `filter_binaries`；`src/commands/add.rs` — `dedupe_same_variant` / `select_packages_for_platform` |
+| **階段三** | 解壓後檔案 → 選定可執行檔 | `src/installer/extractor.rs` — `find_executable_candidates`；`src/installer/package.rs` — `select_executables` |
 | **輔助** | Release 取得、變體（variant）抽取、命令名正規化、glob 比對等 | 見第 5 節 |
 
 > **評分引擎架構**：階段一的所有資產評分均由單一評分引擎 `BinarySelector::score_parsed`
@@ -72,7 +73,7 @@
 > 注意：此清單與 G1（`should_exclude`）、階段三的 `is_excluded_file` 是**三份獨立清單，服務不同階段，不可合併**。
 
 #### OS 偵測（`ParsedAsset::detect_os`，依序）
-1. 明確 OS 關鍵字，**檢查順序固定為 [MacOS, FreeBSD, Linux, Windows]**（因 "darwin" 含子字串 "win"，macOS 必須先於 Windows）：
+1. 明確 OS 關鍵字，**檢查順序固定為 [MacOS, FreeBSD, Linux, Windows]**（因 "darwin" 含子字串 "win"，歷史上 macOS 必須先於 Windows；現行 `ParsedAsset::contains_keyword` 的字詞邊界匹配機制亦能防止此類子字串誤判，順序保留以確保比對確定性）：
    - Windows：`windows win64 win32 pc-windows win`
    - Linux：`linux unknown-linux`
    - macOS：`darwin macos apple osx mac`
@@ -135,12 +136,33 @@
 
 ---
 
+## 2.5 候選二進位檔篩選與選定（平台分桶 → 下載資產）
+
+進入點：`prepare_plan_binaries`（`src/commands/add.rs`）。
+在階段二選定目標平台的二進位檔列表（`Vec<PlatformBinary>`）後、進入下載與解壓階段前，`add` 與 `update` 依序執行以下三道處理：
+
+1. **候選過濾（`filter_binaries`，`src/installer/package.rs`）**：
+   - **更新模式**：優先以既有安裝資產檔名比對（`normalize_asset_for_matching` 去除副檔名與版本段作為樣板），若命中則僅保留該資產。
+   - **指定變體**：若未命中或為非更新模式，且使用者指定了 `--variant` 旗標（或以 `repo::variant` 輸入），則僅保留 `extract_variant_from_asset` 抽取結果與該變體相符者。
+   - **無過濾條件**：若兩者皆無，則保留該平台的所有候選二進位檔。過濾後若為空則報錯終止。
+2. **相同變體去重（`dedupe_same_variant`，`src/commands/add.rs`）**：
+   - 同一變體若同時發布多種壓縮格式（如同時提供 `.tar.gz` 與 `.zip`），直接安裝會產生相同安裝鍵而互相覆蓋。
+   - 對抽取出相同變體名稱（`extract_variant_from_asset`）的候選者，保留 `FileExtension::format_score` 最高者；若分數相同則保留 manifest 中原先排序在前者（新機制於 commit a8a031b 引入）。
+3. **平台套件選定（`select_packages_for_platform`，`src/commands/add.rs`）**：
+   - **單一候選**：自動選定該資產。
+   - **多個候選**：
+     - 若帶有 `--yes` / `-y`：在更新模式下（表示資產樣板比對失敗，發行結構可能改變），採 best-effort 方式印出警告並選定第一個二進位檔；非更新模式（初次安裝）則自動全數選定。
+     - 若未帶 `--yes`：列出所有候選資產名稱與大小，以 `ui.multi_select` 互動選單供使用者勾選。
+
+---
+
 ## 3. 階段三：解壓後檔案 → 可執行檔選定
 
 進入點：`find_executable_candidates`（`src/installer/extractor.rs`）。
-套件安裝（`src/commands/add.rs`）使用 `find_executable_candidates`，並可能同時選定多個可執行檔：
+解壓後的執行檔選定由 `PackageInstaller::select_executables`（`src/installer/package.rs`）統一處理，並可能同時選定多個可執行檔：
 - 單一候選：自動選定。
-- 多個候選（`score > 0`）：候選 ≤ 3 個或帶 `--yes` 時自動全數選定；> 3 個且未帶 `--yes` 時以 `MultiSelect` 互動選取；更新模式下保留既有執行檔。
+- 更新模式（`select_executables_update`）：保留既有已安裝之可執行檔路徑；若舊檔名消失則提示使用者選取替代項目（或在 `--yes` 時略過）。
+- 初次安裝／多候選（`select_executables_multi`）：候選（`score > 0` 或具 Unix 執行權限）≤ 3 個或帶 `--yes` 時自動全數選定；> 3 個且未帶 `--yes` 時以 `MultiSelect` 互動選取。
 `find_executable` 僅取評分最高的第一名，專供自身更新（`src/commands/update.rs` 之 `upgrade_self_with_provider`）使用。
 
 ### 3.1 汰除規則（Gates，**依序執行**，任一命中即跳過該檔案）
@@ -179,16 +201,15 @@
 
 ## 4. 變體（Variant）抽取規則
 
-實作：`extract_variant_from_asset`（`src/core/manifest.rs`）。用於辨識同 repo 多變體（如 `bun` / `bun-baseline` / `bun-profile`）。**處理順序固定**：
+實作：`extract_variant_from_asset`（`src/core/manifest.rs`）。用於辨識同 repo 多變體（如 `bun` / `bun-baseline` / `bun-profile`）。採用分詞解析器（token parser）依序處理：
 
-1. 去除副檔名：`.zip .tar.gz .tar.xz .exe .7z .tgz`
-2. 去除 repo 名前綴（不分大小寫），再去除前導 `-`/`_`
-3. 底線正規化為連字號
-4. 去除版本號分段（以 `-` 分段後，過濾「可含 `v` 前綴、以數字開頭且含 `.`、全為數字與點」的分段）
-5. 去除 `unknown` 關鍵字（Rust target triple 常見）
-6. **依特定性由高至低**移除平台樣式（先 OS-arch-compiler 組合 → OS-arch 組合 → 純 arch → 純 OS → 其他：win32/win64/win/musl/gnu/msvc/pc），每個 pattern 依序嘗試 `-pattern`、`_pattern`、裸 pattern 三種形式
-7. 清理連續 `--`/`__`，修剪首尾 `-`/`_`
-8. 剩餘為空 → 無變體（`None`）；否則即為變體名
+1. **去除已知副檔名**：反覆比對常數 `ASSET_EXTENSIONS`（不分大小寫，包含常見壓縮檔與二進位副檔名如 `.tar.gz`、`.tar.xz`、`.zip`、`.7z`、`.exe`、`.dmg`、`.deb` 等）修剪檔名結尾。
+2. **分詞切割與排除版本號**：輔助函式 `split` 先以 `-` 與 `_` 切割分詞；過濾掉符合點號版本格式的分詞（`is_dotted_version`：可具 `v`/`V` 前綴，含點號且由點號分隔之各段全為非空純數字，如 `1.2.3`、`v0.8`）；其餘分詞再以 `.` 切開並排除空分詞。
+3. **去除套件名前綴**：對套件名（`repo_name`）同樣執行 `split` 取得 `repo_tokens`；若資產分詞開頭與 `repo_tokens` 完全一致（不分大小寫），則移除該前綴分詞（`tokens.drain(..repo_tokens.len())`）。
+4. **過濾平台關鍵分詞**：遍歷剩餘分詞，比對常數 `PLATFORM_TOKENS`（包含主要 OS、架構、vendor、libc 關鍵字如 `windows`、`linux`、`darwin`、`x86_64`、`amd64`、`arm64`、`unknown`、`gnu`、`musl`、`msvc` 等；保留其他非主要平台詞如 `netbsd`、`android`、`i386` 等以利區分變體）：
+   - 特殊處理：若分詞為 `x86` 且緊接 `64`（因 `_` 切割 `x86_64`），兩者一併跳過。
+   - 凡不分大小寫命中 `PLATFORM_TOKENS` 者一律剔除；其餘分詞保留。
+5. **組合變體名稱**：若保留之分詞為空，表示無變體（回傳 `None`）；否則以 `-` 連接保留分詞作為變體名（如 `baseline`、`desktop`）。
 
 安裝鍵格式（`generate_installed_key`）：無變體 → `{repo_name}`；有變體 → `{repo_name}::{variant}`。
 
@@ -209,7 +230,7 @@
 - **輸入分類**（`PackageInput::parse`）：以 `http://`、`https://`、`github.com/` 開頭 → DirectUrl（並經 `normalize_github_url` 正規化：http→https、補 https、去尾斜線、去 `.git`）；否則 → CacheName。
 - **Cache 名稱解析**（`resolve_from_cache`，依序）：
   1. `repo::variant` 格式先取 `::` 前的 base name
-  2. 含 `*` → glob 比對（`glob_match`：支援任意位置多個 `*` 萬用字元，錨定頭尾）；不含 → 完全相符
+  2. 含 glob 萬用字元（`is_glob` 檢查 `*`、`?`、`[...]`）→ 以 `glob::Pattern` 進行 glob 比對（`glob_match`）；不含 → 完全相符
   3. Cache 未命中且非 glob → 查已安裝套件（各套件記錄 `package.json`）中 DirectRepo 來源者，改走 URL 解析
   4. 皆未命中 → 依情境報錯；非 glob 名稱會以 `core::fuzzy::suggest` 附上「Did you mean」建議（`add` 同時涵蓋套件與腳本名稱）
 
@@ -225,5 +246,5 @@
 
 - [ ] 先更新本文件對應章節，再改程式碼
 - [ ] 三份排除清單（1.3 裸執行檔排除、1.1 G1、3.1 G1）**各自獨立**，確認改到正確的一份
-- [ ] 順序敏感規則（1.3 OS 偵測順序、4 平台樣式移除順序、3.1 gates 順序）改動時，確認既有測試涵蓋順序行為
+- [ ] 順序敏感規則（1.3 OS 偵測順序、3.1 gates 順序）改動時，確認既有測試涵蓋順序行為
 - [ ] 執行 `cargo test`（platform、extractor、manifest 模組均有行為測試）

@@ -9,9 +9,10 @@ A remote or local **Manifest** source added to wenget's config, identified by na
 _Avoid_: Repo (when referring to the bucket concept, not the underlying GitHub repository).
 
 **Manifest**:
-The `manifest.json` produced by a **Bucket**, mapping **Package** names to release metadata and
-binaries. Installed packages record their origin via `PackageSource` source kinds (`Bucket`,
-`DirectRepo`, or `Script`). Backed by `src/core/manifest.rs`.
+The `manifest.json` produced by a **Bucket**, mapping **Package** names and bucket scripts (**Script**
+/ `ScriptItem`) to release metadata, binaries, or script sources. Installed packages record their
+origin via `PackageSource` source kinds (`Bucket`, `DirectRepo`, or `Script`). Backed by
+`src/core/manifest.rs`.
 _Avoid_: Registry, index.
 
 **Manifest cache**:
@@ -25,10 +26,18 @@ A named, installable piece of software resolved from a **Bucket** or a direct Gi
 have zero or more **Variant**s.
 _Avoid_: App, tool (when referring to the resolved package specifically).
 
+**Script**:
+A standalone executable script cataloged in a **Manifest** (`ScriptItem` in `src/core/manifest.rs`)
+or installed from a URL or local file. Recorded as an **Installed package** with
+`PackageSource::Script` and executed through a dedicated script **Launcher** created by
+`installer::script::create_script_launcher`.
+_Avoid_: Binary, standalone tool (when referring to a script package specifically).
+
 **Variant**:
 A named alternate build of the same **Package** released under one repo (e.g. `bun-baseline`,
-`bun-profile`). Extracted from **Asset** filenames by `extract_variant_from_asset`. **Installed key**
-is `{repo_name}::{variant}`.
+`bun-profile`). Extracted from **Asset** filenames by `extract_variant_from_asset`. When the same
+variant ships in multiple archive formats, duplicates are collapsed to the highest **Format score**
+by `dedupe_same_variant`. **Installed key** is `{repo_name}::{variant}`.
 _Avoid_: Flavor, edition.
 
 **Asset**:
@@ -41,6 +50,12 @@ An `{os}-{arch}` (or `{os}-{arch}-{compiler}`) identifier used to bucket **Asset
 the current machine to the best bucket. See `Platform::possible_identifiers` /
 `Platform::find_best_match`.
 _Avoid_: Target (reserved for Rust target triples specifically).
+
+**Format score**:
+An integer preference score (`FileExtension::format_score` in `src/core/platform.rs`) assigned to
+an archive or binary format. Used during **Platform** asset scoring and to pick the preferred archive
+format when the same **Variant** ships in several formats (e.g. `.tar.gz` over `.zip`).
+_Avoid_: —
 
 **Installed package**:
 A **Package** wenget has installed, described by its **Package record**: source, version,
@@ -71,6 +86,13 @@ rename (`src/installer/staging.rs`). Ensures an install or update either fully s
 the previous state untouched.
 _Avoid_: Temp dir, install dir.
 
+**Staged swap**:
+The atomic installation mechanism (`StagedInstall` in `src/installer/staging.rs`) that prepares an
+install inside `{root}/apps/.staging/` before moving any existing **App directory** aside (as
+`*.old-<timestamp>`) and renaming the staged directory into place. On success, the retired directory is
+removed; any interrupted `*.old-*` residue is cleaned up by `wenget repair` (`InstalledStore::sweep_residue`).
+_Avoid_: In-place install, dirty write.
+
 **Installed key**:
 `{repo_name}` or `{repo_name}::{variant}` — the identity of an **Installed package**, produced by
 `generate_installed_key`. Reconstructed from **Package record** content on load, never parsed
@@ -89,14 +111,15 @@ _Avoid_: Backend, source (source is used for the resolved input kind, see below)
 
 **Package input**:
 The parsed form of what the user typed on the CLI: `DirectUrl` (a GitHub URL) or `CacheName` (a
-**Bucket**-relative package name, optionally with `::variant` or a `*` glob). See
-`PackageInput::parse` in `src/package_resolver.rs`.
+**Bucket**-relative package name, optionally with `::variant` or glob patterns using `*`, `?`,
+and `[...]`). See `PackageInput::parse` in `src/package_resolver.rs`.
 _Avoid_: Query, spec.
 
 **Launcher**:
 The symlink or shim in the bin directory (`WenPaths::bin_dir`) that runs an installed
-**Package**'s executable. Implemented as a **Symlink** on Unix (`src/installer/symlink.rs`) and a
-**Shim** on Windows (`src/installer/shim.rs`).
+**Package**'s executable. Created via `installer::create_launcher` (`src/installer/mod.rs`) as the
+single entry point for binaries (dispatching to a **Symlink** on Unix or a `.cmd` **Shim** on
+Windows), or via `installer::script::create_script_launcher` (`src/installer/script.rs`) for a **Script**.
 _Avoid_: Wrapper.
 
 **Shim**:
