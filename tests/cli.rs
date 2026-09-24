@@ -134,7 +134,17 @@ fn list_all_and_info_read_bucket_packages() {
     assert!(info.contains("a fixture package for cli tests"), "{info}");
     assert!(info.contains("https://github.com/fx/fixturetool"), "{info}");
 
-    let missing = sb.wenget().args(["info", "nosuchpkg"]).assert().success();
+    // A missing name fails the command even when another name is found
+    let missing = sb
+        .wenget()
+        .args(["info", "fixturetool", "nosuchpkg"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8_lossy(&missing.get_output().stdout);
+    assert!(
+        stdout.contains("https://github.com/fx/fixturetool"),
+        "{stdout}"
+    );
     let stderr = String::from_utf8_lossy(&missing.get_output().stderr);
     assert!(
         stderr.contains("nosuchpkg") && stderr.contains("Not found"),

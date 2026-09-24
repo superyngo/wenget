@@ -34,6 +34,7 @@ pub fn run(names: Vec<String>) -> Result<()> {
     let resolver = PackageResolver::new(&config, &cache)?;
 
     let mut total_found = 0;
+    let mut missing = Vec::new();
 
     for name in &names {
         let input = PackageInput::parse(name);
@@ -72,6 +73,7 @@ pub fn run(names: Vec<String>) -> Result<()> {
                     total_found += 1;
                 } else {
                     eprintln!("{} {}: Not found", "Error".red().bold(), name);
+                    missing.push(name.as_str());
                 }
             }
         }
@@ -85,6 +87,10 @@ pub fn run(names: Vec<String>) -> Result<()> {
             "{}",
             format!("Found {} item(s)", total_found).green().bold()
         );
+    }
+
+    if !missing.is_empty() {
+        anyhow::bail!("Not found: {}", missing.join(", "));
     }
 
     Ok(())
