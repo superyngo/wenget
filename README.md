@@ -47,7 +47,7 @@ irm https://raw.githubusercontent.com/superyngo/wenget/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/superyngo/wenget/main/install.sh | bash
 ```
 
-### System-Level Installation
+#### System-Level Installation
 
 The install scripts automatically detect elevated privileges and switch to system-level paths:
 
@@ -72,20 +72,6 @@ sudo curl -fsSL https://raw.githubusercontent.com/superyngo/wenget/main/install.
 # Run PowerShell as Administrator, then:
 irm https://raw.githubusercontent.com/superyngo/wenget/main/install.ps1 | iex
 ```
-
-> **⚠️ Important Notice for Existing Users (v0.2.x → v0.3.0)**
-> 
-> Version 0.3.0 changes the default bin directory for user-level installations:
-> - **Unix**: `~/.wenget/bin/` → `~/.local/bin/`
-> - **Windows**: `%USERPROFILE%\.wenget\bin\` → `%USERPROFILE%\.local\bin\`
-> 
-> **Migration Required:**
-> 1. Uninstall existing version: `wenget del self --yes` (or use `install.sh uninstall` / `install.ps1 -Uninstall`)
-> 2. Remove old PATH entry for `~/.wenget/bin` from your shell config
-> 3. Reinstall with the script above
-> 4. Reinstall your packages
-> 
-> System-level installations (root/Administrator) are **not affected** by this change.
 
 ### Method 3: Manual Installation
 
@@ -138,10 +124,10 @@ wenget del ripgrep
   - `-y, --yes` - Skip confirmation prompts
 - `wenget info <name|url>...` (alias: `i`) - Show package information from buckets or GitHub repository
 - `wenget del <name>...` (aliases: `remove`, `rm`, `uninstall`) - Uninstall packages
-  - `-f, --force` - Force deletion (allows removing wenget itself without interactive confirmation)
+  - `-f, --force` - Allow deleting the `wenget` package itself (refused otherwise); does not skip the confirmation prompt
   - `--variant <name>` - Specify variant to delete (e.g., `baseline`, `profile`)
   - `-y, --yes` - Skip confirmation prompts
-  - `wenget del self` - Uninstall wenget itself and its files; removes only the PATH entries `wenget init` added (recorded in `~/.wenget/path.json`)
+  - `wenget del self` - Uninstall wenget itself and its files; removes only the PATH entries `wenget init` added (recorded in `~/.wenget/path.json`). Without `-y`, a menu lets you choose which parts to remove
 - `wenget list` (alias: `ls`) - List installed packages (with source and description)
   - `-a, --all` - Show all available packages from buckets
 - `wenget search <terms>...` (alias: `s`) - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs supported)
@@ -198,8 +184,8 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
   - `-y, --yes` - Skip confirmation prompts
 - `wenget config` (alias: `c`) - Edit user preferences (config.toml) with default editor
 - `wenget rename <old> [new]` (aliases: `mv`, `rn`) - Rename an installed command
-- `wenget repair` - Repair corrupted configuration files
-  - `-f, --force` - Force rebuild all configuration files (not just corrupted ones)
+- `wenget repair` - Check and repair wenget's state: corrupt package records (quarantined), untracked or duplicate app directories, missing or orphaned launchers, leftovers from interrupted installs (`.staging/`, `*.old-*`), and corrupted `buckets.json` / `manifest-cache.json`
+  - `-f, --force` - Apply every fix without prompting and rebuild the configuration files even when they are not corrupted
 - `wenget --version` - Show version information
 - `wenget --help` - Show help message
 
@@ -218,10 +204,10 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │       └── .wenget/
 │           └── package.json  # This package's record (version, source, commands)
 ├── cache/                 # Download cache
-│   └── downloads/        # Downloaded archives
 ├── manifest-cache.json    # Cached package list from buckets
 ├── config.toml           # User preferences (platform, paths, etc.)
-└── buckets.json          # Bucket configuration
+├── buckets.json          # Bucket configuration
+└── path.json             # PATH entries added by `wenget init` (removed by `del self`)
 
 ~/.local/bin/              # Symlinks/shims (added to PATH; %USERPROFILE%\.local\bin on Windows)
 ├── wenget                 # wenget symlink (Unix) / shim (Windows)
@@ -252,9 +238,9 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 ├── apps\                  # Installed applications
 │   ├── wenget\
 │   └── <package>\
-├── bin\                   # Binaries (added to system PATH)
-│   ├── wenget.exe
-│   └── <package>.exe
+├── bin\                   # Launcher shims (added to system PATH)
+│   ├── wenget.cmd
+│   └── <package>.cmd
 ├── cache\
 │   └── downloads\
 ├── manifest-cache.json
@@ -301,6 +287,7 @@ Useful for custom PATH setups or when `~/.local/bin` cannot be added to PATH.
 
 - `WENGET_ROOT` - Override wenget root and bin directories (e.g., `env WENGET_ROOT=/tmp/test wenget ...`). Sets both application data and binary links under the specified directory; useful for testing and sandboxing without touching `~/.wenget/`.
 - `GITHUB_TOKEN` - GitHub personal access token. Raises the GitHub API limit from 60 to 5,000 requests/hour; automatically honored by `add`, `update`, `info`, and `bucket create`.
+- `RUST_LOG` - Log filter for `env_logger` (e.g. `RUST_LOG=debug`); takes precedence over `--verbose`.
 
 ## Bucket System
 
@@ -475,7 +462,7 @@ wenget uses the GitHub API to fetch package information and download binaries. B
 
 | Authentication | Rate Limit | Impact |
 |---------------|------------|--------|
-| Unauthenticated | 60 requests/hour | Limited package searches and updates |
+| Unauthenticated | 60 requests/hour | Limits installs, updates, and `info` lookups |
 | Authenticated (`GITHUB_TOKEN`) | 5,000 requests/hour | Sufficient for normal usage |
 
 Setting `GITHUB_TOKEN` in your environment (or passing `-t/--token` to `wenget bucket create`) automatically enables authenticated requests with 5,000 requests/hour.
@@ -486,10 +473,11 @@ Setting `GITHUB_TOKEN` in your environment (or passing `-t/--token` to `wenget b
 - `wenget add <name>` - 1 call per package (fetches latest release from GitHub API, reusing cached bucket metadata)
 - `wenget add <url>` - 2 calls per URL (when installing from GitHub repository URL: repo info + release)
 - `wenget info <url>` - 2 calls per URL (querying GitHub repository directly)
+- `wenget info <name>` - 1 call per bucket package (checks the latest release version)
 - `wenget update` - 1 call per installed package checked via GitHub API
 
 **Operations that don't consume API calls:**
-- `wenget info <name>` - Uses cached bucket data for bucket packages (0 API calls)
+- `wenget info <name>` for bucket scripts - Uses cached bucket data (0 API calls)
 - `wenget search` - Uses cached bucket data (0 API calls)
 - `wenget list` - Local only
 - `wenget del` - Local only
@@ -530,8 +518,8 @@ wenget add zoxide
 # Search for a tool
 wenget search rust
 
-# Update metadata and install
-wenget update
+# Refresh package metadata and install
+wenget bucket refresh
 wenget add tokei
 
 # List what's installed
@@ -571,21 +559,24 @@ wenget del self
 ```
 
 This will:
-1. Remove wenget from PATH
-2. Delete all wenget directories and installed packages
+1. Remove the PATH entries `wenget init` added
+2. Delete the wenget directory (`~/.wenget`) with all installed packages
 3. Remove the wenget executable itself
+
+Without `-y`, a menu lets you choose which of these to remove. Launchers in `~/.local/bin` (or your
+configured bin directory) are not removed; delete the `wenget` launcher and package launchers there by hand.
 
 ### Manual Uninstallation
 
 **Windows:**
 ```powershell
-# Remove from PATH, then delete:
+# Remove from PATH, then delete (also remove wenget.cmd and package shims from %USERPROFILE%\.local\bin):
 Remove-Item -Recurse -Force "$env:USERPROFILE\.wenget"
 ```
 
 **Linux/macOS:**
 ```bash
-# Remove from PATH, then delete:
+# Remove from PATH, then delete (also remove wenget and package symlinks from ~/.local/bin):
 rm -rf ~/.wenget
 ```
 
@@ -644,14 +635,11 @@ source ~/.bashrc  # or ~/.zshrc, ~/.profile
 ### Package Not Found
 
 ```bash
-# Update package metadata
-wenget update
+# Refresh package metadata from all buckets
+wenget bucket refresh
 
 # Check available buckets
 wenget bucket list
-
-# Rebuild cache
-wenget bucket refresh
 ```
 
 ### Permission Errors (Linux/macOS)
