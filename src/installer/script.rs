@@ -5,7 +5,7 @@
 //! - Platform compatibility checking
 //! - Script installation and shim creation
 
-use crate::core::manifest::ScriptType;
+use crate::core::manifest::{ScriptItem, ScriptPlatform, ScriptType};
 use crate::core::WenPaths;
 use anyhow::{Context, Result};
 use std::fs;
@@ -46,6 +46,92 @@ pub fn get_powershell_command() -> &'static str {
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn get_powershell_command() -> &'static str {
     "pwsh"
+}
+
+/// Cached interpreter availability results
+static INTERPRETER_CACHE: std::sync::OnceLock<InterpreterCache> = std::sync::OnceLock::new();
+
+/// Cache for interpreter availability checks
+struct InterpreterCache {
+    pwsh_available: bool,
+    bash_available: bool,
+    python_available: bool,
+}
+
+impl InterpreterCache {
+    fn detect() -> Self {
+        Self {
+            pwsh_available: std::process::Command::new("pwsh")
+                .arg("--version")
+                .output()
+                .is_ok(),
+            bash_available: std::process::Command::new("bash")
+                .arg("--version")
+                .output()
+                .is_ok(),
+            python_available: std::process::Command::new("python")
+                .arg("--version")
+                .output()
+                .is_ok()
+                || std::process::Command::new("python3")
+                    .arg("--version")
+                    .output()
+                    .is_ok(),
+        }
+    }
+}
+
+fn get_interpreter_cache() -> &'static InterpreterCache {
+    INTERPRETER_CACHE.get_or_init(InterpreterCache::detect)
+}
+
+/// Check if this script type is supported on the current platform.
+///
+/// This checks if the required interpreter is actually available on the system.
+/// Results are cached for performance.
+pub fn is_interpreter_available(script_type: &ScriptType) -> bool {
+    let cache = get_interpreter_cache();
+
+    match script_type {
+        ScriptType::PowerShell => {
+            // PowerShell is available on Windows natively, and on Linux/macOS via pwsh
+            if cfg!(target_os = "windows") {
+                true
+            } else {
+                cache.pwsh_available
+            }
+        }
+        ScriptType::Batch => {
+            // Batch scripts only work on Windows
+            cfg!(target_os = "windows")
+        }
+        ScriptType::Bash => {
+            // Bash is available on Linux and macOS, and on Windows via WSL/Git Bash
+            if cfg!(target_os = "windows") {
+                cache.bash_available
+            } else {
+                true
+            }
+        }
+        ScriptType::Python => cache.python_available,
+    }
+}
+
+/// Get the best installable script for the current platform (checks if interpreter exists)
+///
+/// This is more thorough than `ScriptItem::get_compatible_script()` as it actually checks
+/// if the required interpreter is installed on the system.
+///
+/// Returns the script type and its platform info if an installable one is found.
+pub fn installable_script(script: &ScriptItem) -> Option<(ScriptType, &ScriptPlatform)> {
+    for script_type in ScriptType::preference_order() {
+        if is_interpreter_available(script_type) {
+            if let Some(platform) = script.platforms.get(script_type) {
+                return Some((script_type.clone(), platform));
+            }
+        }
+    }
+    None
 }
 
 /// Detect script type from file extension

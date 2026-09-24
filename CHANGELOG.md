@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(core): interpreter probing moved from `core/manifest.rs` to `installer::script`
+  (`is_interpreter_available`, `installable_script`); legacy `InstalledSet::migrate` moved to
+  `core/migrate.rs`, so the manifest data definitions no longer spawn processes or touch disk (A-6).
 - fix(delete): `del self` now removes only the PATH entries `wenget init` actually added, recorded
   in `~/.wenget/path.json` (shell rc block or Windows registry entry). It no longer removes the
   default bin dir when `custom_bin_path` is set, and no longer strips user-owned lines that mention

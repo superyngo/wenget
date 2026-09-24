@@ -273,7 +273,9 @@ pub fn run(
                         if origin.starts_with("bucket:") {
                             if let Some(cached_script) = cache.find_script(&inst_pkg.repo_name) {
                                 if let Some((_, platform_info)) =
-                                    cached_script.script.get_installable_script()
+                                    crate::installer::script::installable_script(
+                                        &cached_script.script,
+                                    )
                                 {
                                     let cache_url = &platform_info.url;
                                     let needs_update = match &inst_pkg.download_url {
@@ -431,7 +433,7 @@ fn find_upgradeable(
 
                 // Get the installable script URL for current platform
                 if let Some((_script_type, platform_info)) =
-                    cached_script.script.get_installable_script()
+                    crate::installer::script::installable_script(&cached_script.script)
                 {
                     let cache_url = &platform_info.url;
 

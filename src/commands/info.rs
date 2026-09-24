@@ -350,7 +350,7 @@ fn display_script_info(
         script.platforms.len()
     );
     for (script_type, platform_info) in &script.platforms {
-        let supported = script_type.is_supported_on_current_platform();
+        let supported = crate::installer::script::is_interpreter_available(script_type);
         let status = if supported {
             "✓ compatible".green()
         } else {

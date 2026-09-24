@@ -4,6 +4,7 @@ pub mod checksum;
 pub mod config;
 pub mod fuzzy;
 pub mod manifest;
+mod migrate;
 pub mod path_record;
 pub mod paths;
 pub mod platform;

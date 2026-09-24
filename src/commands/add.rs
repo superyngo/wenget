@@ -265,7 +265,7 @@ fn install_scripts(
         };
 
         // Check platform compatibility
-        if !script_type.is_supported_on_current_platform() {
+        if !crate::installer::script::is_interpreter_available(&script_type) {
             println!(
                 "  {} {} ({}) - {}",
                 "⚠".yellow(),
@@ -825,7 +825,9 @@ fn install_packages(
                     let script = &cached_script.script;
 
                     // Get installable script for current platform (checks if interpreter exists)
-                    if let Some((script_type, platform_info)) = script.get_installable_script() {
+                    if let Some((script_type, platform_info)) =
+                        crate::installer::script::installable_script(script)
+                    {
                         // Prepare script for installation
                         let source_name = match &cached_script.source {
                             PackageSource::Bucket { name } => format!("bucket:{}", name),

@@ -9,45 +9,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
-use std::sync::OnceLock;
-
-/// Cached interpreter availability results
-static INTERPRETER_CACHE: OnceLock<InterpreterCache> = OnceLock::new();
-
-/// Cache for interpreter availability checks
-struct InterpreterCache {
-    pwsh_available: bool,
-    bash_available: bool,
-    python_available: bool,
-}
-
-impl InterpreterCache {
-    fn detect() -> Self {
-        Self {
-            pwsh_available: std::process::Command::new("pwsh")
-                .arg("--version")
-                .output()
-                .is_ok(),
-            bash_available: std::process::Command::new("bash")
-                .arg("--version")
-                .output()
-                .is_ok(),
-            python_available: std::process::Command::new("python")
-                .arg("--version")
-                .output()
-                .is_ok()
-                || std::process::Command::new("python3")
-                    .arg("--version")
-                    .output()
-                    .is_ok(),
-        }
-    }
-}
-
-fn get_interpreter_cache() -> &'static InterpreterCache {
-    INTERPRETER_CACHE.get_or_init(InterpreterCache::detect)
-}
 
 /// Script type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -84,40 +45,8 @@ impl ScriptType {
         }
     }
 
-    /// Check if this script type is supported on the current platform.
-    ///
-    /// This checks if the required interpreter is actually available on the system.
-    /// Results are cached for performance.
-    pub fn is_supported_on_current_platform(&self) -> bool {
-        let cache = get_interpreter_cache();
-
-        match self {
-            ScriptType::PowerShell => {
-                // PowerShell is available on Windows natively, and on Linux/macOS via pwsh
-                if cfg!(target_os = "windows") {
-                    true
-                } else {
-                    cache.pwsh_available
-                }
-            }
-            ScriptType::Batch => {
-                // Batch scripts only work on Windows
-                cfg!(target_os = "windows")
-            }
-            ScriptType::Bash => {
-                // Bash is available on Linux and macOS, and on Windows via WSL/Git Bash
-                if cfg!(target_os = "windows") {
-                    cache.bash_available
-                } else {
-                    true
-                }
-            }
-            ScriptType::Python => cache.python_available,
-        }
-    }
-
     /// Check basic OS compatibility without executing commands (for listing)
-    /// This is faster than is_supported_on_current_platform and doesn't require
+    /// This is faster than `installer::script::is_interpreter_available` and doesn't require
     /// the interpreter to be installed
     pub fn is_os_compatible(&self) -> bool {
         match self {
@@ -296,29 +225,12 @@ impl ScriptItem {
     ///
     /// Note: This uses `is_os_compatible()` for basic OS-level filtering,
     /// which doesn't check if the actual interpreter is installed.
-    /// For installation, use `get_installable_script()` instead.
+    /// For installation, use `installer::script::installable_script()` instead.
     ///
     /// Returns the script type and its platform info if a compatible one is found.
     pub fn get_compatible_script(&self) -> Option<(ScriptType, &ScriptPlatform)> {
         for script_type in ScriptType::preference_order() {
             if script_type.is_os_compatible() {
-                if let Some(platform) = self.platforms.get(script_type) {
-                    return Some((script_type.clone(), platform));
-                }
-            }
-        }
-        None
-    }
-
-    /// Get the best installable script for the current platform (checks if interpreter exists)
-    ///
-    /// This is more thorough than `get_compatible_script()` as it actually checks
-    /// if the required interpreter is installed on the system.
-    ///
-    /// Returns the script type and its platform info if an installable one is found.
-    pub fn get_installable_script(&self) -> Option<(ScriptType, &ScriptPlatform)> {
-        for script_type in ScriptType::preference_order() {
-            if script_type.is_supported_on_current_platform() {
                 if let Some(platform) = self.platforms.get(script_type) {
                     return Some((script_type.clone(), platform));
                 }
@@ -588,160 +500,6 @@ impl InstalledSet {
             }
         }
         set
-    }
-
-    /// Migrate old format (single command_name) to new format (command_names vec)
-    /// Also migrates the legacy `parent_package` field to repo_name/variant;
-    /// `legacy_parents` maps key -> `parent_package`, read from the raw legacy JSON.
-    /// Also migrates install paths with `::` to use `-` separator (for Windows compatibility)
-    pub fn migrate(&mut self, legacy_parents: &HashMap<String, String>) {
-        use std::path::Path;
-
-        for (key, package) in self.packages.iter_mut() {
-            // Migrate command_name to command_names
-            if package.command_names.is_empty() {
-                if let Some(ref name) = package.command_name {
-                    package.command_names = vec![name.clone()];
-                }
-            }
-
-            // Migrate parent_package to repo_name/variant
-            if package.repo_name.is_empty() {
-                // Parse repo_name and variant from key
-                if let Some(pos) = key.find("::") {
-                    // New format key: "repo::variant"
-                    package.repo_name = key[..pos].to_string();
-                    package.variant = Some(key[pos + 2..].to_string());
-                } else if let Some(parent) = legacy_parents.get(key).filter(|_| key.contains('-')) {
-                    // Old format with parent_package
-                    package.repo_name = parent.clone();
-
-                    // Extract variant from key
-                    if let Some(pos) = key.rfind('-') {
-                        let potential_variant = &key[pos + 1..];
-                        // Only set variant if it's not empty and looks like a variant
-                        if !potential_variant.is_empty()
-                            && !potential_variant.chars().next().unwrap().is_numeric()
-                        {
-                            package.variant = Some(potential_variant.to_string());
-                        }
-                    }
-                } else {
-                    // No variant, just use key as repo_name
-                    package.repo_name = key.clone();
-                    package.variant = None;
-                }
-            }
-
-            // Migrate install_path: replace `::` with `-` for filesystem compatibility
-            if package.install_path.contains("::") {
-                let old_path = Path::new(&package.install_path);
-
-                // Try to rename the actual directory if it exists
-                if old_path.exists() {
-                    let new_path_str = package.install_path.replace("::", "-");
-                    let new_path = Path::new(&new_path_str);
-
-                    if let Err(e) = std::fs::rename(old_path, new_path) {
-                        log::warn!(
-                            "Failed to rename directory from {} to {}: {}",
-                            old_path.display(),
-                            new_path.display(),
-                            e
-                        );
-                    } else {
-                        log::info!(
-                            "Migrated package directory: {} -> {}",
-                            old_path.display(),
-                            new_path.display()
-                        );
-                    }
-                }
-
-                // Update install_path in metadata
-                package.install_path = package.install_path.replace("::", "-");
-            }
-
-            // Migrate command_names to executables map
-            if package.executables.is_empty() && !package.command_names.is_empty() {
-                let install_path = Path::new(&package.install_path);
-
-                if install_path.exists() {
-                    // Scan filesystem to match command_names to actual executable files
-                    let mut remaining_names: Vec<String> = package.command_names.clone();
-
-                    // Walk directory to find executables
-                    if let Ok(entries) = Self::walk_dir_recursive(install_path) {
-                        for entry_path in &entries {
-                            if remaining_names.is_empty() {
-                                break;
-                            }
-
-                            // `/`-separated like keys written by fresh installs
-                            let rel_path = entry_path
-                                .strip_prefix(install_path)
-                                .unwrap_or(entry_path)
-                                .to_string_lossy()
-                                .replace('\\', "/");
-
-                            let filename = entry_path
-                                .file_name()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or("");
-
-                            // Strip known extensions for matching
-                            let name_no_ext = filename
-                                .trim_end_matches(".exe")
-                                .trim_end_matches(".sh")
-                                .trim_end_matches(".ps1")
-                                .trim_end_matches(".bat")
-                                .trim_end_matches(".cmd")
-                                .trim_end_matches(".py");
-
-                            // Try to match against remaining command names
-                            if let Some(pos) = remaining_names
-                                .iter()
-                                .position(|n| n == filename || n == name_no_ext)
-                            {
-                                let cmd_name = remaining_names.remove(pos);
-                                package.executables.insert(rel_path, cmd_name);
-                            }
-                        }
-                    }
-
-                    // Fallback for unmatched names
-                    for name in remaining_names {
-                        package.executables.insert(name.clone(), name);
-                    }
-                } else {
-                    // Install path doesn't exist — use command_name as both key and value
-                    for name in &package.command_names {
-                        package.executables.insert(name.clone(), name.clone());
-                    }
-                }
-
-                // Clear legacy fields
-                package.command_names.clear();
-                package.command_name = None;
-            }
-        }
-    }
-
-    /// Recursively walk a directory and return all file paths
-    fn walk_dir_recursive(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
-        let mut files = Vec::new();
-        if dir.is_dir() {
-            for entry in std::fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    files.extend(Self::walk_dir_recursive(&path)?);
-                } else {
-                    files.push(path);
-                }
-            }
-        }
-        Ok(files)
     }
 }
 
