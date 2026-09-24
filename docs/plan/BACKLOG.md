@@ -9,7 +9,6 @@ last checked against the tree — not when it was opened.
 
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
-| S-5 | 2026-09-03 | 2026-09-23 | P3 | Checksum verification is best-effort and downgrades (with warning) on probe failure; `PlatformBinary.checksum` unused, and no bucket manifest sets it | `core/checksum.rs` `verify_download`, `core/manifest.rs` `PlatformBinary.checksum` | S | Unreachable checksum manifests fail or require explicit flag; manifest-provided `PlatformBinary.checksum` verified when present |
 | A-6 | 2026-09-03 | 2026-09-23 | P3 | Data model spawns processes and performs disk I/O | `core/manifest.rs` `INTERPRETER_CACHE`, `InstalledManifest::migrate` | S | Process execution moved to `installer/script.rs` and legacy migration isolated from core data definitions |
 | A-7 | 2026-09-03 | 2026-09-23 | P3 | `core/` modules depend upward on root-level modules | `core/config.rs` imports `crate::bucket`, `crate::cache` | S | Upward dependencies relocated into `core/` or dependency direction inverted |
 | CL-6 | 2026-09-23 | 2026-09-23 | P3 | 24 functions exceed 100 LOC (largest `install_packages` ~650 after CL-8; its plan/render phase is still inline) | `commands/add.rs` `install_packages`; `installer/package.rs` `PackageInstaller::install` (~280); `commands/delete.rs` `run`; `commands/info.rs` `display_package_info` | M | Complex functions refactored into distinct compute and render/presentation passes |
@@ -122,4 +121,5 @@ last checked against the tree — not when it was opened.
 | CL-3 | `meta_version` glossary drift and `get_or_create_installed` alias (field is `schema_version` in code, serialized as `meta_version` so older builds keep their version gate; alias removed) | 902deb0 |
 | CL-5 | Deprecated `parent_package` threaded through constructors (field removed; `InstalledSet::migrate` takes legacy parents read from raw JSON) | c2a9cb8 |
 | SI-6 | Launcher creation `cfg` switches duplicated across install/rename/repair (unified in `installer::create_launcher`) | a273e99 |
+| S-5 | Best-effort checksum downgraded on probe failure; `PlatformBinary.checksum` unused (probe failure aborts unless `--skip-checksum`; mismatch never overridable; manifest checksum verified first) | ecaea8e |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
