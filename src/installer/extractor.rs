@@ -476,30 +476,35 @@ fn could_be_executable(filename: &str, file_path: &str) -> bool {
     }
 }
 
-/// Check if a file has executable permission on Unix
-#[cfg(unix)]
-fn has_executable_permission(file_path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    if let Ok(metadata) = fs::metadata(file_path) {
-        let mode = metadata.permissions().mode();
-        mode & 0o111 != 0
-    } else {
-        false
+/// Read a candidate's exec permission (Unix) and first 128 bytes through one handle
+///
+/// Returns `(false, empty)` when the file cannot be opened.
+fn probe_file(file_path: &Path) -> (bool, Vec<u8>) {
+    let Ok(mut file) = File::open(file_path) else {
+        return (false, Vec::new());
+    };
+
+    #[cfg(unix)]
+    let has_exec_perm = {
+        use std::os::unix::fs::PermissionsExt;
+        file.metadata()
+            .map(|m| m.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    };
+    #[cfg(not(unix))]
+    let has_exec_perm = false;
+
+    let mut head = Vec::with_capacity(128);
+    if (&mut file).take(128).read_to_end(&mut head).is_err() {
+        head.clear();
     }
+    (has_exec_perm, head)
 }
 
-#[cfg(not(unix))]
-fn has_executable_permission(_file_path: &Path) -> bool {
-    // On Windows, we rely on .exe extension, not permissions
-    true
-}
-
-/// Detect if a file is a native executable by reading its magic bytes.
+/// Detect if a file head is a native executable by its magic bytes.
 /// Returns the executable type label if detected, or None.
-fn detect_executable_type(file_path: &Path) -> Option<&'static str> {
-    let mut buf = [0u8; 4];
-    let mut file = File::open(file_path).ok()?;
-    let bytes_read = file.read(&mut buf).ok()?;
+fn detect_executable_type(buf: &[u8]) -> Option<&'static str> {
+    let bytes_read = buf.len();
     if bytes_read < 2 {
         return None;
     }
@@ -516,7 +521,7 @@ fn detect_executable_type(file_path: &Path) -> Option<&'static str> {
 
     // Mach-O (macOS)
     if bytes_read >= 4 {
-        let magic = u32::from_be_bytes(buf);
+        let magic = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         match magic {
             0xFEED_FACE | 0xFEED_FACF => return Some("Mach-O"),
             0xCEFA_EDFE | 0xCFFA_EDFE => return Some("Mach-O"),
@@ -528,12 +533,10 @@ fn detect_executable_type(file_path: &Path) -> Option<&'static str> {
     None
 }
 
-/// Detect if a file is a script by checking for a shebang line.
+/// Detect if a file head is a script by checking for a shebang line.
 /// Returns the interpreter label if detected, or None.
-fn detect_script_type(file_path: &Path) -> Option<&'static str> {
-    let mut buf = [0u8; 128];
-    let mut file = File::open(file_path).ok()?;
-    let bytes_read = file.read(&mut buf).ok()?;
+fn detect_script_type(buf: &[u8]) -> Option<&'static str> {
+    let bytes_read = buf.len();
     if bytes_read < 2 {
         return None;
     }
@@ -620,31 +623,21 @@ pub fn find_executable_candidates(
         let mut score = 0u32;
         let mut reasons = Vec::new();
 
-        // Check executable permission (Unix only)
-        #[cfg(unix)]
-        let has_exec_perm = if let Some(dir) = extract_dir {
-            let full_path = dir.join(file);
-            has_executable_permission(&full_path)
-        } else {
-            false
+        // One open per candidate: permission and head bytes together
+        let (has_exec_perm, head) = match extract_dir {
+            Some(dir) => probe_file(&dir.join(file)),
+            None => (false, Vec::new()),
         };
-        #[cfg(not(unix))]
-        let has_exec_perm = false;
 
-        // Rule 0: Has executable permission (Unix) - strong signal
-        #[cfg(unix)]
+        // Rule 0: Has executable permission (Unix only; always false elsewhere)
         if has_exec_perm {
             score += 35;
             reasons.push("has exec permission");
         }
-        // Suppress unused warning on non-Unix
-        #[cfg(not(unix))]
-        let _ = extract_dir;
 
         // Rule 0b: Content-based detection via magic bytes (strongest signal)
-        if let Some(dir) = extract_dir {
-            let full_path = dir.join(file);
-            if let Some(exe_type) = detect_executable_type(&full_path) {
+        {
+            if let Some(exe_type) = detect_executable_type(&head) {
                 score += 60;
                 reasons.push(match exe_type {
                     "ELF" => "ELF binary",
@@ -652,7 +645,7 @@ pub fn find_executable_candidates(
                     "Mach-O" | "Mach-O fat" => "Mach-O binary",
                     _ => "native binary",
                 });
-            } else if let Some(script_type) = detect_script_type(&full_path) {
+            } else if let Some(script_type) = detect_script_type(&head) {
                 score += 30;
                 reasons.push(match script_type {
                     "Shell script" => "shell script (shebang)",
@@ -1176,7 +1169,10 @@ mod tests {
         let path = dir.path().join("test_elf");
         // ELF magic: \x7fELF followed by some bytes
         fs::write(&path, b"\x7fELF\x02\x01\x01\x00").unwrap();
-        assert_eq!(detect_executable_type(&path), Some("ELF"));
+        assert_eq!(
+            detect_executable_type(&fs::read(&path).unwrap()),
+            Some("ELF")
+        );
     }
 
     #[test]
@@ -1186,7 +1182,10 @@ mod tests {
         let path = dir.path().join("test_pe.exe");
         // PE magic: MZ header
         fs::write(&path, b"MZ\x90\x00\x03\x00\x00\x00").unwrap();
-        assert_eq!(detect_executable_type(&path), Some("PE"));
+        assert_eq!(
+            detect_executable_type(&fs::read(&path).unwrap()),
+            Some("PE")
+        );
     }
 
     #[test]
@@ -1197,12 +1196,18 @@ mod tests {
         // Mach-O 64-bit
         let path = dir.path().join("test_macho64");
         fs::write(&path, b"\xfe\xed\xfa\xcf\x00\x00\x00\x00").unwrap();
-        assert_eq!(detect_executable_type(&path), Some("Mach-O"));
+        assert_eq!(
+            detect_executable_type(&fs::read(&path).unwrap()),
+            Some("Mach-O")
+        );
 
         // Mach-O fat binary
         let path2 = dir.path().join("test_macho_fat");
         fs::write(&path2, b"\xca\xfe\xba\xbe\x00\x00\x00\x02").unwrap();
-        assert_eq!(detect_executable_type(&path2), Some("Mach-O fat"));
+        assert_eq!(
+            detect_executable_type(&fs::read(&path2).unwrap()),
+            Some("Mach-O fat")
+        );
     }
 
     #[test]
@@ -1211,7 +1216,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("test_text");
         fs::write(&path, b"Hello, world!\n").unwrap();
-        assert_eq!(detect_executable_type(&path), None);
+        assert_eq!(detect_executable_type(&fs::read(&path).unwrap()), None);
     }
 
     #[test]
@@ -1222,21 +1227,30 @@ mod tests {
         // Shell script
         let sh = dir.path().join("test.sh");
         fs::write(&sh, b"#!/bin/bash\necho hello").unwrap();
-        assert_eq!(detect_script_type(&sh), Some("Shell script"));
+        assert_eq!(
+            detect_script_type(&fs::read(&sh).unwrap()),
+            Some("Shell script")
+        );
 
         // Python script
         let py = dir.path().join("test_py");
         fs::write(&py, b"#!/usr/bin/env python3\nprint('hi')").unwrap();
-        assert_eq!(detect_script_type(&py), Some("Python script"));
+        assert_eq!(
+            detect_script_type(&fs::read(&py).unwrap()),
+            Some("Python script")
+        );
 
         // Node script
         let node = dir.path().join("test_node");
         fs::write(&node, b"#!/usr/bin/env node\nconsole.log('hi')").unwrap();
-        assert_eq!(detect_script_type(&node), Some("Node.js script"));
+        assert_eq!(
+            detect_script_type(&fs::read(&node).unwrap()),
+            Some("Node.js script")
+        );
 
         // Not a script
         let txt = dir.path().join("test.txt");
         fs::write(&txt, b"Just some text").unwrap();
-        assert_eq!(detect_script_type(&txt), None);
+        assert_eq!(detect_script_type(&fs::read(&txt).unwrap()), None);
     }
 }
