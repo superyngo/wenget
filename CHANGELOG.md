@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   v0.3.0 migration notice removed. `bucket/README.md` drops the removed binary and release
   trigger. AGENTS.md release steps commit the version bump before tagging and run `cargo test`.
   CHANGELOG: `3.2.0` placed above `3.1.0`, compare links sorted, `[Unreleased]` link added.
+  Reference: `RESOURCE_FILTERING_RULES.md` describes the token-based variant extraction and the
+  filter / dedupe / select step between platform matching and extraction; the glossary gains
+  Format score, Staged swap and Script. Audit record: `docs/audit/2026-09-24-documentation-audit.md`.
 - fix(add): when a release ships the same build in several archive formats (fastfetch: `.tar.gz`
   and `.zip`), `add -y` installs one (preferred format) instead of installing twice under the same
   name, and the interactive picker lists it once.

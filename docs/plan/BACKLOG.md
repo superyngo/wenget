@@ -9,6 +9,7 @@ last checked against the tree — not when it was opened.
 
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
+| B-14 | 2026-09-24 | 2026-09-24 | Med | `del self` removes the wenget root but leaves the `wenget` and package launchers in the bin dir (`~/.local/bin`) dangling | `commands::delete::execute_self_deletion` deletes only `paths.root()`; launcher removal exists only in the per-package path (`bin_shim_path` loop in `commands::delete`) | S | After `del self -y` in a sandbox, no wenget-created launcher remains in the bin dir; user-owned files there untouched |
 
 ## Pending verification
 

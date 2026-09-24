@@ -13,6 +13,7 @@ None. Findings still awaiting real-machine verification or newly opened are trac
 
 | Date | Document | Status |
 |---|---|---|
+| 2026-09-24 | [2026-09-24-documentation-audit.md](2026-09-24-documentation-audit.md) — docs vs code after the backlog emptied (18 findings, 7 High) | Resolved (2026-09-24) |
 | 2026-09-23 | [2026-09-23-implementation-simplicity-audit.md](2026-09-23-implementation-simplicity-audit.md) — implementation, clarity, simplicity, and optimization sweep of v3.9.0 (39 findings, 7 High) | Resolved (2026-09-24) |
 | 2026-09-23 | [2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md) | Resolved (2026-09-23) |
 | 2026-09-23 | [2026-09-23-search-evaluation.md](2026-09-23-search-evaluation.md) | Resolved (2026-09-23) |
