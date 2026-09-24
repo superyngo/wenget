@@ -22,7 +22,6 @@ last checked against the tree — not when it was opened.
 | CL-6 | 2026-09-23 | 2026-09-23 | P3 | 24 functions exceed 100 LOC (largest `install_packages` ~650 after CL-8; its plan/render phase is still inline) | `commands/add.rs` `install_packages`; `installer/package.rs` `PackageInstaller::install` (~280); `commands/delete.rs` `run`; `commands/info.rs` `display_package_info` | M | Complex functions refactored into distinct compute and render/presentation passes |
 | SI-6 | 2026-09-23 | 2026-09-23 | P3 | Launcher creation contains `cfg` platform switches at every call site | `commands/add.rs`, `commands/rename.rs`, `installer/local.rs` | S | Unified `installer::create_launcher` and `remove_launcher` abstraction hides platform branches |
 | SI-10 | 2026-09-23 | 2026-09-23 | P3 | `extract_variant_from_asset` uses 141-step substring replacement cascade | `core/manifest.rs` `extract_variant_from_asset` | S | Token-based asset name parser drops version/platform noise; verified with golden tests |
-| OP-5 | 2026-09-23 | 2026-09-23 | P3 | Candidate executables opened multiple times for permissions, magic bytes, shebang | `installer/extractor.rs` `find_executable_candidates` | XS | Single file handle and initial buffer read verify magic bytes, shebang, and permissions |
 | B-3 | 2026-09-23 | 2026-09-23 | P3 | `FallbackType` enum variants for libc and Windows compiler are dead code | `core/platform.rs` `FallbackType::MuslOnGnu`, `GnuOnMusl`, `WindowsCompilerVariant` | XS | Unconstructed fallback enum variants removed or wired into platform matching |
 | B-6 | 2026-09-23 | 2026-09-23 | P3 | `del self` removes the default bin dir from PATH, not `custom_bin_path`; `init` only adds a dir that is not already on PATH, so switching blindly could strip a user-owned entry | `commands/delete.rs` `delete_self`, `commands/init.rs` PATH planning | S | Decide ownership (e.g. record the PATH entry `init` added); `del self` removes exactly that entry |
 
@@ -122,4 +121,5 @@ last checked against the tree — not when it was opened.
 | BUG (variant) | `extract_variant_from_asset` turned `x86_64` into variant `64` (patterns normalized like the name) | f112c57 |
 | BUG (list order) | `list --all` printed scripts in random HashMap order (now sorted by name) | e8dfe08 |
 | OP-3 | `repair` scanned `apps/` three times (`InstalledStore::load_scanned` returns set and entries; `duplicate_keys` takes the entries) | 8cb3ed3 |
+| OP-5 | Candidate executables opened up to three times (`probe_file` reads permission and head bytes through one handle) | c763b1f |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
