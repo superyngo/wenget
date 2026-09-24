@@ -121,4 +121,5 @@ last checked against the tree — not when it was opened.
 | P-3 | Whole cache cloned to display `list --all` (`list_all_packages` borrows from `ManifestCache`; clone helpers removed) | 32ba581 |
 | BUG (info) | `info <missing>` exited 0 (`info::run` now fails when any name is not found) | 66f9afa |
 | BUG (variant) | `extract_variant_from_asset` turned `x86_64` into variant `64` (patterns normalized like the name) | f112c57 |
+| BUG (list order) | `list --all` printed scripts in random HashMap order (now sorted by name) | e8dfe08 |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
