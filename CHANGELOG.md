@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- perf(platform): asset names are lowercased once per asset and the arch/exclude keyword tables
+  are `const` slices (OP-4).
 - perf(extractor): executable candidates are opened once; permission, magic bytes and shebang
   come from one handle and one 128-byte read (OP-5).
 - perf(repair): `repair` scans `apps/` once (`InstalledStore::load_scanned`) instead of three times;

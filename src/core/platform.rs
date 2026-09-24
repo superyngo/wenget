@@ -441,17 +441,21 @@ const UNSUPPORTED_ARCHS: &[&str] = &[
 impl ParsedAsset {
     /// Parse an asset filename into its components
     pub fn from_filename(filename: &str) -> Self {
-        let lower = filename.to_lowercase();
-        let extension = FileExtension::from_filename(filename);
+        Self::from_lower(&filename.to_lowercase())
+    }
+
+    /// Parse an already-lowercased asset filename
+    fn from_lower(lower: &str) -> Self {
+        let extension = FileExtension::from_filename(lower);
 
         // Detect OS
-        let (os, _os_inferred) = Self::detect_os(&lower, extension);
+        let (os, _os_inferred) = Self::detect_os(lower, extension);
 
         // Detect architecture (context-aware for x86 keyword)
-        let arch = Self::detect_arch(&lower, os);
+        let arch = Self::detect_arch(lower, os);
 
         // Detect compiler
-        let compiler = Self::detect_compiler(&lower);
+        let compiler = Self::detect_compiler(lower);
 
         ParsedAsset {
             extension,
@@ -461,25 +465,22 @@ impl ParsedAsset {
         }
     }
 
-    /// Check if filename contains unsupported architecture keywords
-    pub fn contains_unsupported_arch(filename: &str) -> bool {
-        let lower = filename.to_lowercase();
+    /// Check if an already-lowercased filename contains unsupported architecture keywords
+    pub fn contains_unsupported_arch(lower: &str) -> bool {
         UNSUPPORTED_ARCHS.iter().any(|arch| lower.contains(arch))
     }
 
-    /// Check if filename contains an unrecognized architecture-like pattern
+    /// Check if an already-lowercased filename contains an unrecognized architecture-like pattern
     /// This catches patterns that look like architectures but aren't in our supported list
-    fn contains_unknown_arch_pattern(filename: &str) -> bool {
-        let lower = filename.to_lowercase();
-
+    fn contains_unknown_arch_pattern(lower: &str) -> bool {
         // Pattern: word boundary + arch-like keyword + word boundary
         // These are patterns that look like architectures but aren't supported
-        let arch_patterns = [
+        const ARCH_PATTERNS: &[&str] = &[
             "powerpc", "ppc", "riscv", "mips", "sparc", "s390", "alpha", "sh4", "hppa", "ia64",
             "loong",
         ];
 
-        arch_patterns.iter().any(|p| {
+        ARCH_PATTERNS.iter().any(|p| {
             // Check for word boundaries (not part of a larger word).
             // `find` returns a BYTE offset, so all boundary checks below must
             // work on bytes too — indexing `chars()` with a byte offset panics
@@ -894,10 +895,10 @@ impl BinarySelector {
             .filter_map(|asset| {
                 let lower = asset.name.to_lowercase();
                 let score = Self::score_parsed(
-                    &ParsedAsset::from_filename(&asset.name),
+                    &ParsedAsset::from_lower(&lower),
                     Self::should_exclude(&lower),
                     ParsedAsset::contains_unsupported_arch(&lower),
-                    ParsedAsset::contains_unknown_arch_pattern(&asset.name),
+                    ParsedAsset::contains_unknown_arch_pattern(&lower),
                     platform,
                 )?;
                 Some((score, asset))
@@ -912,7 +913,7 @@ impl BinarySelector {
 
     /// Check if a filename should be excluded from selection
     fn should_exclude(filename: &str) -> bool {
-        let excludes = [
+        const EXCLUDES: &[&str] = &[
             "source",
             ".deb",
             ".rpm",
@@ -930,7 +931,7 @@ impl BinarySelector {
             ".md",
         ];
 
-        excludes.iter().any(|&e| filename.contains(e))
+        EXCLUDES.iter().any(|&e| filename.contains(e))
     }
 
     /// Extract platform information from available assets
@@ -956,11 +957,13 @@ impl BinarySelector {
             .iter()
             .map(|asset| {
                 let filename_lower = asset.name.to_lowercase();
-                let parsed = ParsedAsset::from_filename(&asset.name);
+                let parsed = ParsedAsset::from_lower(&filename_lower);
                 Preparsed {
                     excluded: Self::should_exclude(&filename_lower),
                     unsupported_arch: ParsedAsset::contains_unsupported_arch(&filename_lower),
-                    unknown_arch_pattern: ParsedAsset::contains_unknown_arch_pattern(&asset.name),
+                    unknown_arch_pattern: ParsedAsset::contains_unknown_arch_pattern(
+                        &filename_lower,
+                    ),
                     parsed,
                     asset,
                 }
