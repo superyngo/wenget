@@ -824,12 +824,8 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
 
     println!("Downloading: {}", binary.url);
 
-    // Determine download file name from URL
-    let filename = binary
-        .url
-        .rsplit('/')
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("Invalid download URL"))?;
+    // The asset name is the release file name; sanitized so it stays in temp_dir
+    let filename = crate::core::paths::sanitize_path_component(&binary.asset_name);
 
     // Download to temporary directory
     let paths = WenPaths::new()?;

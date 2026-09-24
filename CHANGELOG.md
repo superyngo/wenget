@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(download): downloads are saved under the sanitized release asset name instead of the last
+  URL path segment (IM-15).
 - fix(update): self-update picks the new wenget executable with on-disk permission and magic-byte
   checks, like package installs (IM-11).
 - perf(platform): asset names are lowercased once per asset and the arch/exclude keyword tables

@@ -315,13 +315,8 @@ impl PackageInstaller<'_> {
         let download_dir = paths.downloads_dir();
         fs::create_dir_all(&download_dir)?;
 
-        // Determine file extension from URL
-        let filename = binary
-            .url
-            .split('/')
-            .next_back()
-            .context("Invalid download URL")?;
-
+        // The asset name is the release file name; sanitized so it stays in download_dir
+        let filename = crate::core::paths::sanitize_path_component(&binary.asset_name);
         let download_path = download_dir.join(filename);
 
         // Removes the archive on every exit path, including errors below
