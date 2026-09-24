@@ -127,4 +127,5 @@ last checked against the tree — not when it was opened.
 | LINT | Enforce clippy `too_many_lines` crate-wide (`#![warn]` in main.rs) | 8c0cea4 |
 | B-12 | `list`/`info` command names in random HashMap order (`InstalledPackage::get_command_names` now sorts) | 506e4e5 |
 | B-13 | `add -y` installed same-variant builds in two archive formats twice under one key (`add::dedupe_same_variant`) | a8a031b |
+| B-14 | `del self` left the `wenget` and package launchers dangling in the bin dir (`delete::remove_launchers`) | 3e9c1da |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
