@@ -18,6 +18,12 @@ const MAX_CONCURRENT_FETCHES: usize = 8;
 /// A parallel fetch outcome: the repo name paired with its fetched package (or error).
 type FetchResult = (String, Result<Package>);
 
+/// A job descriptor for parallel package fetching: `(repo_name, repo_url, meta)`.
+type FetchJob = (String, String, RepoMeta);
+
+/// Snapshot of installed package source and version for an upgrade job.
+type JobMeta = (PackageSource, String);
+
 /// Fetch package info for many repos in parallel, showing a progress bar.
 ///
 /// Each job is `(repo_name, repo_url)`. Returns `(repo_name, Result<Package>)` in the
@@ -29,7 +35,7 @@ type FetchResult = (String, Result<Package>);
 /// The caller is responsible for finishing/clearing an externally provided bar.
 fn parallel_fetch_packages(
     github: &GitHubProvider,
-    jobs: Vec<(String, String, RepoMeta)>,
+    jobs: Vec<FetchJob>,
     existing_pb: Option<&indicatif::ProgressBar>,
 ) -> Vec<FetchResult> {
     let total = jobs.len();
@@ -130,6 +136,148 @@ fn should_update(installed: &str, latest: &str) -> bool {
     }
 }
 
+/// Collect upgrade targets when updating all packages, or return None if already up-to-date.
+fn resolve_all_targets(
+    installed: &crate::core::InstalledSet,
+    github: &GitHubProvider,
+    cache: &mut crate::core::cache::ManifestCache,
+    yes: bool,
+) -> Result<Option<Vec<String>>> {
+    // List upgradeable packages (also syncs latest package info into the cache)
+    let upgradeable = find_upgradeable(installed, github, cache, yes)?;
+
+    if upgradeable.is_empty() {
+        println!("{}", "All packages are up to date".green());
+        return Ok(None);
+    }
+
+    println!("{}", "Packages to upgrade:".bold());
+    for (name, current, latest) in &upgradeable {
+        println!("  • {} {} -> {}", name, current.yellow(), latest.green());
+    }
+    println!();
+
+    Ok(Some(
+        upgradeable.into_iter().map(|(name, _, _)| name).collect(),
+    ))
+}
+
+/// Expand target names to include all installed variants when upgrading a repo.
+fn expand_upgrade_targets(
+    installed: &crate::core::InstalledSet,
+    to_upgrade: &[String],
+) -> Vec<String> {
+    let mut expanded = Vec::new();
+    for name in to_upgrade {
+        // Check if this is a repo name or a specific variant
+        if name.contains("::") {
+            // Specific variant like "bun::baseline" — validate it exists
+            if installed.is_installed(name) {
+                expanded.push(name.clone());
+            } else {
+                eprintln!(
+                    "{} '{}' is not installed, skipping (use 'wenget add' to install new packages)",
+                    "Warning:".yellow(),
+                    name
+                );
+            }
+            continue;
+        }
+
+        // Find all installed variants of this repo
+        let variants = installed.find_by_repo(name);
+        if variants.is_empty() {
+            if installed.is_installed(name) {
+                // Standalone package or script
+                expanded.push(name.clone());
+            } else {
+                eprintln!(
+                    "{} '{}' is not installed, skipping (use 'wenget add' to install new packages)",
+                    "Warning:".yellow(),
+                    name
+                );
+            }
+        } else {
+            for (key, _pkg) in variants {
+                expanded.push(key.clone());
+            }
+        }
+    }
+    expanded
+}
+
+/// Filter out packages that are already up to date against the cache.
+fn filter_up_to_date_targets(
+    installed: &crate::core::InstalledSet,
+    cache: &crate::core::cache::ManifestCache,
+    expanded: Vec<String>,
+) -> Vec<String> {
+    let mut filtered = Vec::new();
+    let cache_by_name = cache.packages_by_name();
+    for key in expanded {
+        if let Some(inst_pkg) = installed.get_package(&key) {
+            match &inst_pkg.source {
+                PackageSource::Bucket { .. } => {
+                    if let Some(cached_pkg) = cache_by_name.get(inst_pkg.repo_name.as_str()) {
+                        if let Some(cache_version) = &cached_pkg.package.version {
+                            if is_newer_version(&inst_pkg.version, cache_version) {
+                                filtered.push(key);
+                            } else {
+                                println!(
+                                    "  • {} v{} is already up to date (latest: {})",
+                                    inst_pkg.repo_name.bright_white(),
+                                    inst_pkg.version.dimmed(),
+                                    cache_version.green()
+                                );
+                            }
+                        } else {
+                            filtered.push(key);
+                        }
+                    } else {
+                        filtered.push(key);
+                    }
+                }
+                PackageSource::Script { origin, .. } => {
+                    if origin.starts_with("bucket:") {
+                        if let Some(cached_script) = cache.find_script(&inst_pkg.repo_name) {
+                            if let Some((_, platform_info)) =
+                                crate::installer::script::installable_script(&cached_script.script)
+                            {
+                                let cache_url = &platform_info.url;
+                                let needs_update = match &inst_pkg.download_url {
+                                    Some(installed_url) => installed_url != cache_url,
+                                    None => true,
+                                };
+                                if needs_update {
+                                    filtered.push(key);
+                                } else {
+                                    println!(
+                                        "  • {} (script) is already up to date",
+                                        inst_pkg.repo_name.bright_white()
+                                    );
+                                }
+                            } else {
+                                filtered.push(key);
+                            }
+                        } else {
+                            filtered.push(key);
+                        }
+                    } else {
+                        filtered.push(key);
+                    }
+                }
+                _ => {
+                    // For direct repo, we let add::run handle it/check live
+                    filtered.push(key);
+                }
+            }
+        } else {
+            filtered.push(key);
+        }
+    }
+    filtered
+}
+
 /// Upgrade installed packages
 pub fn run(
     names: Vec<String>,
@@ -175,62 +323,16 @@ pub fn run(
     // Determine which packages to upgrade
     let update_all = names.is_empty() || (names.len() == 1 && names[0] == "all");
     let to_upgrade: Vec<String> = if update_all {
-        // List upgradeable packages (also syncs latest package info into the cache)
-        let upgradeable = find_upgradeable(&installed, &github, &mut cache, yes)?;
-
-        if upgradeable.is_empty() {
-            println!("{}", "All packages are up to date".green());
-            return Ok(());
+        match resolve_all_targets(&installed, &github, &mut cache, yes)? {
+            Some(targets) => targets,
+            None => return Ok(()),
         }
-
-        println!("{}", "Packages to upgrade:".bold());
-        for (name, current, latest) in &upgradeable {
-            println!("  • {} {} -> {}", name, current.yellow(), latest.green());
-        }
-        println!();
-
-        upgradeable.into_iter().map(|(name, _, _)| name).collect()
     } else {
         names
     };
 
     // Expand: include all installed variants when upgrading a repo
-    let mut expanded = Vec::new();
-    for name in &to_upgrade {
-        // Check if this is a repo name or a specific variant
-        if name.contains("::") {
-            // Specific variant like "bun::baseline" — validate it exists
-            if installed.is_installed(name) {
-                expanded.push(name.clone());
-            } else {
-                eprintln!(
-                    "{} '{}' is not installed, skipping (use 'wenget add' to install new packages)",
-                    "Warning:".yellow(),
-                    name
-                );
-            }
-            continue;
-        }
-
-        // Find all installed variants of this repo
-        let variants = installed.find_by_repo(name);
-        if variants.is_empty() {
-            if installed.is_installed(name) {
-                // Standalone package or script
-                expanded.push(name.clone());
-            } else {
-                eprintln!(
-                    "{} '{}' is not installed, skipping (use 'wenget add' to install new packages)",
-                    "Warning:".yellow(),
-                    name
-                );
-            }
-        } else {
-            for (key, _pkg) in variants {
-                expanded.push(key.clone());
-            }
-        }
-    }
+    let expanded = expand_upgrade_targets(&installed, &to_upgrade);
 
     if expanded.is_empty() {
         println!("{}", "No installed packages to update".yellow());
@@ -239,78 +341,12 @@ pub fn run(
 
     // For named updates, find_upgradeable was skipped, so sync the latest package info
     // for the targeted packages into the cache here.
-    let mut to_run = expanded.clone();
-    if !update_all {
+    let to_run = if !update_all {
         sync_bucket_packages_to_cache(&installed, &expanded, &github, &mut cache);
-
-        // Filter out packages that are already up to date
-        let mut filtered = Vec::new();
-        let cache_by_name = cache.packages_by_name();
-        for key in expanded {
-            if let Some(inst_pkg) = installed.get_package(&key) {
-                match &inst_pkg.source {
-                    PackageSource::Bucket { .. } => {
-                        if let Some(cached_pkg) = cache_by_name.get(inst_pkg.repo_name.as_str()) {
-                            if let Some(cache_version) = &cached_pkg.package.version {
-                                if is_newer_version(&inst_pkg.version, cache_version) {
-                                    filtered.push(key);
-                                } else {
-                                    println!(
-                                        "  • {} v{} is already up to date (latest: {})",
-                                        inst_pkg.repo_name.bright_white(),
-                                        inst_pkg.version.dimmed(),
-                                        cache_version.green()
-                                    );
-                                }
-                            } else {
-                                filtered.push(key);
-                            }
-                        } else {
-                            filtered.push(key);
-                        }
-                    }
-                    PackageSource::Script { origin, .. } => {
-                        if origin.starts_with("bucket:") {
-                            if let Some(cached_script) = cache.find_script(&inst_pkg.repo_name) {
-                                if let Some((_, platform_info)) =
-                                    crate::installer::script::installable_script(
-                                        &cached_script.script,
-                                    )
-                                {
-                                    let cache_url = &platform_info.url;
-                                    let needs_update = match &inst_pkg.download_url {
-                                        Some(installed_url) => installed_url != cache_url,
-                                        None => true,
-                                    };
-                                    if needs_update {
-                                        filtered.push(key);
-                                    } else {
-                                        println!(
-                                            "  • {} (script) is already up to date",
-                                            inst_pkg.repo_name.bright_white()
-                                        );
-                                    }
-                                } else {
-                                    filtered.push(key);
-                                }
-                            } else {
-                                filtered.push(key);
-                            }
-                        } else {
-                            filtered.push(key);
-                        }
-                    }
-                    _ => {
-                        // For direct repo, we let add::run handle it/check live
-                        filtered.push(key);
-                    }
-                }
-            } else {
-                filtered.push(key);
-            }
-        }
-        to_run = filtered;
-    }
+        filter_up_to_date_targets(&installed, &cache, expanded)
+    } else {
+        expanded
+    };
 
     if to_run.is_empty() {
         return Ok(());
@@ -341,38 +377,17 @@ pub fn run(
     )
 }
 
-/// Find upgradeable packages by checking their sources
-fn find_upgradeable(
-    installed: &crate::core::InstalledSet,
-    github: &GitHubProvider,
-    cache: &mut crate::core::cache::ManifestCache,
-    yes: bool,
-) -> Result<Vec<(String, String, String)>> {
-    let mut upgradeable = Vec::new();
-
-    let grouped = installed.group_by_repo();
-    let total = grouped.len();
-
-    let pb = indicatif::ProgressBar::new(total as u64);
-    pb.set_style(
-        indicatif::ProgressStyle::with_template(
-            "{spinner:.cyan} [{bar:30.cyan/blue}] {pos}/{len} checking for updates...",
-        )
-        .unwrap()
-        .progress_chars("=>-"),
-    );
-
-    // Phase 1 (sequential): resolve each repo's URL, handle local-only sources (scripts)
-    // that need no API call, and collect the rest into `jobs` for parallel fetching.
-    // `job_meta` keeps the installed source/version snapshot needed when applying results.
-    //
-    // Build a name → cached package index once: the loop below and the cache-fallback
-    // path in Phase 3 both look packages up by repo name, which is O(cache) per lookup
-    // against the URL-keyed `cache.packages` map.
+/// Phase 1: resolve each repo's URL, handle local-only sources (scripts),
+/// and collect the rest into `jobs` for parallel fetching.
+fn prepare_upgrade_jobs(
+    grouped: HashMap<String, Vec<(&String, &crate::core::InstalledPackage)>>,
+    cache: &crate::core::cache::ManifestCache,
+    pb: &indicatif::ProgressBar,
+    upgradeable: &mut Vec<(String, String, String)>,
+) -> (Vec<FetchJob>, HashMap<String, JobMeta>) {
     let cache_by_name = cache.packages_by_name();
-    let mut jobs: Vec<(String, String, RepoMeta)> = Vec::new();
-    let mut job_meta: HashMap<String, (PackageSource, String)> = HashMap::new();
-
+    let mut jobs: Vec<FetchJob> = Vec::new();
+    let mut job_meta: HashMap<String, JobMeta> = HashMap::new();
     for (repo_name, variants) in grouped {
         // Use the first variant to get version and source info
         let (_key, inst_pkg) = variants[0];
@@ -464,11 +479,93 @@ fn find_upgradeable(
         );
     }
 
-    // Phase 2 (parallel): fetch latest package info from GitHub for all collected jobs.
-    let results = parallel_fetch_packages(github, jobs, Some(&pb));
+    (jobs, job_meta)
+}
 
-    // Phase 3 (sequential): apply results — mutate the cache and resolve any prompts on the
-    // main thread, where it is safe to do so.
+/// Handle cache fallback when GitHub API fetch fails for a package in Phase 3.
+fn handle_fetch_failure(
+    repo_name: &str,
+    inst_version: &str,
+    cache: &crate::core::cache::ManifestCache,
+    yes: bool,
+    upgradeable: &mut Vec<(String, String, String)>,
+    e: &anyhow::Error,
+) -> Result<()> {
+    // API failed - try to use cache version as fallback
+    log::debug!(
+        "GitHub API failed for {}: {}. Trying cache fallback...",
+        repo_name,
+        e
+    );
+
+    // Find package in cache by repo_name.
+    // A linear scan is acceptable here: this branch only runs on API
+    // failure (rare), and `cache` may have been mutated by prior Ok
+    // results in this loop, so a pre-built name index would be stale.
+    if let Some(cached_pkg) = cache
+        .packages
+        .values()
+        .find(|p| p.package.name == repo_name)
+    {
+        if let Some(cache_version) = &cached_pkg.package.version {
+            let should_upgrade = if inst_version == "local" {
+                if yes {
+                    true
+                } else {
+                    eprintln!(
+                        "{} {} is locally installed, cache has version {} available",
+                        "Info:".cyan(),
+                        repo_name,
+                        cache_version
+                    );
+                    crate::utils::prompt::confirm(&format!(
+                        "  Overwrite local {} with cached version {}?",
+                        repo_name, cache_version
+                    ))?
+                }
+            } else {
+                is_newer_version(inst_version, cache_version)
+            };
+
+            if should_upgrade {
+                eprintln!(
+                    "{} Using cached version for {}: {} (API unavailable)",
+                    "Info:".cyan(),
+                    repo_name,
+                    cache_version
+                );
+                upgradeable.push((
+                    repo_name.to_string(),
+                    inst_version.to_string(),
+                    cache_version.clone(),
+                ));
+            }
+        } else {
+            eprintln!(
+                "{} No version info in cache for {}, skipping",
+                "Warning:".yellow(),
+                repo_name
+            );
+        }
+    } else {
+        eprintln!(
+            "{} Failed to check updates for {}: API error and no cache available",
+            "Warning:".yellow(),
+            repo_name
+        );
+    }
+
+    Ok(())
+}
+
+/// Phase 3: Apply parallel fetch results, mutate the cache, and record upgradeable packages.
+fn apply_fetch_results(
+    results: Vec<FetchResult>,
+    job_meta: &HashMap<String, JobMeta>,
+    cache: &mut crate::core::cache::ManifestCache,
+    yes: bool,
+    upgradeable: &mut Vec<(String, String, String)>,
+) -> Result<()> {
     for (repo_name, result) in results {
         let (source, inst_version) = match job_meta.get(&repo_name) {
             Some(meta) => meta.clone(),
@@ -494,68 +591,45 @@ fn find_upgradeable(
                 }
             }
             Err(e) => {
-                // API failed - try to use cache version as fallback
-                log::debug!(
-                    "GitHub API failed for {}: {}. Trying cache fallback...",
-                    repo_name,
-                    e
-                );
-
-                // Find package in cache by repo_name.
-                // A linear scan is acceptable here: this branch only runs on API
-                // failure (rare), and `cache` may have been mutated by prior Ok
-                // results in this loop, so a pre-built name index would be stale.
-                if let Some(cached_pkg) = cache
-                    .packages
-                    .values()
-                    .find(|p| p.package.name == repo_name)
-                {
-                    if let Some(cache_version) = &cached_pkg.package.version {
-                        let should_upgrade = if inst_version == "local" {
-                            if yes {
-                                true
-                            } else {
-                                eprintln!(
-                                    "{} {} is locally installed, cache has version {} available",
-                                    "Info:".cyan(),
-                                    repo_name,
-                                    cache_version
-                                );
-                                crate::utils::prompt::confirm(&format!(
-                                    "  Overwrite local {} with cached version {}?",
-                                    repo_name, cache_version
-                                ))?
-                            }
-                        } else {
-                            is_newer_version(&inst_version, cache_version)
-                        };
-
-                        if should_upgrade {
-                            eprintln!(
-                                "{} Using cached version for {}: {} (API unavailable)",
-                                "Info:".cyan(),
-                                repo_name,
-                                cache_version
-                            );
-                            upgradeable.push((repo_name, inst_version, cache_version.clone()));
-                        }
-                    } else {
-                        eprintln!(
-                            "{} No version info in cache for {}, skipping",
-                            "Warning:".yellow(),
-                            repo_name
-                        );
-                    }
-                } else {
-                    eprintln!(
-                        "{} Failed to check updates for {}: API error and no cache available",
-                        "Warning:".yellow(),
-                        repo_name
-                    );
-                }
+                handle_fetch_failure(&repo_name, &inst_version, cache, yes, upgradeable, &e)?;
             }
         }
     }
+
+    Ok(())
+}
+
+/// Find upgradeable packages by checking their sources
+fn find_upgradeable(
+    installed: &crate::core::InstalledSet,
+    github: &GitHubProvider,
+    cache: &mut crate::core::cache::ManifestCache,
+    yes: bool,
+) -> Result<Vec<(String, String, String)>> {
+    let mut upgradeable = Vec::new();
+
+    let grouped = installed.group_by_repo();
+    let total = grouped.len();
+
+    let pb = indicatif::ProgressBar::new(total as u64);
+    pb.set_style(
+        indicatif::ProgressStyle::with_template(
+            "{spinner:.cyan} [{bar:30.cyan/blue}] {pos}/{len} checking for updates...",
+        )
+        .unwrap()
+        .progress_chars("=>-"),
+    );
+
+    // Phase 1 (sequential): resolve each repo's URL, handle local-only sources (scripts)
+    // that need no API call, and collect the rest into `jobs` for parallel fetching.
+    let (jobs, job_meta) = prepare_upgrade_jobs(grouped, cache, &pb, &mut upgradeable);
+
+    // Phase 2 (parallel): fetch latest package info from GitHub for all collected jobs.
+    let results = parallel_fetch_packages(github, jobs, Some(&pb));
+
+    // Phase 3 (sequential): apply results — mutate the cache and resolve any prompts on the
+    // main thread, where it is safe to do so.
+    apply_fetch_results(results, &job_meta, cache, yes, &mut upgradeable)?;
 
     pb.finish();
     println!();
@@ -745,30 +819,9 @@ fn override_matches_host(override_str: &str, host: crate::core::Platform) -> boo
     }
 }
 
-/// Upgrade wenget itself
-fn upgrade_self_with_provider(
-    provider: GitHubProvider,
-    latest_version: &str,
-    skip_checksum: bool,
-) -> Result<()> {
-    use crate::core::{Platform, WenPaths};
-    use crate::downloader::download_file;
-    use crate::installer::{extract_archive, find_executable};
-    use colored::Colorize;
-    use std::env;
-    use std::fs;
-
-    println!("{}", "Upgrading wenget...".cyan());
-
-    // Get package information including binaries
-    let meta = RepoMeta {
-        name: "wenget".to_string(),
-        description: String::new(),
-        homepage: None,
-        license: None,
-    };
-    let package =
-        provider.fetch_package("https://github.com/superyngo/wenget", None, Some(meta))?;
+/// Select the self-update binary matching current platform and preferred_platform settings.
+fn select_self_binary(package: &Package) -> Result<&crate::core::PlatformBinary> {
+    use crate::core::Platform;
 
     // Select binary for current platform
     // Note: Uses same platform matching logic as add command (see add.rs).
@@ -830,9 +883,20 @@ fn upgrade_self_with_provider(
     }
 
     // For self-update, just use the first binary if multiple exist
-    let binary = binaries
+    binaries
         .first()
-        .ok_or_else(|| anyhow::anyhow!("No binaries found for platform"))?;
+        .ok_or_else(|| anyhow::anyhow!("No binaries found for platform"))
+}
+
+/// Download the binary asset and extract it to a temporary directory.
+fn download_and_extract_self(
+    binary: &crate::core::PlatformBinary,
+    skip_checksum: bool,
+) -> Result<(std::path::PathBuf, crate::downloader::CleanupGuard)> {
+    use crate::core::WenPaths;
+    use crate::downloader::download_file;
+    use crate::installer::{extract_archive, find_executable};
+    use std::fs;
 
     println!("Downloading: {}", binary.url);
 
@@ -844,7 +908,7 @@ fn upgrade_self_with_provider(
     let temp_dir = paths.cache_dir().join("self-upgrade");
     fs::create_dir_all(&temp_dir)?;
     // Removes the scratch directory on every exit path, including errors below
-    let _temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
+    let temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
 
     let download_path = temp_dir.join(filename);
     download_file(&binary.url, &download_path)?;
@@ -874,7 +938,13 @@ fn upgrade_self_with_provider(
         anyhow::bail!("Extracted executable not found: {}", new_exe_path.display());
     }
 
-    // Get current executable path
+    Ok((new_exe_path, temp_guard))
+}
+
+/// Replace the running executable with the newly extracted binary across platforms.
+fn replace_self_executable(new_exe_path: &std::path::PathBuf) -> Result<()> {
+    use std::env;
+
     let current_exe = env::current_exe()?;
 
     println!("{}", "Installing new version...".cyan());
@@ -882,13 +952,38 @@ fn upgrade_self_with_provider(
     // Platform-specific replacement logic
     #[cfg(windows)]
     {
-        replace_exe_windows(&current_exe, &new_exe_path)?;
+        replace_exe_windows(&current_exe, new_exe_path)?;
     }
 
     #[cfg(not(windows))]
     {
-        replace_exe_unix(&current_exe, &new_exe_path)?;
+        replace_exe_unix(&current_exe, new_exe_path)?;
     }
+
+    Ok(())
+}
+
+/// Upgrade wenget itself
+fn upgrade_self_with_provider(
+    provider: GitHubProvider,
+    latest_version: &str,
+    skip_checksum: bool,
+) -> Result<()> {
+    println!("{}", "Upgrading wenget...".cyan());
+
+    // Get package information including binaries
+    let meta = RepoMeta {
+        name: "wenget".to_string(),
+        description: String::new(),
+        homepage: None,
+        license: None,
+    };
+    let package =
+        provider.fetch_package("https://github.com/superyngo/wenget", None, Some(meta))?;
+
+    let binary = select_self_binary(&package)?;
+    let (new_exe_path, _temp_guard) = download_and_extract_self(binary, skip_checksum)?;
+    replace_self_executable(&new_exe_path)?;
 
     println!();
     println!(
