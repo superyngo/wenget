@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- fix(checksum): a checksum lookup that fails on the network now aborts the install instead of
+  proceeding unverified; `add`/`update --skip-checksum` installs anyway (a mismatch still always
+  aborts). A manifest `PlatformBinary.checksum` (`<hex>` or `sha256:<hex>`) is now verified and takes
+  precedence over probing release checksum files (S-5).
 - refactor(installer): one `installer::create_launcher` replaces the per-platform symlink/shim
   `cfg` switches in install, local install, rename and repair (SI-6).
 - refactor(manifest): the deprecated `parent_package` field is gone from `InstalledPackage`; legacy

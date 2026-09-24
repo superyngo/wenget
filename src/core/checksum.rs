@@ -1,19 +1,19 @@
-//! Best-effort SHA-256 checksum verification for downloaded release assets.
+//! SHA-256 checksum verification for downloaded release assets.
 //!
-//! Wenget probes a small set of conventional checksum filenames published
-//! alongside a GitHub Release asset (`<asset>.sha256`, `checksums.txt`,
-//! `SHA256SUMS`), in the same release directory as the asset itself, and
-//! verifies the download against a matching entry when one is found.
+//! The expected digest comes from the manifest (`PlatformBinary.checksum`)
+//! when present; otherwise wenget probes a small set of conventional checksum
+//! filenames published alongside a GitHub Release asset (`<asset>.sha256`,
+//! `checksums.txt`, `SHA256SUMS`), in the same release directory as the asset.
 //!
-//! This is deliberately asymmetric:
-//! - A published checksum that *doesn't* match aborts the install outright.
-//!   There is no override: a mismatch means either upstream shipped
-//!   something different than it claims, or the download was tampered with
-//!   in transit, and neither should be silently accepted.
-//! - Everything else (no checksum published, or the probe itself failing)
-//!   is a soft no-op — the install proceeds exactly as it would without
-//!   this module. Most GitHub repos don't publish checksums at all, so
-//!   treating their absence as fatal would break the common case.
+//! Outcomes:
+//! - A checksum that *doesn't* match aborts the install outright. There is no
+//!   override: a mismatch means upstream shipped something different than it
+//!   claims, or the download was tampered with in transit.
+//! - A probe that fails at the network layer also aborts: "not published"
+//!   can't be concluded, so the download is unverified. `--skip-checksum`
+//!   installs anyway.
+//! - No checksum published at all is a no-op. Most GitHub repos don't publish
+//!   checksums, so treating their absence as fatal would break the common case.
 
 use anyhow::{Context, Result};
 use colored::Colorize;
@@ -169,16 +169,45 @@ fn sha256_file(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-/// Look up and verify the published checksum (if any) for a freshly
-/// downloaded release asset, printing the outcome.
+/// Normalize a manifest-provided digest (`sha256:<hex>` or bare `<hex>`).
+fn normalize_manifest_checksum(raw: &str) -> Option<String> {
+    let raw = raw.trim();
+    let hex = raw
+        .strip_prefix("sha256:")
+        .or_else(|| raw.strip_prefix("SHA256:"))
+        .unwrap_or(raw);
+    is_sha256_hex(hex).then(|| hex.to_ascii_lowercase())
+}
+
+/// Verify a freshly downloaded release asset, printing the outcome.
 ///
-/// Returns `Err` only when a checksum was found and didn't match the
-/// downloaded file — callers must treat that as fatal (delete the download,
-/// abort the install). Every other outcome (nothing published, probe
-/// failed, or verified successfully) returns `Ok(())` and the install
-/// should proceed.
-pub fn verify_download(asset_url: &str, asset_name: &str, download_path: &Path) -> Result<()> {
-    match lookup_checksum(asset_url, asset_name) {
+/// `expected` is the manifest-provided digest, if any; it takes precedence over
+/// probing. `skip_unverifiable` (`--skip-checksum`) lets a failed probe proceed
+/// unverified; it never overrides a mismatch.
+///
+/// Returns `Err` when the checksum doesn't match, when the manifest digest is
+/// malformed, or when the probe failed and `skip_unverifiable` is false —
+/// callers must treat that as fatal. Nothing published returns `Ok(())`.
+pub fn verify_download(
+    asset_url: &str,
+    asset_name: &str,
+    download_path: &Path,
+    expected: Option<&str>,
+    skip_unverifiable: bool,
+) -> Result<()> {
+    let lookup = match expected {
+        Some(raw) => match normalize_manifest_checksum(raw) {
+            Some(hex) => Lookup::Found(hex),
+            None => anyhow::bail!(
+                "Invalid checksum in manifest for {}: {:?} (expected sha256 hex)",
+                asset_name,
+                raw
+            ),
+        },
+        None => lookup_checksum(asset_url, asset_name),
+    };
+
+    match lookup {
         Lookup::Found(expected) => {
             let actual = sha256_file(download_path)?;
             if actual.eq_ignore_ascii_case(&expected) {
@@ -200,13 +229,17 @@ pub fn verify_download(asset_url: &str, asset_name: &str, download_path: &Path) 
             );
             Ok(())
         }
-        Lookup::ProbeFailed => {
+        Lookup::ProbeFailed if skip_unverifiable => {
             println!(
-                "  {} Checksum lookup failed (network error), skipping verification",
+                "  {} Checksum lookup failed (network error), installing unverified (--skip-checksum)",
                 "⚠".yellow()
             );
             Ok(())
         }
+        Lookup::ProbeFailed => anyhow::bail!(
+            "Checksum lookup failed (network error) for {}; retry, or pass --skip-checksum to install unverified",
+            asset_name
+        ),
         Lookup::NotApplicable => Ok(()),
     }
 }
@@ -320,8 +353,51 @@ mod tests {
         let path = dir.path().join("wenget-macos-aarch64.tar.gz");
         std::fs::write(&path, b"not the real archive content").unwrap();
 
-        let err = verify_download(url, "wenget-macos-aarch64.tar.gz", &path)
+        let err = verify_download(url, "wenget-macos-aarch64.tar.gz", &path, None, false)
             .expect_err("mismatched content must be rejected");
+        assert!(err.to_string().contains("mismatch"));
+    }
+
+    const ABC_SHA256: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+    fn abc_file() -> (TempDir, std::path::PathBuf) {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("a.tar.gz");
+        std::fs::write(&path, b"abc").unwrap();
+        (dir, path)
+    }
+
+    #[test]
+    fn test_manifest_checksum_verified_without_probe() {
+        let (_d, path) = abc_file();
+        // Unreachable URL: a manifest digest must not trigger any probe
+        let url = "http://127.0.0.1:9/o/r/releases/download/v1/a.tar.gz";
+        verify_download(url, "a.tar.gz", &path, Some(ABC_SHA256), false).unwrap();
+        let prefixed = format!("sha256:{}", ABC_SHA256.to_uppercase());
+        verify_download(url, "a.tar.gz", &path, Some(&prefixed), false).unwrap();
+    }
+
+    #[test]
+    fn test_manifest_checksum_mismatch_and_malformed_fail() {
+        let (_d, path) = abc_file();
+        let url = "https://example.com/a.tar.gz";
+        let wrong = "0".repeat(64);
+        let err = verify_download(url, "a.tar.gz", &path, Some(&wrong), false).unwrap_err();
+        assert!(err.to_string().contains("mismatch"));
+        let err = verify_download(url, "a.tar.gz", &path, Some("md5:abc"), false).unwrap_err();
+        assert!(err.to_string().contains("Invalid checksum"));
+    }
+
+    #[test]
+    fn test_probe_failure_is_fatal_unless_skipped() {
+        let (_d, path) = abc_file();
+        let url = "http://127.0.0.1:9/o/r/releases/download/v1/a.tar.gz";
+        let err = verify_download(url, "a.tar.gz", &path, None, false).unwrap_err();
+        assert!(err.to_string().contains("--skip-checksum"));
+        verify_download(url, "a.tar.gz", &path, None, true).unwrap();
+        // Skip never overrides a mismatch
+        let wrong = "0".repeat(64);
+        let err = verify_download(url, "a.tar.gz", &path, Some(&wrong), true).unwrap_err();
         assert!(err.to_string().contains("mismatch"));
     }
 }

@@ -131,9 +131,14 @@ fn should_update(installed: &str, latest: &str) -> bool {
 }
 
 /// Upgrade installed packages
-pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()> {
+pub fn run(
+    names: Vec<String>,
+    yes: bool,
+    platform: Option<String>,
+    skip_checksum: bool,
+) -> Result<()> {
     // Check for wenget updates first
-    if check_and_upgrade_self(yes)? {
+    if check_and_upgrade_self(yes, skip_checksum)? {
         // On Windows, exit after self-update to avoid shell instability
         return Ok(());
     }
@@ -328,6 +333,7 @@ pub fn run(names: Vec<String>, yes: bool, platform: Option<String>) -> Result<()
             yes,
             platform,
             update_mode: true,
+            skip_checksum,
             ..Default::default()
         },
     )
@@ -622,7 +628,7 @@ fn sync_bucket_packages_to_cache(
 
 /// Check for wenget updates and prompt user
 /// Returns true if wenget was updated on Windows (caller should exit)
-fn check_and_upgrade_self(yes: bool) -> Result<bool> {
+fn check_and_upgrade_self(yes: bool, skip_checksum: bool) -> Result<bool> {
     let current_version = env!("CARGO_PKG_VERSION");
 
     println!("{}", "Checking for wenget updates...".dimmed());
@@ -684,7 +690,7 @@ fn check_and_upgrade_self(yes: bool) -> Result<bool> {
     }
 
     // Perform self-update, passing provider and known version to avoid redundant API calls
-    upgrade_self_with_provider(provider, &latest_version)?;
+    upgrade_self_with_provider(provider, &latest_version, skip_checksum)?;
 
     // On Windows, recommend restarting shell
     #[cfg(windows)]
@@ -738,7 +744,11 @@ fn override_matches_host(override_str: &str, host: crate::core::Platform) -> boo
 }
 
 /// Upgrade wenget itself
-fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) -> Result<()> {
+fn upgrade_self_with_provider(
+    provider: GitHubProvider,
+    latest_version: &str,
+    skip_checksum: bool,
+) -> Result<()> {
     use crate::core::{Platform, WenPaths};
     use crate::downloader::download_file;
     use crate::installer::{extract_archive, find_executable};
@@ -837,7 +847,13 @@ fn upgrade_self_with_provider(provider: GitHubProvider, latest_version: &str) ->
     let download_path = temp_dir.join(filename);
     download_file(&binary.url, &download_path)?;
 
-    crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)?;
+    crate::core::checksum::verify_download(
+        &binary.url,
+        &binary.asset_name,
+        &download_path,
+        binary.checksum.as_deref(),
+        skip_checksum,
+    )?;
 
     // Extract archive
     let extract_dir = temp_dir.join("extracted");

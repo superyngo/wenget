@@ -16,7 +16,7 @@ wenget simplifies the installation and management of command-line tools and appl
 - **📜 Script Support**: Install and manage PowerShell, Bash, and Python scripts from buckets
 - **🌐 Cross-platform**: Windows, macOS, Linux (multiple architectures)
 - **📁 Organized Storage**: Packages stored under `~/.wenget/apps/` with shims/symlinks in `~/.local/bin/`
-- **🔒 Checksum Verification**: Best-effort SHA-256 validation against published release checksums
+- **🔒 Checksum Verification**: SHA-256 validation against the manifest `checksum` or published release checksums; mismatches and failed lookups abort (`--skip-checksum` overrides a failed lookup)
 - **⚡ Stage-and-Swap Installs**: Atomic extractions prevent partial or broken installations
 - **🔍 Smart Search**: Fuzzy, ranked search across all configured buckets — prefixes, typos, abbreviations (`rgp` → ripgrep), and description keywords
 - **🎯 Platform Detection**: Automatically selects the correct binary for your system
@@ -134,6 +134,7 @@ wenget del ripgrep
   - `-p, --platform <target>` - Specify target platform (e.g., `windows-x64`, `linux-x64`, `darwin-arm64`)
   - `--variant <name>` - Install a specific variant (e.g., `--variant baseline`)
   - `--no-suffix` - Don't append variant suffix to command name
+  - `--skip-checksum` - Install unverified when the checksum lookup fails on the network (a mismatch still aborts)
   - `-y, --yes` - Skip confirmation prompts
 - `wenget info <name|url>...` (alias: `i`) - Show package information from buckets or GitHub repository
 - `wenget del <name>...` (aliases: `remove`, `rm`, `uninstall`) - Uninstall packages
@@ -146,6 +147,7 @@ wenget del ripgrep
 - `wenget search <terms>...` (alias: `s`) - Search available packages (case-insensitive fuzzy match on names, plus description/repo keywords; `*` globs supported)
 - `wenget update [name]...` (alias: `up`) - Update installed packages (always checks for a wenget update first)
   - `-p, --platform <target>` - Update for a specific platform (overrides `preferred_platform`)
+  - `--skip-checksum` - Install unverified when the checksum lookup fails on the network (a mismatch still aborts)
   - `-y, --yes` - Skip confirmation prompts
 
 ### Bucket Management
@@ -389,7 +391,7 @@ Create a `manifest.json` with the following structure:
 - `homepage`: Project homepage URL (packages and scripts)
 - `license`: Package or script license (packages and scripts)
 - `version`: Package version string (packages)
-- `checksum`: SHA256 checksum for verification (on `PlatformBinary` or `ScriptPlatform` entries)
+- `checksum`: SHA-256 digest (`<hex>` or `sha256:<hex>`) verified against the download on `PlatformBinary` entries; takes precedence over probing release checksum files
 
 #### Hosting Your Bucket
 
@@ -459,7 +461,7 @@ wenget supports the following platforms:
 1. **Platform Detection**: wenget automatically detects your OS and architecture
 2. **Package Resolution**: Searches buckets for the requested package
 3. **Binary Selection**: Identifies the appropriate binary from GitHub Releases
-4. **Download & Checksum**: Downloads the asset and performs best-effort SHA-256 verification against published checksums (`.sha256`, `checksums.txt`, `SHA256SUMS`). Mismatches abort immediately.
+4. **Download & Checksum**: Downloads the asset and verifies its SHA-256 against the manifest `checksum`, or else against checksums published next to the release asset (`.sha256`, `checksums.txt`, `SHA256SUMS`). A mismatch always aborts; a lookup that fails on the network aborts unless `--skip-checksum` is given; an asset with no published checksum installs unverified.
 5. **Stage & Swap**: Extracts the archive into `.staging/` before atomically swapping into `~/.wenget/apps/<package>/`, ensuring interrupted runs never leave corrupted installs
 6. **Launcher Creation**: Creates shims (Windows) or symlinks (Unix) in `~/.local/bin/` (or configured bin directory) for immediate command access
 

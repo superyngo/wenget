@@ -40,6 +40,8 @@ pub struct InstallOptions {
     pub no_suffix: bool,
     /// Set by `update`: reinstall already-installed packages, keeping their variant
     pub update_mode: bool,
+    /// `--skip-checksum`: don't verify downloads against published checksums
+    pub skip_checksum: bool,
 }
 
 /// Successes and failures of one batch (packages, scripts, files or URLs)
@@ -188,6 +190,7 @@ pub fn run_with(
             url_inputs,
             yes,
             script_name.as_deref(),
+            opts.skip_checksum,
         )?;
     }
 
@@ -485,6 +488,7 @@ fn install_from_urls(
     urls: Vec<&String>,
     yes: bool,
     custom_name: Option<&str>,
+    skip_checksum: bool,
 ) -> Result<usize> {
     println!("{}", "URLs to install:".bold());
 
@@ -525,9 +529,13 @@ fn install_from_urls(
             Ok(_) => {
                 println!("  {} Downloaded", "✓".green());
 
-                if let Err(e) =
-                    crate::core::checksum::verify_download(url, filename, &download_path)
-                {
+                if let Err(e) = crate::core::checksum::verify_download(
+                    url,
+                    filename,
+                    &download_path,
+                    None,
+                    skip_checksum,
+                ) {
                     println!("  {} {}", "✗".red(), e);
                     report.fail(url.to_string());
                 } else {
@@ -704,6 +712,7 @@ fn install_packages(
         yes,
         no_suffix: opts.no_suffix,
         update_mode,
+        skip_checksum: opts.skip_checksum,
     };
 
     // Get current platform (used for informational messages).

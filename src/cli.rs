@@ -64,6 +64,10 @@ pub enum Commands {
         /// Don't append variant suffix to command name
         #[arg(long = "no-suffix")]
         no_suffix: bool,
+
+        /// Install unverified when the checksum lookup fails (a mismatch still aborts)
+        #[arg(long = "skip-checksum")]
+        skip_checksum: bool,
     },
 
     /// List installed packages
@@ -101,6 +105,10 @@ pub enum Commands {
         /// Specify target platform (e.g., linux-x86_64-musl, aarch64-unknown-linux-musl)
         #[arg(short = 'p', long = "platform")]
         platform: Option<String>,
+
+        /// Install unverified when the checksum lookup fails (a mismatch still aborts)
+        #[arg(long = "skip-checksum")]
+        skip_checksum: bool,
     },
 
     /// Delete (remove) installed packages

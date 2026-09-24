@@ -49,6 +49,7 @@ fn main() {
             pkg_version,
             variant,
             no_suffix,
+            skip_checksum,
         } => commands::run_add(
             names,
             commands::add::InstallOptions {
@@ -58,6 +59,7 @@ fn main() {
                 version: pkg_version,
                 variant_filter: variant,
                 no_suffix,
+                skip_checksum,
                 update_mode: false,
             },
         ),
@@ -72,7 +74,8 @@ fn main() {
             names,
             yes,
             platform,
-        } => commands::run_update(names, yes, platform),
+            skip_checksum,
+        } => commands::run_update(names, yes, platform, skip_checksum),
 
         Commands::Del {
             names,

@@ -259,6 +259,8 @@ pub struct PackageInstaller<'a> {
     pub no_suffix: bool,
     /// Keep the previously installed executables and command names
     pub update_mode: bool,
+    /// `--skip-checksum`: don't verify the download
+    pub skip_checksum: bool,
 }
 
 /// What to install: one binary of one release
@@ -318,7 +320,13 @@ impl PackageInstaller<'_> {
         let _download_guard = downloader::CleanupGuard::new(&download_path);
         downloader::download_file(&binary.url, &download_path)?;
 
-        crate::core::checksum::verify_download(&binary.url, &binary.asset_name, &download_path)?;
+        crate::core::checksum::verify_download(
+            &binary.url,
+            &binary.asset_name,
+            &download_path,
+            binary.checksum.as_deref(),
+            self.skip_checksum,
+        )?;
 
         // Sanitized directory names are lossy, so a different package may already
         // own the directory this key maps to.
@@ -1142,6 +1150,7 @@ mod tests {
             yes: false,
             no_suffix: false,
             update_mode: update,
+            skip_checksum: false,
         }
     }
 
