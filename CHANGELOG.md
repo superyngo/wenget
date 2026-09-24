@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-24
 
+- fix(list): a package's command names are shown sorted in `list`, `info`, `rename` and the `add`
+  summary instead of in random order per run.
 - build: `src/main.rs` enables `clippy::too_many_lines`, so CI (clippy `-D warnings`) rejects any
   new function over 100 lines.
 - refactor: the 13 remaining functions over 100 lines (clippy `too_many_lines`) are split into

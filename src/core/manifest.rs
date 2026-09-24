@@ -373,14 +373,16 @@ pub struct InstalledPackage {
 }
 
 impl InstalledPackage {
-    /// Get all command names from the executables map.
+    /// Get all command names from the executables map, sorted.
     /// Falls back to legacy command_names if executables is empty (pre-migration).
     pub fn get_command_names(&self) -> Vec<&str> {
-        if !self.executables.is_empty() {
+        let mut names: Vec<&str> = if !self.executables.is_empty() {
             self.executables.values().map(|s| s.as_str()).collect()
         } else {
             self.command_names.iter().map(|s| s.as_str()).collect()
-        }
+        };
+        names.sort_unstable();
+        names
     }
 
     /// Get the executable path for a given command name
@@ -762,10 +764,8 @@ mod tests {
             download_url: None,
         };
 
-        let names = pkg.get_command_names();
-        assert_eq!(names.len(), 2);
-        assert!(names.contains(&"rg"));
-        assert!(names.contains(&"rg-doc"));
+        // Sorted, so display order is stable despite the HashMap
+        assert_eq!(pkg.get_command_names(), vec!["rg", "rg-doc"]);
 
         assert_eq!(pkg.get_exe_path_for_command("rg"), Some("bin/rg"));
         assert_eq!(pkg.get_exe_path_for_command("rg-doc"), Some("bin/rg-doc"));
