@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-23
 
+- refactor(add): `install_packages` (~650 lines) split into phases: `resolve_inputs`,
+  `plan_packages`, `print_script_plan`, `install_plan_item`, `install_bucket_scripts`, with a
+  shared `Session` for platform matching. Output is unchanged (CL-6).
 - refactor(manifest): `extract_variant_from_asset` is now a token parser instead of a substring
   replacement cascade: platform words no longer eat parts of other words (`winget`, `denort`),
   platform words match case-insensitively (`Linux`, `Darwin`), and extensions like `.tar.zst` no
