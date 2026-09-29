@@ -5,6 +5,7 @@ series only**. Completed series are moved here verbatim — same format, same or
 
 | Archive | Covers |
 |---|---|
+| [`v3.x.md`](v3.x.md) | v3.0.0 (2026-02-02) … v3.9.0 (2026-09-21) |
 | [`v2.x.md`](v2.x.md) | v2.0.0 (2026-01-16) … v2.3.1 (2026-02-01) |
 | [`v1.x.md`](v1.x.md) | v1.0.0 (2026-01-05) … v1.3.3 (2026-01-16) |
 | [`v0.x.md`](v0.x.md) | v0.1.0 (2025-01-21) … v0.9.1 (2026-01-05) |
