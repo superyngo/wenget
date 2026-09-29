@@ -201,29 +201,23 @@ eprintln!("{} {}", "Error:".red().bold(), e);
 
 When releasing a new version, follow these steps:
 
-### 1. Code Quality Checks (MANDATORY)
-**MUST complete before proceeding with release:**
+### 1. Code Quality Checks
+
+Stop the release unless all of these pass: `cargo fmt --check` shows no differences, clippy
+reports no warnings, and `cargo test` has no failures. `release.yml` builds artifacts but runs
+no tests, so this is the only gate before a tag ships.
 
 ```bash
-# Format code (must pass without changes)
 cargo fmt
-cargo fmt --check  # Verify no formatting issues remain
-
-# Lint code (must resolve all clippy warnings)
-cargo clippy --all-targets -- -D warnings  # Fail on any warnings
-# Fix all clippy warnings before proceeding
-
-# Run the full test suite (release.yml builds artifacts but runs no tests)
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings  # same invocation as CI
 cargo test
 ```
 
-**DO NOT proceed with release if:**
-- `cargo fmt --check` shows formatting differences
-- `cargo clippy` reports any warnings or errors
-- `cargo test` has any failure
+### 2. Commit All Updates
 
-### 2. Commit All Updates (MANDATORY)
-**MUST ensure all changes are committed before proceeding:**
+Commit every outstanding change before starting, so the release commits contain only the
+version bump:
 
 ```bash
 # Check for uncommitted changes
@@ -241,15 +235,7 @@ git commit -m "descriptive message"
 git status  # Should show "nothing to commit, working tree clean"
 ```
 
-**DO NOT proceed with release if:**
-- `git status` shows any uncommitted changes (modified, staged, or untracked files)
-- Working directory is not clean
-
-**Important Notes:**
-- All code changes must be committed before starting the release process
-- Organize commit messages clearly describing the updates
-- Verify code quality checks pass (fmt, clippy, and tests) for all committed code
-- The release process will create additional commits for version updates
+Stop the release if `git status` still shows modified, staged, or untracked files.
 
 ### 3. Determine Version Number
 - Review changes to suggest appropriate version bump:
@@ -264,7 +250,7 @@ git status  # Should show "nothing to commit, working tree clean"
 
 ### 5. Update Documentation and Changelog
 - Update `Cargo.toml` version field
-- Update `README.md` version badge (MANDATORY):
+- Update `README.md` version badge:
   - Change `[![Version](https://img.shields.io/badge/version-X.X.X-blue.svg)]` to new version
   - Update usage examples if new features added
   - Update feature descriptions if behavior changed
@@ -283,7 +269,7 @@ git status  # Should show "nothing to commit, working tree clean"
     ```
 - **Changelog archiving**: follow [`docs/reference/changelog/README.md`](docs/reference/changelog/README.md) (keep `[Unreleased]` plus the current major series; archive the previous series on the first release of a new major).
 
-### 5b. Commit the Version Bump (MANDATORY)
+### 5b. Commit the Version Bump
 The tag must point at the commit that contains the new version:
 
 ```bash

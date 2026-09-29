@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-09-29
+
+- docs(agents): prompt audit of the agent instruction files. The AGENTS.md release steps now state
+  each gate once, in plain wording with its reason, and drop the duplicated "Important Notes"
+  block. Every command and gate is unchanged. The audit is recorded in
+  `docs/audit/2026-09-29-prompt-audit.md`.
+
 ### 2026-09-24
 
 - fix(delete): `del self` removes the launchers in the bin directory that point into the wenget
