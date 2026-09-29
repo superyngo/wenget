@@ -14,16 +14,12 @@ last checked against the tree — not when it was opened.
 
 | Item | Closed by | Verifies when | Fallback |
 |---|---|---|---|
-| S-6 system PATH keeps `REG_EXPAND_SZ` | a155341 | Admin `wenget init` on a real Windows machine leaves `%SystemRoot%` entries expanding (CI covers the registry helper under HKCU) | Re-open S-6 |
-| S-8 + Q-7 detached scripts run from paths with spaces | bc1b7bd | `wenget update` self-update and `del self` from `C:\Program Files\...` on real Windows (CI runs a script from a spaced path) | Re-open S-8 |
-| S-4 + SI-5 user PATH via registry, `del self` cleans system PATH | 3252241 | `init`/`del self` on a real Windows account whose name contains `'` | Re-open S-4 / SI-5 |
-| S-10 bootstrap scripts verify `SHA256SUMS` | c46f16c | `install.ps1` run on real Windows (`install.sh` verified on macOS against the v3.9.0 release) | Re-open S-10 for `install.ps1` |
-| IM-4 Windows script shim recreation | 563c5fc | Tested on native Windows environment | Re-open IM-4 Windows half if script wrappers fail on Windows |
 
 ## Awaiting external
 
 | Item | Blocked on | Ready when |
 |---|---|---|
+| S-4 + SI-5 user PATH via registry, `del self` cleans system PATH | Windows account name containing `'` | `init`/`del self` verify PATH addition/removal on that account |
 
 ## Watching
 
@@ -51,7 +47,7 @@ last checked against the tree — not when it was opened.
 | IM-1 | Failed installs exiting with status code 0 | fbfbef0 |
 | IM-2 | Error reporting dropping underlying root cause chain | 4038c74 |
 | IM-3 | `--verbose` and `RUST_LOG` ignored; INFO logs leaking into output | 5da4d1d |
-| IM-4 | `rename` failing on non-bash script packages on Unix | 563c5fc |
+| IM-4 | `rename` failing on non-bash script packages on Unix; Windows script shim recreation verified on 2026-09-29 | 563c5fc |
 | IM-5 | Package record written after staged swap risking untracked installs | a923375 |
 | SI-1 (Q-4) | Duplicate asset scoring engines in `platform.rs` | 6e5279a |
 | SI-2 | Duplicated `fetch_package` and `fetch_package_by_version` methods | 3f56915 |
@@ -129,3 +125,6 @@ last checked against the tree — not when it was opened.
 | B-13 | `add -y` installed same-variant builds in two archive formats twice under one key (`add::dedupe_same_variant`) | a8a031b |
 | B-14 | `del self` left the `wenget` and package launchers dangling in the bin dir (`delete::remove_launchers`) | 3e9c1da |
 | B-9 | Local archive without platform keywords split payload and record across two app dirs | a92ed79 |
+| S-10 | Bootstrap scripts verify `SHA256SUMS`; native Windows `install.ps1` verified the v3.9.0 release on 2026-09-29 | c46f16c |
+| S-6 | Admin `init` and `del self` preserve system PATH `REG_EXPAND_SZ` and `%SystemRoot%` expansion | a155341 |
+| S-8 + Q-7 | Detached self-update and `del self` verified from a spaced Program Files path on native Windows | bc1b7bd |

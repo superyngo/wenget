@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-09-29
 
+- test(windows): native Windows smoke checks verified system PATH type preservation, self-update
+  and `del self` from a spaced Program Files path, script shim recreation through `repair -f`, and
+  `install.ps1` SHA256SUMS verification against v3.9.0. S-4/SI-5's apostrophe-account check remains
+  tracked in `docs/plan/BACKLOG.md`.
 - docs(agents): prompt audit of the agent instruction files. The AGENTS.md release steps now state
   each gate once, in plain wording with its reason, and drop the duplicated "Important Notes"
   block. Every command and gate is unchanged. The audit is recorded in
