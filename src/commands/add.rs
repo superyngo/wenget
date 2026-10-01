@@ -503,7 +503,7 @@ fn install_local_files(
 
 /// Install binary or archive from direct URLs
 fn install_from_urls(
-    _config: &Config,
+    config: &Config,
     paths: &WenPaths,
     installed: &mut crate::core::InstalledSet,
     urls: Vec<&String>,
@@ -546,7 +546,8 @@ fn install_from_urls(
         let filename = filename.split('?').next().unwrap_or(filename);
         let download_path = temp_dir.join(filename);
 
-        match downloader::download_file(url, &download_path) {
+        let opts = downloader::DownloadOptions::from_preferences(config.preferences());
+        match downloader::download_file(url, &download_path, &opts) {
             Ok(_) => {
                 println!("  {} Downloaded", "✓".green());
 
@@ -830,6 +831,7 @@ fn install_packages(
         no_suffix: opts.no_suffix,
         update_mode: opts.update_mode,
         skip_checksum: opts.skip_checksum,
+        download: downloader::DownloadOptions::from_preferences(config.preferences()),
     };
     let mut report = BatchReport::new("package");
     // Packages fetched from the GitHub API, to refresh in the cache

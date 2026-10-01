@@ -283,6 +283,15 @@ custom_bin_path = "/usr/local/bin"
 
 Useful for custom PATH setups or when `~/.local/bin` cannot be added to PATH.
 
+**Download Connections** - Parallel connections for one large file (1-16, default 4):
+```toml
+download_connections = 8
+```
+
+Files of 16 MiB or more on servers that support range requests (GitHub releases do) are
+downloaded as 8 MiB segments over this many connections. Set `1` to always use a single
+connection. Interrupted transfers resume from where they stopped instead of restarting.
+
 ### Environment Variables
 
 - `WENGET_ROOT` - Override wenget root and bin directories (e.g., `env WENGET_ROOT=/tmp/test wenget ...`). Sets both application data and binary links under the specified directory; useful for testing and sandboxing without touching `~/.wenget/`.

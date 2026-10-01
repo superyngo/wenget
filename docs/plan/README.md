@@ -10,7 +10,7 @@ The living backlog is [BACKLOG.md](BACKLOG.md) — undated, never frozen while w
 
 | Date | Document | Status |
 |---|---|---|
-| 2026-10-01 | [2026-10-01-downloader-resume-and-segmented.md](2026-10-01-downloader-resume-and-segmented.md) | Phase 1 landed |
+| 2026-10-01 | [2026-10-01-downloader-resume-and-segmented.md](2026-10-01-downloader-resume-and-segmented.md) | Phases 1-2 landed |
 
 ## Landed
 

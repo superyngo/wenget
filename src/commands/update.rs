@@ -911,7 +911,10 @@ fn download_and_extract_self(
     let temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
 
     let download_path = temp_dir.join(filename);
-    download_file(&binary.url, &download_path)?;
+    let opts = crate::core::Config::new()
+        .map(|c| crate::downloader::DownloadOptions::from_preferences(c.preferences()))
+        .unwrap_or_default();
+    download_file(&binary.url, &download_path, &opts)?;
 
     crate::core::checksum::verify_download(
         &binary.url,

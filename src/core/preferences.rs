@@ -23,6 +23,12 @@ pub struct Preferences {
     /// Useful for custom PATH setups or when ~/.local/bin cannot be added to PATH.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_bin_path: Option<PathBuf>,
+
+    /// Parallel connections used to download one large file (1..=16; unset = 4)
+    ///
+    /// 1 disables segmented downloads.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download_connections: Option<u8>,
 }
 
 impl Preferences {
@@ -87,6 +93,14 @@ impl Preferences {
 #
 # Example:
 # custom_bin_path = "/usr/local/bin"
+
+# Download connections per file (1-16, default 4)
+#
+# Files of 16 MiB or more on servers that support range requests (GitHub releases do)
+# are downloaded as 8 MiB segments over this many connections. 1 disables it.
+#
+# Example:
+# download_connections = 8
 "#;
 
         fs::write(config_path, template)
@@ -98,6 +112,7 @@ impl Preferences {
     /// Checks that:
     /// - Platform string is reasonable (contains expected separators)
     /// - Custom bin path is absolute
+    /// - Download connections are within 1..=16
     pub fn validate(&self) -> Result<()> {
         // Validate platform string format
         if let Some(ref platform) = self.preferred_platform {
@@ -113,6 +128,12 @@ impl Preferences {
         if let Some(ref path) = self.custom_bin_path {
             if !path.is_absolute() {
                 anyhow::bail!("Custom bin path must be absolute, got: {}", path.display());
+            }
+        }
+
+        if let Some(n) = self.download_connections {
+            if !(1..=16).contains(&n) {
+                anyhow::bail!("download_connections must be between 1 and 16, got: {}", n);
             }
         }
 
@@ -140,6 +161,7 @@ mod tests {
         let prefs = Preferences {
             preferred_platform: Some("x86_64-unknown-linux-musl".to_string()),
             custom_bin_path: Some(PathBuf::from("/usr/local/bin")),
+            download_connections: Some(8),
         };
 
         std::fs::write(&config_path, toml::to_string_pretty(&prefs).unwrap()).unwrap();
@@ -147,6 +169,7 @@ mod tests {
 
         assert_eq!(loaded.preferred_platform, prefs.preferred_platform);
         assert_eq!(loaded.custom_bin_path, prefs.custom_bin_path);
+        assert_eq!(loaded.download_connections, Some(8));
     }
 
     #[test]
@@ -171,6 +194,12 @@ mod tests {
         assert!(content.contains("wenget Configuration File"));
         assert!(content.contains("preferred_platform"));
         assert!(content.contains("custom_bin_path"));
+        assert!(content.contains("download_connections"));
+        // Template values are all commented out, so it loads as defaults
+        assert!(Preferences::load(&config_path)
+            .unwrap()
+            .download_connections
+            .is_none());
     }
 
     #[test]
@@ -179,6 +208,7 @@ mod tests {
             preferred_platform: Some("x86_64-unknown-linux-gnu".to_string()),
             // Absolute on every platform (`/usr/local/bin` is not absolute on Windows)
             custom_bin_path: Some(std::env::temp_dir()),
+            download_connections: Some(16),
         };
         assert!(prefs.validate().is_ok());
     }
@@ -188,6 +218,7 @@ mod tests {
         let prefs = Preferences {
             preferred_platform: Some("invalid".to_string()),
             custom_bin_path: None,
+            download_connections: None,
         };
         assert!(prefs.validate().is_err());
     }
@@ -197,7 +228,19 @@ mod tests {
         let prefs = Preferences {
             preferred_platform: None,
             custom_bin_path: Some(PathBuf::from("relative/path")),
+            download_connections: None,
         };
         assert!(prefs.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_download_connections() {
+        for (n, ok) in [(0, false), (1, true), (16, true), (17, false)] {
+            let prefs = Preferences {
+                download_connections: Some(n),
+                ..Preferences::default()
+            };
+            assert_eq!(prefs.validate().is_ok(), ok, "connections = {n}");
+        }
     }
 }

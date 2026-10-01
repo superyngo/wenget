@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-01
 
+- feat(downloader): segmented multi-connection downloads. Files of 16 MiB or more on servers that
+  honour `Range` are fetched as 8 MiB segments over `download_connections` parallel connections
+  (new `config.toml` key, 1-16, default 4; `1` disables it). Servers without range support,
+  small files, or a file that changes mid-download fall back to one stream; the probe response is
+  reused, so small files cost no extra request.
 - feat(downloader): downloads stream into `<file>.part` and are renamed only after the byte count
   matches. Dropped connections, stalls, 5xx and 429 are retried (1 s/2 s/4 s backoff) and resume
   with `Range` + `If-Range` from where they stopped; a server that ignores the range or a changed
