@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-10-01
+
+- feat(downloader): downloads stream into `<file>.part` and are renamed only after the byte count
+  matches. Dropped connections, stalls, 5xx and 429 are retried (1 s/2 s/4 s backoff) and resume
+  with `Range` + `If-Range` from where they stopped; a server that ignores the range or a changed
+  file restarts from 0. Gives up after 3 consecutive attempts without progress. The shared HTTP
+  client's 30 s stall timeout is now explicit and documented.
+
 ## [4.0.0] - 2026-09-29
 
 ### 2026-09-29

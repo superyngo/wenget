@@ -6,15 +6,19 @@ use serde::de::DeserializeOwned;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// Process-wide HTTP client: one connection pool, `wenget/<version>` User-Agent, no total timeout
+/// Process-wide HTTP client: one connection pool, `wenget/<version>` User-Agent
 ///
-/// Callers set per-request timeouts. It never carries credentials; only [`HttpClient`] adds
-/// the GitHub token, so downloads from arbitrary asset hosts cannot leak it.
+/// The blocking client's 30 s timeout bounds waiting for response headers and each individual
+/// body `read()`, not the whole transfer, so it works as a stall timeout for large downloads.
+/// Never set `RequestBuilder::timeout` on a download: in blocking reqwest that becomes a total
+/// deadline over the entire body. It never carries credentials; only [`HttpClient`] adds the
+/// GitHub token, so downloads from arbitrary asset hosts cannot leak it.
 pub fn shared_client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         Client::builder()
             .user_agent(format!("wenget/{}", env!("CARGO_PKG_VERSION")))
+            .timeout(Duration::from_secs(30))
             .build()
             .expect("Failed to create HTTP client")
     })
