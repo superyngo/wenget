@@ -1,250 +1,270 @@
-# Repo 資源（Packages）篩選規則總覽
+# Repo Asset (Package) Filtering Rules
 
-> **本文件為單一事實來源（Single Source of Truth）。**
-> 未來新增或修改任何資源分析／篩選規則時，須先更新本文件，再修改對應程式碼。
-> 每條規則均以 `檔案:函式`（含行號僅供參考，以函式名為準）標註實作位置。
+> **This document is the single source of truth.**
+> Before adding or changing any asset analysis / filtering rule, update this document first, then
+> the code. Each rule names its implementation as `file` — `function` (function names are
+> authoritative; there are no line numbers).
 
-分析流程主要涵蓋以下階段，另有數個輔助分類機制：
+Analysis runs in the following stages, plus several auxiliary classification mechanisms:
 
-| 階段 | 內容 | 主要程式位置 |
+| Stage | Content | Main code location |
 |------|------|-------------|
-| **階段一** | Release assets → 各平台分桶（platform buckets） | `src/core/platform.rs` — `BinarySelector::extract_platforms` → `score_parsed` |
-| **階段二** | 目前平台 → 選定要安裝的平台分桶 | `src/core/platform.rs` — `possible_identifiers` / `find_best_match` / `fallback_identifiers` / `match_override` |
-| **候選選定** | 平台候選二進位檔 → 選定下載資產（過濾／去重／選取） | `src/installer/package.rs` — `filter_binaries`；`src/commands/add.rs` — `dedupe_same_variant` / `select_packages_for_platform` |
-| **階段三** | 解壓後檔案 → 選定可執行檔 | `src/installer/extractor.rs` — `find_executable_candidates`；`src/installer/package.rs` — `select_executables` |
-| **輔助** | Release 取得、變體（variant）抽取、命令名正規化、glob 比對等 | 見第 5 節 |
+| **Stage 1** | Release assets → per-platform buckets | `src/core/platform.rs` — `BinarySelector::extract_platforms` → `score_parsed` |
+| **Stage 2** | Current platform → chosen platform bucket | `src/core/platform.rs` — `possible_identifiers` / `find_best_match` / `fallback_identifiers` / `match_override` |
+| **Candidate selection** | Platform candidate binaries → chosen download asset (filter / dedupe / select) | `src/installer/package.rs` — `filter_binaries`; `src/commands/add.rs` — `dedupe_same_variant` / `select_packages_for_platform` |
+| **Stage 3** | Extracted files → chosen executables | `src/installer/extractor.rs` — `find_executable_candidates`; `src/installer/package.rs` — `select_executables` |
+| **Auxiliary** | Release fetching, variant extraction, command-name normalization, glob matching, etc. | See section 5 |
 
-> **評分引擎架構**：階段一的所有資產評分均由單一評分引擎 `BinarySelector::score_parsed`
-> 執行；`select_for_platform` 為包裝其上的測試專用輔助函式（`#[cfg(test)]`）。
+> **Scoring engine**: all Stage 1 asset scoring runs through one engine,
+> `BinarySelector::score_parsed`; `select_for_platform` is a test-only wrapper around it
+> (`#[cfg(test)]`).
 
 ---
 
-## 0. 前置篩選：Release 層級
+## 0. Pre-filter: release level
 
-| # | 規則 | 實作位置 |
+| # | Rule | Implementation |
 |---|------|---------|
-| 0.1 | 只取 `/releases/latest`，**自動排除 draft 與 prerelease**（GitHub API 行為） | `src/providers/github.rs` — `GitHubProvider::fetch_latest_release` |
-| 0.2 | 指定版本時，tag 依序嘗試「加 `v` 前綴」與「去 `v` 前綴」兩種形式 | `src/providers/github.rs` — `fetch_release_by_tag` |
-| 0.3 | Release 無任何 assets → 直接報錯 | `src/providers/github.rs` — `fetch_package` |
-| 0.4 | 階段一結束後平台 map 為空 → 直接報錯（無任何平台可安裝） | 同上 |
+| 0.1 | Only `/releases/latest` is used, which **excludes drafts and prereleases** (GitHub API behavior) | `src/providers/github.rs` — `GitHubProvider::fetch_latest_release` |
+| 0.2 | For a specific version, try the tag both with a `v` prefix added and with it removed | `src/providers/github.rs` — `fetch_release_by_tag` |
+| 0.3 | Release has no assets → error | `src/providers/github.rs` — `fetch_package` |
+| 0.4 | Platform map empty after Stage 1 → error (no installable platform) | Same as above |
 
 ---
 
-## 1. 階段一：Assets → 平台分桶
+## 1. Stage 1: assets → platform buckets
 
-進入點：`BinarySelector::extract_platforms`（`src/core/platform.rs`）。
-每個 asset 對 **11 個測試平台** 逐一評分（Windows x86_64/i686/aarch64、Linux x86_64/i686/aarch64/armv7、macOS x86_64/aarch64、FreeBSD x86_64/aarch64），
-通過者放入 `platform_id → Vec<asset>` map；platform_id 格式為 `{os}-{arch}` 或 `{os}-{arch}-{compiler}`。
+Entry point: `BinarySelector::extract_platforms` (`src/core/platform.rs`).
+Each asset is scored against **11 test platforms** (Windows x86_64/i686/aarch64, Linux
+x86_64/i686/aarch64/armv7, macOS x86_64/aarch64, FreeBSD x86_64/aarch64); passing assets go into a
+`platform_id → Vec<asset>` map. A platform_id is `{os}-{arch}` or `{os}-{arch}-{compiler}`.
 
-### 1.1 汰除規則（Gates，**依序執行**，任一命中即淘汰該 asset）
+### 1.1 Elimination gates (**run in order**; any hit drops the asset)
 
-實作：`BinarySelector::score_parsed`。
+Implementation: `BinarySelector::score_parsed`.
 
-| 順序 | 規則 | 實作位置 |
+| Order | Rule | Implementation |
 |------|------|---------|
-| G1 | **檔名黑名單**：檔名包含以下任一子字串即淘汰：`source`、`.deb`、`.rpm`、`.apk`、`.dmg`、`.pkg`、`.msi`、`.sha256`、`.sha512`、`.asc`、`.sig`、`checksums`、`checksum`、`.txt`、`.md` | `BinarySelector::should_exclude` |
-| G2 | **不支援架構**：檔名包含 `UNSUPPORTED_ARCHS` 常數任一關鍵字即淘汰：s390x/s390、ppc64/ppc64le/ppc/powerpc/powerpc64/powerpc64le、riscv64/riscv32/riscv、mips/mips64/mipsel/mips64el、sparc64/sparc、alpha、sh4、hppa、ia64、loong64/loongarch64 | `ParsedAsset::contains_unsupported_arch` + `UNSUPPORTED_ARCHS` 常數 |
-| G3 | **副檔名不支援**：`FileExtension::from_filename` 判為 `Unsupported` 即淘汰（支援清單見 1.3） | `FileExtension::from_filename` |
-| G4 | **OS 必須匹配**：偵測不到 OS，或偵測到的 OS ≠ 目標平台 OS → 淘汰 | `score_parsed` OS matching |
-| G5 | **架構明確不符**：偵測到明確架構且 ≠ 目標架構 → 淘汰 | `score_parsed` arch matching |
-| G6 | **未偵測到架構時**：(a) 檔名含「未知架構樣式」（word-boundary 比對 `powerpc/ppc/riscv/mips/sparc/s390/alpha/sh4/hppa/ia64/loong`）→ 淘汰；(b) OS 無預設架構（FreeBSD）→ 淘汰 | `ParsedAsset::contains_unknown_arch_pattern` + `Os::default_arch` |
+| G1 | **Filename blocklist**: dropped if the filename contains any of `source`, `.deb`, `.rpm`, `.apk`, `.dmg`, `.pkg`, `.msi`, `.sha256`, `.sha512`, `.asc`, `.sig`, `checksums`, `checksum`, `.txt`, `.md` | `BinarySelector::should_exclude` |
+| G2 | **Unsupported architecture**: dropped if the filename contains any keyword of the `UNSUPPORTED_ARCHS` constant: s390x/s390, ppc64/ppc64le/ppc/powerpc/powerpc64/powerpc64le, riscv64/riscv32/riscv, mips/mips64/mipsel/mips64el, sparc64/sparc, alpha, sh4, hppa, ia64, loong64/loongarch64 | `ParsedAsset::contains_unsupported_arch` + `UNSUPPORTED_ARCHS` constant |
+| G3 | **Unsupported extension**: dropped if `FileExtension::from_filename` returns `Unsupported` (supported list in 1.3) | `FileExtension::from_filename` |
+| G4 | **OS must match**: no OS detected, or detected OS ≠ target OS → dropped | `score_parsed` OS matching |
+| G5 | **Explicit arch mismatch**: an explicit arch is detected and ≠ target arch → dropped | `score_parsed` arch matching |
+| G6 | **No arch detected**: (a) filename contains an "unknown arch pattern" (word-boundary match on `powerpc/ppc/riscv/mips/sparc/s390/alpha/sh4/hppa/ia64/loong`) → dropped; (b) the OS has no default arch (FreeBSD) → dropped | `ParsedAsset::contains_unknown_arch_pattern` + `Os::default_arch` |
 
-### 1.2 評分規則（加分制，順序無關，總分越高越優先）
+### 1.2 Scoring (additive, order-independent; higher total wins)
 
-| 項目 | 分數 | 說明 |
+| Item | Points | Notes |
 |------|------|------|
-| OS 匹配（必要條件） | +100 | 見 G4 |
-| 架構明確匹配 | +50 | |
-| 架構未標明、以 OS 預設架構匹配 | +25 | Windows/Linux 預設 x86_64；macOS 預設 aarch64；FreeBSD 無預設 |
-| Compiler/libc 優先度 | +priority×10 | Linux：musl(3) > gnu(2) > msvc(1)；Windows：msvc(3) > gnu(2) > musl(1)；macOS/FreeBSD 一律 1。見 `Compiler::priority` |
-| 檔案格式偏好 | +2～+5 | `.tar.gz/.tgz`(5) > `.tar.xz`(4) > `.zip`/`.tar.bz2`(3) > `.7z`/`.exe`(2) > 無壓縮裸執行檔(1)。見 `FileExtension::format_score` |
+| OS match (required) | +100 | See G4 |
+| Explicit arch match | +50 | |
+| No arch stated, matched via the OS default arch | +25 | Windows/Linux default x86_64; macOS defaults aarch64; FreeBSD has no default |
+| Compiler/libc priority | +priority×10 | Linux: musl(3) > gnu(2) > msvc(1); Windows: msvc(3) > gnu(2) > musl(1); macOS/FreeBSD always 1. See `Compiler::priority` |
+| File format preference | +2 to +5 | `.tar.gz/.tgz`(5) > `.tar.xz`(4) > `.zip`/`.tar.bz2`(3) > `.7z`/`.exe`(2) > uncompressed bare binary (1). See `FileExtension::format_score` |
 
-### 1.3 檔名解析子規則（`ParsedAsset::from_filename`）
+### 1.3 Filename parsing sub-rules (`ParsedAsset::from_filename`)
 
-#### 副檔名偵測（`FileExtension::from_filename`，依序）
-`.exe` → `.zip` → `.tar.gz`/`.tgz` → `.tar.xz` → `.tar.bz2` → `.7z` → 裸執行檔判定 → `Unsupported`。
+#### Extension detection (`FileExtension::from_filename`, in order)
+`.exe` → `.zip` → `.tar.gz`/`.tgz` → `.tar.xz` → `.tar.bz2` → `.7z` → bare-binary check → `Unsupported`.
 
-**裸執行檔判定**（`is_likely_binary_without_extension`，依序）：
-1. 排除非二進位副檔名：`.md .txt .rst .html .htm .json .yaml .yml .toml .xml .sha256 .sha512 .sig .asc .pub .pem .deb .rpm .apk .dmg .pkg .msi .appimage`
-2. 排除含 `source` / `src` 的檔名
-3. 檔名含平台關鍵字（windows/win64/win32/linux/darwin/macos/osx/mac/freebsd/x86_64/amd64/x64/aarch64/arm64/armv7/i686/x86/i386）→ **視為裸執行檔**
-4. 無副檔名且檔名不含 readme/license/copying/changelog/authors/news/todo/makefile/dockerfile/vagrantfile/gemfile/rakefile → 視為裸執行檔
+**Bare-binary check** (`is_likely_binary_without_extension`, in order):
+1. Exclude non-binary extensions: `.md .txt .rst .html .htm .json .yaml .yml .toml .xml .sha256 .sha512 .sig .asc .pub .pem .deb .rpm .apk .dmg .pkg .msi .appimage`
+2. Exclude filenames containing `source` / `src`
+3. Filename contains a platform keyword (windows/win64/win32/linux/darwin/macos/osx/mac/freebsd/x86_64/amd64/x64/aarch64/arm64/armv7/i686/x86/i386) → **treated as a bare binary**
+4. No extension and the filename contains none of readme/license/copying/changelog/authors/news/todo/makefile/dockerfile/vagrantfile/gemfile/rakefile → treated as a bare binary
 
-> 注意：此清單與 G1（`should_exclude`）、階段三的 `is_excluded_file` 是**三份獨立清單，服務不同階段，不可合併**。
+> Note: this list, G1 (`should_exclude`), and Stage 3's `is_excluded_file` are **three independent
+> lists serving different stages; do not merge them**.
 
-#### OS 偵測（`ParsedAsset::detect_os`，依序）
-1. 明確 OS 關鍵字，**檢查順序固定為 [MacOS, FreeBSD, Linux, Windows]**（因 "darwin" 含子字串 "win"，歷史上 macOS 必須先於 Windows；現行 `ParsedAsset::contains_keyword` 的字詞邊界匹配機制亦能防止此類子字串誤判，順序保留以確保比對確定性）：
-   - Windows：`windows win64 win32 pc-windows win`
-   - Linux：`linux unknown-linux`
-   - macOS：`darwin macos apple osx mac`
-   - FreeBSD：`freebsd`
-2. Linux 發行版名稱推斷 → Linux：`ubuntu debian fedora centos alpine opensuse suse gentoo manjaro archlinux`
-3. Arch Linux 命名慣例 → Linux：檔名含 `_arch-`/`-arch-` 或以 `_arch`/`-arch` 結尾
-4. `.exe` 副檔名 → 推斷為 Windows
-5. `.tar.gz`/`.tar.xz`/`.tar.bz2`/裸執行檔 **且** 檔名含架構關鍵字（x86_64/x64/amd64/aarch64/arm64/armv7/armhf/i686/i386/386）→ 推斷為 Linux
-6. 皆無 → OS 未知（將被 G4 淘汰）
+#### OS detection (`ParsedAsset::detect_os`, in order)
+1. Explicit OS keywords, **checked in the fixed order [MacOS, FreeBSD, Linux, Windows]** ("darwin" contains the substring "win", so historically macOS had to come before Windows; the current word-boundary matching in `ParsedAsset::contains_keyword` also prevents such substring false positives, and the order is kept for determinism):
+   - Windows: `windows win64 win32 pc-windows win`
+   - Linux: `linux unknown-linux`
+   - macOS: `darwin macos apple osx mac`
+   - FreeBSD: `freebsd`
+2. Linux distribution names → Linux: `ubuntu debian fedora centos alpine opensuse suse gentoo manjaro archlinux`
+3. Arch Linux naming convention → Linux: filename contains `_arch-`/`-arch-` or ends with `_arch`/`-arch`
+4. `.exe` extension → Windows
+5. `.tar.gz`/`.tar.xz`/`.tar.bz2`/bare binary **and** the filename contains an arch keyword (x86_64/x64/amd64/aarch64/arm64/armv7/armhf/i686/i386/386) → Linux
+6. None of the above → OS unknown (dropped by G4)
 
-#### 架構偵測（`ParsedAsset::detect_arch`，依序）
-1. **`x86` 特例優先**（檔名含 `x86` 但不含 `x86_64`）：macOS → x86_64（32-bit Mac 已淘汰）；其他/未知 OS → i686。見 `Arch::resolve_x86_keyword`
-2. 依序比對 [X86_64, Aarch64, Armv7, I686] 的關鍵字（跳過 `x86`）：
-   - X86_64：`x86_64 x64 amd64`
-   - Aarch64：`aarch64 arm64`
-   - Armv7：`armv7 armhf armv6 arm`
-   - I686：`i686 x86 i386 386 win32`
+#### Arch detection (`ParsedAsset::detect_arch`, in order)
+1. **`x86` special case first** (filename contains `x86` but not `x86_64`): macOS → x86_64 (32-bit Mac is obsolete); other/unknown OS → i686. See `Arch::resolve_x86_keyword`
+2. Match keywords in the order [X86_64, Aarch64, Armv7, I686] (skipping `x86`):
+   - X86_64: `x86_64 x64 amd64`
+   - Aarch64: `aarch64 arm64`
+   - Armv7: `armv7 armhf armv6 arm`
+   - I686: `i686 x86 i386 386 win32`
 
-#### Compiler/libc 偵測（`ParsedAsset::detect_compiler`，依序 [Musl, Msvc, Gnu]）
-- Musl：`musl`；Msvc：`msvc`；Gnu：`gnu glibc`
+#### Compiler/libc detection (`ParsedAsset::detect_compiler`, in the order [Musl, Msvc, Gnu])
+- Musl: `musl`; Msvc: `msvc`; Gnu: `gnu glibc`
 
 ---
 
-## 2. 階段二：目前平台 → 選定平台分桶
+## 2. Stage 2: current platform → chosen platform bucket
 
-### 2.1 精確匹配優先序（`Platform::possible_identifiers`）
+### 2.1 Exact-match priority (`Platform::possible_identifiers`)
 
-依 **runtime libc 偵測**（`LibcType::detect`：先檢查 `/lib/ld-musl-*` 動態連結器，再 fallback 到 `ldd --version` 輸出含 "musl"，否則 Glibc）產生候選 id 順序：
+Candidate ids are ordered by **runtime libc detection** (`LibcType::detect`: first check for the
+`/lib/ld-musl-*` dynamic linker, then fall back to `ldd --version` output containing "musl",
+otherwise Glibc):
 
-| 系統 | 優先序 |
+| System | Priority |
 |------|--------|
-| Linux (musl，如 Alpine) | `{base}-musl` > `{base}` > `{base}-gnu` |
-| Linux (glibc / 未知) | `{base}-gnu` > `{base}` > `{base}-musl` |
+| Linux (musl, e.g. Alpine) | `{base}-musl` > `{base}` > `{base}-gnu` |
+| Linux (glibc / unknown) | `{base}-gnu` > `{base}` > `{base}-musl` |
 | Windows | `{base}-msvc` > `{base}` > `{base}-gnu` |
-| macOS / FreeBSD | 僅 `{base}` |
+| macOS / FreeBSD | `{base}` only |
 
-### 2.2 匹配流程（`Platform::find_best_match`）
+### 2.2 Matching flow (`Platform::find_best_match`)
 
-1. **Phase 1 精確匹配**：libc 與編譯器變體（`-gnu` / `-musl` / `-msvc`）均在此階段處理。由 `Platform::possible_identifiers` 依執行時期偵測之 libc 依序產生精確識別碼（分數為 `1000 - 優先序索引`，即 1000、999、998），逐一比對 platform map。
-2. **Phase 2 相容 fallback**（僅在 Phase 1 全部落空時執行，由 `Platform::fallback_identifiers` 產生）：
+1. **Phase 1, exact match**: libc and compiler variants (`-gnu` / `-musl` / `-msvc`) are all handled here. `Platform::possible_identifiers` produces exact identifiers in order based on the runtime libc (score `1000 - priority index`, i.e. 1000, 999, 998), each checked against the platform map.
+2. **Phase 2, compatible fallback** (only when Phase 1 finds nothing; produced by `Platform::fallback_identifiers`):
 
-| 目前平台 | Fallback 目標 | 類型 | 分數 | 需使用者確認 |
+| Current platform | Fallback targets | Type | Score | Needs user confirmation |
 |----------|--------------|------|------|:---:|
-| Linux x86_64 | `linux-i686`、`linux-i686-musl`、`linux-i686-gnu` | Arch32On64 | 300 | ✅ |
-| macOS aarch64 | `macos-x86_64`（Rosetta 2） | X64OnArm | 200 | ✅ |
-| Windows x86_64 | `windows-i686`、`windows-i686-msvc`、`windows-i686-gnu` | Arch32On64 | 300 | ✅ |
-| Windows aarch64 | `windows-x86_64`、`windows-x86_64-msvc`、`windows-i686` | X64OnArm | 200 | ✅ |
+| Linux x86_64 | `linux-i686`, `linux-i686-musl`, `linux-i686-gnu` | Arch32On64 | 300 | ✅ |
+| macOS aarch64 | `macos-x86_64` (Rosetta 2) | X64OnArm | 200 | ✅ |
+| Windows x86_64 | `windows-i686`, `windows-i686-msvc`, `windows-i686-gnu` | Arch32On64 | 300 | ✅ |
+| Windows aarch64 | `windows-x86_64`, `windows-x86_64-msvc`, `windows-i686` | X64OnArm | 200 | ✅ |
 
-需否確認見 `FallbackType::requires_confirmation`。最終依分數由高至低排序。
+Whether confirmation is needed: see `FallbackType::requires_confirmation`. Results are sorted by
+score, highest first.
 
-> 註：`FallbackType` 只有 `Arch32On64` 與 `X64OnArm` 兩個變體；libc／編譯器變體不走 fallback，一律在 Phase 1 精確匹配。
+> Note: `FallbackType` has only two variants, `Arch32On64` and `X64OnArm`; libc / compiler variants
+> never use fallback and are always matched exactly in Phase 1.
 
-### 2.3 使用者覆寫（`Platform::match_override`，`-p/--platform` 旗標或 `preferred_platform` 設定）
+### 2.3 User override (`Platform::match_override`, the `-p/--platform` flag or the `preferred_platform` setting)
 
-1. 覆寫字串與 platform map 的 key **完全相同** → 直接採用（分數 1000）。
-2. 否則以 `ParsedAsset::from_filename` 寬鬆解析（支援 Rust target triple 如 `aarch64-unknown-linux-musl`、寬鬆格式如 `windows-x64`）：
-   - OS+arch 皆解析成功 → 走 `find_best_match`
-   - 只有 OS → 用 `Os::default_arch` 補架構（FreeBSD 無預設則失敗）
-3. 若覆寫字串指定了 compiler/libc（如 musl），且該變體存在 → **提升至第一位**（分數 2000）。
-
----
-
-## 2.5 候選二進位檔篩選與選定（平台分桶 → 下載資產）
-
-進入點：`prepare_plan_binaries`（`src/commands/add.rs`）。
-在階段二選定目標平台的二進位檔列表（`Vec<PlatformBinary>`）後、進入下載與解壓階段前，`add` 與 `update` 依序執行以下三道處理：
-
-1. **候選過濾（`filter_binaries`，`src/installer/package.rs`）**：
-   - **更新模式**：優先以既有安裝資產檔名比對（`normalize_asset_for_matching` 去除副檔名與版本段作為樣板），若命中則僅保留該資產。
-   - **指定變體**：若未命中或為非更新模式，且使用者指定了 `--variant` 旗標（或以 `repo::variant` 輸入），則僅保留 `extract_variant_from_asset` 抽取結果與該變體相符者。
-   - **無過濾條件**：若兩者皆無，則保留該平台的所有候選二進位檔。過濾後若為空則報錯終止。
-2. **相同變體去重（`dedupe_same_variant`，`src/commands/add.rs`）**：
-   - 同一變體若同時發布多種壓縮格式（如同時提供 `.tar.gz` 與 `.zip`），直接安裝會產生相同安裝鍵而互相覆蓋。
-   - 對抽取出相同變體名稱（`extract_variant_from_asset`）的候選者，保留 `FileExtension::format_score` 最高者；若分數相同則保留 manifest 中原先排序在前者（新機制於 commit a8a031b 引入）。
-3. **平台套件選定（`select_packages_for_platform`，`src/commands/add.rs`）**：
-   - **單一候選**：自動選定該資產。
-   - **多個候選**：
-     - 若帶有 `--yes` / `-y`：在更新模式下（表示資產樣板比對失敗，發行結構可能改變），採 best-effort 方式印出警告並選定第一個二進位檔；非更新模式（初次安裝）則自動全數選定。
-     - 若未帶 `--yes`：列出所有候選資產名稱與大小，以 `ui.multi_select` 互動選單供使用者勾選。
+1. Override string **exactly equals** a platform map key → used directly (score 1000).
+2. Otherwise parsed loosely with `ParsedAsset::from_filename` (accepts Rust target triples such as `aarch64-unknown-linux-musl` and loose forms such as `windows-x64`):
+   - Both OS and arch parsed → go through `find_best_match`
+   - Only OS → fill in the arch with `Os::default_arch` (fails for FreeBSD, which has no default)
+3. If the override names a compiler/libc (e.g. musl) and that variant exists → **moved to first place** (score 2000).
 
 ---
 
-## 3. 階段三：解壓後檔案 → 可執行檔選定
+## 2.5 Candidate binary filtering and selection (platform bucket → download asset)
 
-進入點：`find_executable_candidates`（`src/installer/extractor.rs`）。
-解壓後的執行檔選定由 `PackageInstaller::select_executables`（`src/installer/package.rs`）統一處理，並可能同時選定多個可執行檔：
-- 單一候選：自動選定。
-- 更新模式（`select_executables_update`）：保留既有已安裝之可執行檔路徑；若舊檔名消失則提示使用者選取替代項目（或在 `--yes` 時略過）。
-- 初次安裝／多候選（`select_executables_multi`）：候選（`score > 0` 或具 Unix 執行權限）≤ 3 個或帶 `--yes` 時自動全數選定；> 3 個且未帶 `--yes` 時以 `MultiSelect` 互動選取。
-`find_executable` 僅取評分最高的第一名，專供自身更新（`src/commands/update.rs` 之 `upgrade_self_with_provider`）使用。
+Entry point: `prepare_plan_binaries` (`src/commands/add.rs`).
+After Stage 2 picks the target platform's binary list (`Vec<PlatformBinary>`) and before download
+and extraction, `add` and `update` run these three steps in order:
 
-### 3.1 汰除規則（Gates，**依序執行**，任一命中即跳過該檔案）
+1. **Candidate filtering (`filter_binaries`, `src/installer/package.rs`)**:
+   - **Update mode**: first match against the asset filename of the existing install (`normalize_asset_for_matching` strips the extension and version segments to form a template); on a hit, keep only that asset.
+   - **Explicit variant**: if there was no hit or this is not update mode, and the user passed `--variant` (or entered `repo::variant`), keep only assets whose `extract_variant_from_asset` result matches that variant.
+   - **No filter**: if neither applies, keep every candidate binary for the platform. An empty result after filtering is an error.
+2. **Same-variant dedupe (`dedupe_same_variant`, `src/commands/add.rs`)**:
+   - When one variant is published in several archive formats (e.g. both `.tar.gz` and `.zip`), installing them all would produce the same install key and overwrite each other.
+   - Among candidates with the same extracted variant name (`extract_variant_from_asset`), keep the one with the highest `FileExtension::format_score`; on a tie keep the one listed first in the manifest (introduced in commit a8a031b).
+3. **Platform package selection (`select_packages_for_platform`, `src/commands/add.rs`)**:
+   - **One candidate**: selected automatically.
+   - **Several candidates**:
+     - With `--yes` / `-y`: in update mode (meaning the asset template match failed and the release layout may have changed), print a warning and pick the first binary as a best effort; outside update mode (first install), select all of them.
+     - Without `--yes`: list every candidate's name and size in a `ui.multi_select` menu for the user to choose.
 
-| 順序 | 規則 | 實作位置 |
+---
+
+## 3. Stage 3: extracted files → chosen executables
+
+Entry point: `find_executable_candidates` (`src/installer/extractor.rs`).
+Executable selection after extraction is handled by `PackageInstaller::select_executables`
+(`src/installer/package.rs`) and may select several executables:
+- One candidate: selected automatically.
+- Update mode (`select_executables_update`): keep the previously installed executable paths; if an old filename is gone, prompt the user for a replacement (or skip it with `--yes`).
+- First install / several candidates (`select_executables_multi`): when there are ≤ 3 candidates (`score > 0` or Unix executable permission) or `--yes` is given, select all; with > 3 and no `--yes`, choose interactively via `MultiSelect`.
+`find_executable` takes only the top-scoring candidate and is used solely for self-update (`upgrade_self_with_provider` in `src/commands/update.rs`).
+
+### 3.1 Elimination gates (**run in order**; any hit skips the file)
+
+| Order | Rule | Implementation |
 |------|------|---------|
-| G1 | **排除文件/設定檔**（`is_excluded_file`）：<br>(a) 文件副檔名：`.md .txt .rst .html .htm .pdf .doc .docx` 及 man page `.1`～`.8`<br>(b) 檔名含：`license licence copying unlicense notice readme changelog changes history authors contributors credits thanks todo news`<br>(c) 設定檔副檔名：`.yml .yaml .toml .json .xml .ini .cfg .conf`<br>(d) 位於 `complete`/`completion` 目錄下的 `.fish .bash .zsh .ps1` 補全檔<br>(e) 位於補全目錄下且以 `_` 開頭的檔案（如 zsh 的 `_rg`） | `is_excluded_file` |
-| G2 | **可執行檔形態檢查**（`could_be_executable`）：<br>Windows：必須以 `.exe` 結尾。<br>Unix：位於 `bin/` 目錄 **或** 檔名無副檔名 **或** 為 `.sh` 腳本，三者其一 | `could_be_executable` |
-| G3 | **排除測試/除錯檔**：檔名（僅檔名，不含路徑）含 `test`、`debug`、`bench`、`example` 任一者 → 淘汰 | `find_executable_candidates` 內 |
+| G1 | **Exclude docs/config files** (`is_excluded_file`):<br>(a) document extensions: `.md .txt .rst .html .htm .pdf .doc .docx` and man pages `.1`–`.8`<br>(b) filename contains: `license licence copying unlicense notice readme changelog changes history authors contributors credits thanks todo news`<br>(c) config extensions: `.yml .yaml .toml .json .xml .ini .cfg .conf`<br>(d) `.fish .bash .zsh .ps1` completion files under a `complete`/`completion` directory<br>(e) files starting with `_` under a completion directory (e.g. zsh's `_rg`) | `is_excluded_file` |
+| G2 | **Executable shape check** (`could_be_executable`):<br>Windows: must end with `.exe`.<br>Unix: in a `bin/` directory **or** no extension **or** a `.sh` script — any one of the three | `could_be_executable` |
+| G3 | **Exclude test/debug files**: filename (name only, not the path) contains any of `test`, `debug`, `bench`, `example` → dropped | Inside `find_executable_candidates` |
 
-### 3.2 評分規則（加分制；比對名稱時先去除 `.exe`）
+### 3.2 Scoring (additive; `.exe` is stripped before name comparisons)
 
-| 規則 | 分數 | 說明 |
+| Rule | Points | Notes |
 |------|------|------|
-| Rule 0：具執行權限（Unix，mode & 0o111） | +35 | `has_executable_permission` |
-| Rule 0b：magic bytes 為原生二進位（ELF `\x7fELF` / PE `MZ` / Mach-O 各 magic） | +60 | `detect_executable_type`（最強訊號） |
-| Rule 0b'：shebang 腳本（`#!`，辨識 python/bash/sh/node/ruby/perl） | +30 | `detect_script_type`（與 +60 互斥，二進位優先） |
-| Rule 1：檔名 == 套件名（完全相同） | +100 | |
-| Rule 2：檔名與套件名互為包含（部分匹配） | +50 | |
-| Rule 3：疑似縮寫（如 ripgrep → rg：各分段首字母，或為套件名前綴） | +40 | `is_likely_abbreviation` |
-| Rule 4：位於 `bin/` 目錄 | +40 | |
-| Rule 5：位於 `target/release/`（Rust 專案） | +25 | |
-| Rule 6：目錄深度淺：深度 ≤1 | +20；深度 ≤2 | +10 | |
-| Rule 7：簡單檔名（不含 `-` 或 `_`） | +5 | |
+| Rule 0: executable permission (Unix, mode & 0o111) | +35 | `has_executable_permission` |
+| Rule 0b: magic bytes of a native binary (ELF `\x7fELF` / PE `MZ` / Mach-O magics) | +60 | `detect_executable_type` (strongest signal) |
+| Rule 0b': shebang script (`#!`, recognizes python/bash/sh/node/ruby/perl) | +30 | `detect_script_type` (mutually exclusive with +60; binary wins) |
+| Rule 1: filename == package name (exact) | +100 | |
+| Rule 2: filename and package name contain each other (partial match) | +50 | |
+| Rule 3: likely abbreviation (e.g. ripgrep → rg: segment initials, or a package-name prefix) | +40 | `is_likely_abbreviation` |
+| Rule 4: inside a `bin/` directory | +40 | |
+| Rule 5: inside `target/release/` (Rust projects) | +25 | |
+| Rule 6: shallow directory depth: depth ≤1 | +20; depth ≤2 | +10 | |
+| Rule 7: simple filename (no `-` or `_`) | +5 | |
 
-**入選門檻**：`score > 0` **或** 具執行權限（Unix）。最終依分數由高至低排序。
+**Selection threshold**: `score > 0` **or** executable permission (Unix). Sorted by score, highest
+first.
 
-### 3.3 裸執行檔判定（安裝時，`is_standalone_executable`）
+### 3.3 Bare-binary check at install time (`is_standalone_executable`)
 
-決定下載物直接複製或走解壓流程：
-- Windows：`.exe` → 裸執行檔
-- Unix：`.AppImage` → 裸執行檔；檔名不含任何壓縮副檔名（`.zip .tar .gz .xz .bz2 .7z .rar .tbz .tgz`）→ 視為裸執行檔
-- 支援的壓縮格式（`extract_archive` 依序判斷）：`.tar.gz/.tgz` → `.tar.xz` → `.tar.bz2/.tbz` → `.zip` → `.7z`，其餘報錯
-
----
-
-## 4. 變體（Variant）抽取規則
-
-實作：`extract_variant_from_asset`（`src/core/manifest.rs`）。用於辨識同 repo 多變體（如 `bun` / `bun-baseline` / `bun-profile`）。採用分詞解析器（token parser）依序處理：
-
-1. **去除已知副檔名**：反覆比對常數 `ASSET_EXTENSIONS`（不分大小寫，包含常見壓縮檔與二進位副檔名如 `.tar.gz`、`.tar.xz`、`.zip`、`.7z`、`.exe`、`.dmg`、`.deb` 等）修剪檔名結尾。
-2. **分詞切割與排除版本號**：輔助函式 `split` 先以 `-` 與 `_` 切割分詞；過濾掉符合點號版本格式的分詞（`is_dotted_version`：可具 `v`/`V` 前綴，含點號且由點號分隔之各段全為非空純數字，如 `1.2.3`、`v0.8`）；其餘分詞再以 `.` 切開並排除空分詞。
-3. **去除套件名前綴**：對套件名（`repo_name`）同樣執行 `split` 取得 `repo_tokens`；若資產分詞開頭與 `repo_tokens` 完全一致（不分大小寫），則移除該前綴分詞（`tokens.drain(..repo_tokens.len())`）。
-4. **過濾平台關鍵分詞**：遍歷剩餘分詞，比對常數 `PLATFORM_TOKENS`（包含主要 OS、架構、vendor、libc 關鍵字如 `windows`、`linux`、`darwin`、`x86_64`、`amd64`、`arm64`、`unknown`、`gnu`、`musl`、`msvc` 等；保留其他非主要平台詞如 `netbsd`、`android`、`i386` 等以利區分變體）：
-   - 特殊處理：若分詞為 `x86` 且緊接 `64`（因 `_` 切割 `x86_64`），兩者一併跳過。
-   - 凡不分大小寫命中 `PLATFORM_TOKENS` 者一律剔除；其餘分詞保留。
-5. **組合變體名稱**：若保留之分詞為空，表示無變體（回傳 `None`）；否則以 `-` 連接保留分詞作為變體名（如 `baseline`、`desktop`）。
-
-安裝鍵格式（`generate_installed_key`）：無變體 → `{repo_name}`；有變體 → `{repo_name}::{variant}`。
+Decides whether the download is copied directly or goes through extraction:
+- Windows: `.exe` → bare binary
+- Unix: `.AppImage` → bare binary; a filename without any archive extension (`.zip .tar .gz .xz .bz2 .7z .rar .tbz .tgz`) → treated as a bare binary
+- Supported archive formats (checked in order by `extract_archive`): `.tar.gz/.tgz` → `.tar.xz` → `.tar.bz2/.tbz` → `.zip` → `.7z`; anything else is an error
 
 ---
 
-## 5. 其他分類比對機制
+## 4. Variant extraction rules
 
-### 5.1 命令名正規化（`normalize_command_name`，`src/installer/extractor.rs`）
+Implementation: `extract_variant_from_asset` (`src/core/manifest.rs`). Used to tell apart several
+variants of one repo (e.g. `bun` / `bun-baseline` / `bun-profile`). A token parser runs these
+steps in order:
 
-去除平台後綴以產生乾淨命令名（如 `cate-windows-x86_64.exe` → `cate`）：
-1. 檔名含任一平台關鍵字（`windows linux darwin macos freebsd netbsd openbsd x86_64 aarch64 arm64 armv7 i686 x64 x86 pc unknown gnu musl msvc`，不分大小寫）→ 從**第一個** `-` 或 `_` 處截斷
-2. 一律去除結尾 `.exe`
+1. **Strip known extensions**: repeatedly trim the filename end against the `ASSET_EXTENSIONS` constant (case-insensitive; common archive and binary extensions such as `.tar.gz`, `.tar.xz`, `.zip`, `.7z`, `.exe`, `.dmg`, `.deb`).
+2. **Tokenize and drop version numbers**: the `split` helper splits on `-` and `_`; tokens in dotted-version form are filtered out (`is_dotted_version`: optional `v`/`V` prefix, contains a dot, and every dot-separated segment is non-empty and all digits, e.g. `1.2.3`, `v0.8`); the remaining tokens are split on `.` and empty tokens dropped.
+3. **Strip the package-name prefix**: run `split` on the package name (`repo_name`) to get `repo_tokens`; if the asset tokens start with exactly `repo_tokens` (case-insensitive), remove that prefix (`tokens.drain(..repo_tokens.len())`).
+4. **Filter platform tokens**: walk the remaining tokens and compare against the `PLATFORM_TOKENS` constant (main OS, arch, vendor, and libc keywords such as `windows`, `linux`, `darwin`, `x86_64`, `amd64`, `arm64`, `unknown`, `gnu`, `musl`, `msvc`; other non-primary platform words such as `netbsd`, `android`, `i386` are kept so variants stay distinguishable):
+   - Special case: a token `x86` immediately followed by `64` (because `_` splits `x86_64`) skips both.
+   - Every token matching `PLATFORM_TOKENS` case-insensitively is removed; the rest are kept.
+5. **Build the variant name**: if no tokens remain, there is no variant (returns `None`); otherwise join the remaining tokens with `-` as the variant name (e.g. `baseline`, `desktop`).
 
-> 注意副作用：不含平台關鍵字的名稱（如 `git-lfs.exe`）保留連字號不截斷。
-
-### 5.2 套件輸入解析與 glob 比對（`src/package_resolver.rs`）
-
-- **輸入分類**（`PackageInput::parse`）：以 `http://`、`https://`、`github.com/` 開頭 → DirectUrl（並經 `normalize_github_url` 正規化：http→https、補 https、去尾斜線、去 `.git`）；否則 → CacheName。
-- **Cache 名稱解析**（`resolve_from_cache`，依序）：
-  1. `repo::variant` 格式先取 `::` 前的 base name
-  2. 含 glob 萬用字元（`is_glob` 檢查 `*`、`?`、`[...]`）→ 以 `glob::Pattern` 進行 glob 比對（`glob_match`）；不含 → 完全相符
-  3. Cache 未命中且非 glob → 查已安裝套件（各套件記錄 `package.json`）中 DirectRepo 來源者，改走 URL 解析
-  4. 皆未命中 → 依情境報錯；非 glob 名稱會以 `core::fuzzy::suggest` 附上「Did you mean」建議（`add` 同時涵蓋套件與腳本名稱）
-
-`wenget search` 不走此路徑，而是用 `core::fuzzy::score` 評分排序（不分大小寫）：glob（含 `* ? [`）／完全相符 > 前綴 > 字詞邊界子字串 > 子字串 > 子序列（跨度 ≤ 3× 字數，≥3 字）> 錯字容錯（4–5 字距離 ≤1、6+ 字 ≤2）> 描述／repo 的單字字首比對（word-prefix，≥3 字）。
-
-### 5.3 安裝後命令名衝突解決（僅供參照，非資源篩選）
-
-`resolve_command_name`（`src/commands/add.rs`）：自訂名 → 直接用或加數字後綴；變體 → 附加變體後綴（已含則不重複），衝突時再加數字後綴 `-1`～`-99`。`--no-suffix` 旗標跳過變體後綴。細節見該函式，不在本文件範圍內展開。
+Install key format (`generate_installed_key`): no variant → `{repo_name}`; with a variant →
+`{repo_name}::{variant}`.
 
 ---
 
-## 6. 修改規則時的檢查清單
+## 5. Other classification and matching mechanisms
 
-- [ ] 先更新本文件對應章節，再改程式碼
-- [ ] 三份排除清單（1.3 裸執行檔排除、1.1 G1、3.1 G1）**各自獨立**，確認改到正確的一份
-- [ ] 順序敏感規則（1.3 OS 偵測順序、3.1 gates 順序）改動時，確認既有測試涵蓋順序行為
-- [ ] 執行 `cargo test`（platform、extractor、manifest 模組均有行為測試）
+### 5.1 Command-name normalization (`normalize_command_name`, `src/installer/extractor.rs`)
+
+Strips platform suffixes to produce a clean command name (e.g. `cate-windows-x86_64.exe` → `cate`):
+1. Filename contains any platform keyword (`windows linux darwin macos freebsd netbsd openbsd x86_64 aarch64 arm64 armv7 i686 x64 x86 pc unknown gnu musl msvc`, case-insensitive) → truncate at the **first** `-` or `_`
+2. Always strip a trailing `.exe`
+
+> Side effect: names without platform keywords (e.g. `git-lfs.exe`) keep their hyphens.
+
+### 5.2 Package input parsing and glob matching (`src/package_resolver.rs`)
+
+- **Input classification** (`PackageInput::parse`): starts with `http://`, `https://`, or `github.com/` → DirectUrl (normalized by `normalize_github_url`: http→https, add https, strip the trailing slash, strip `.git`); otherwise → CacheName.
+- **Cache name resolution** (`resolve_from_cache`, in order):
+  1. For `repo::variant`, take the base name before `::`
+  2. Contains glob wildcards (`is_glob` checks `*`, `?`, `[...]`) → glob match with `glob::Pattern` (`glob_match`); otherwise exact match
+  3. Cache miss and not a glob → look up installed packages (each package's `package.json` record) with a DirectRepo source and resolve via the URL instead
+  4. Still no match → error depending on context; non-glob names get "Did you mean" suggestions from `core::fuzzy::suggest` (`add` covers both package and script names)
+
+`wenget search` does not use this path; it ranks with `core::fuzzy::score` (case-insensitive):
+glob (contains `* ? [`) / exact > prefix > word-boundary substring > substring > subsequence (span
+≤ 3× length, ≥3 chars) > typo tolerance (4–5 chars distance ≤1, 6+ chars ≤2) > word-prefix match
+on description / repo (≥3 chars).
+
+### 5.3 Post-install command-name conflict resolution (reference only, not asset filtering)
+
+`resolve_command_name` (`src/commands/add.rs`): custom name → used as-is or with a numeric suffix;
+variant → append the variant suffix (not repeated if already present), then a numeric suffix
+`-1`–`-99` on conflict. The `--no-suffix` flag skips the variant suffix. See the function for
+details; out of scope here.
+
+---
+
+## 6. Checklist when changing rules
+
+- [ ] Update the matching section of this document first, then the code
+- [ ] The three exclusion lists (1.3 bare-binary exclusions, 1.1 G1, 3.1 G1) are **independent**; make sure you change the right one
+- [ ] When changing order-sensitive rules (1.3 OS detection order, 3.1 gate order), make sure existing tests cover the ordering
+- [ ] Run `cargo test` (the platform, extractor, and manifest modules all have behavior tests)

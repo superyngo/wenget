@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-01
 
+- docs: translate the remaining Chinese docs to English: `RESOURCE_FILTERING_RULES.md` (section
+  numbers unchanged), the downloader resume / segmented plan, and one line of the archived
+  `changelog/v0.x.md`. Only the language changed; the content is the same.
 - docs: audit every doc against the code after the downloader work
   (`docs/audit/2026-10-01-documentation-audit.md`). The README examples now use packages in the
   default bucket, multi-package installs are described as continuing past a failed package, and
