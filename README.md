@@ -290,7 +290,10 @@ download_connections = 8
 
 Files of 16 MiB or more on servers that support range requests (GitHub releases do) are
 downloaded as 8 MiB segments over this many connections. Set `1` to always use a single
-connection. Interrupted transfers resume from where they stopped instead of restarting.
+connection. Interrupted transfers resume from where they stopped instead of restarting, also
+across runs: a failed or interrupted download keeps `<file>.part` (plus a `.part.json` record) in
+`~/.wenget/cache/downloads/`, and running the same command again continues it. Leftovers older
+than 7 days are removed automatically.
 
 ### Environment Variables
 

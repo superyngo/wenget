@@ -16,6 +16,7 @@ use reqwest::blocking::Response;
 use reqwest::header::{IF_RANGE, RANGE};
 use reqwest::StatusCode;
 
+use super::resume::State;
 use super::{content_range, retry_loop, send, status_error, validator, AttemptError};
 
 /// What a segmented download needs to know about the remote file
@@ -65,18 +66,27 @@ struct Job<'a> {
     file: &'a File,
     plan: &'a Plan,
     pb: &'a ProgressBar,
+    state: &'a State,
+    /// Chunk indices still to fetch
+    pending: Vec<usize>,
+    /// Next position in `pending`
     next: AtomicUsize,
     /// Set by the first worker that fails, so the others stop early
     stop: AtomicBool,
 }
 
 /// Fill `file` (resized to `plan.total`) using up to `connections` parallel range requests
+///
+/// Chunks marked in `done` (from a previous run) are skipped; each finished chunk is
+/// recorded in `state`.
 pub(super) fn download(
     url: &str,
     file: &File,
     plan: &Plan,
     connections: u8,
     pb: &ProgressBar,
+    done: &[bool],
+    state: &State,
 ) -> Result<(), AttemptError> {
     file.set_len(plan.total)
         .map_err(|e| AttemptError::Fatal(anyhow!(e).context("Failed to allocate file")))?;
@@ -86,14 +96,16 @@ pub(super) fn download(
         file,
         plan,
         pb,
+        state,
+        pending: (0..chunks)
+            .filter(|&i| !done.get(i).copied().unwrap_or(false))
+            .collect(),
         next: AtomicUsize::new(0),
         stop: AtomicBool::new(false),
     };
-    let workers = usize::from(connections).min(chunks);
+    let workers = usize::from(connections).min(job.pending.len());
     let results: Vec<_> = std::thread::scope(|s| {
-        let handles: Vec<_> = (0..workers)
-            .map(|_| s.spawn(|| job.worker(chunks)))
-            .collect();
+        let handles: Vec<_> = (0..workers).map(|_| s.spawn(|| job.worker())).collect();
         handles
             .into_iter()
             .map(|h| {
@@ -119,15 +131,14 @@ pub(super) fn download(
 }
 
 impl Job<'_> {
-    fn worker(&self, chunks: usize) -> Result<(), AttemptError> {
+    fn worker(&self) -> Result<(), AttemptError> {
         loop {
             if self.stop.load(Ordering::SeqCst) {
                 return Ok(());
             }
-            let i = self.next.fetch_add(1, Ordering::SeqCst);
-            if i >= chunks {
+            let Some(&i) = self.pending.get(self.next.fetch_add(1, Ordering::SeqCst)) else {
                 return Ok(());
-            }
+            };
             let start = i as u64 * self.plan.chunk_size;
             let end = (start + self.plan.chunk_size).min(self.plan.total) - 1;
             let mut pos = start;
@@ -138,6 +149,9 @@ impl Job<'_> {
             if result.is_err() {
                 self.stop.store(true, Ordering::SeqCst);
                 return result;
+            }
+            if pos > end {
+                self.state.chunk_done(i);
             }
         }
     }

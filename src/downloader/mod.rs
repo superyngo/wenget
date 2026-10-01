@@ -18,7 +18,10 @@ use reqwest::blocking::{RequestBuilder, Response};
 use reqwest::header::{CONTENT_RANGE, ETAG, IF_RANGE, LAST_MODIFIED, RANGE};
 use reqwest::StatusCode;
 
+mod resume;
 mod segmented;
+
+use resume::{Sidecar, State};
 
 /// Consecutive attempts without new bytes before giving up
 const MAX_STALLED_ATTEMPTS: u32 = 3;
@@ -203,10 +206,11 @@ struct Stream<'a> {
     /// `ETag` (strong) or `Last-Modified` of the body in `.part`, sent as `If-Range`
     validator: Option<String>,
     pb: &'a ProgressBar,
+    state: &'a State,
 }
 
 impl<'a> Stream<'a> {
-    fn new(url: &'a str, file: &'a File, pb: &'a ProgressBar) -> Self {
+    fn new(url: &'a str, file: &'a File, pb: &'a ProgressBar, state: &'a State) -> Self {
         Self {
             url,
             file,
@@ -214,7 +218,26 @@ impl<'a> Stream<'a> {
             total: None,
             validator: None,
             pb,
+            state,
         }
+    }
+
+    /// Continue a previous run's sequential prefix of `have` bytes
+    fn resume_from(&mut self, prev: Sidecar, have: u64) -> Result<()> {
+        self.file.set_len(have)?;
+        self.file.seek(SeekFrom::Start(have))?;
+        self.have = have;
+        self.validator.clone_from(&prev.validator);
+        if let Some(t) = prev.total {
+            self.set_total(t);
+        }
+        self.pb.set_position(have);
+        self.state.save(Sidecar {
+            chunk_size: 0,
+            done_chunks: Vec::new(),
+            ..prev
+        });
+        Ok(())
     }
 
     fn truncate(&mut self) -> Result<()> {
@@ -282,6 +305,18 @@ impl<'a> Stream<'a> {
                 return Err(AttemptError::Retry(anyhow!("HTTP 416; restarting")));
             }
             s => return Err(status_error(s, self.url)),
+        }
+        if self.have == 0 {
+            // A fresh body: record what a later run needs to resume it
+            match &self.validator {
+                Some(_) => self.state.save(Sidecar {
+                    url: self.url.to_string(),
+                    validator: self.validator.clone(),
+                    total: self.total,
+                    ..Sidecar::default()
+                }),
+                None => self.state.remove(),
+            }
         }
         self.copy_body(resp)
     }
@@ -372,7 +407,8 @@ fn new_progress_bar() -> ProgressBar {
 /// With `opts.connections > 1`, a server that honours `Range` and a file of at least 16 MiB,
 /// the file is fetched as 8 MiB segments over that many connections. Each request gives up
 /// after [`MAX_STALLED_ATTEMPTS`] consecutive attempts that added no bytes; any progress
-/// resets the count. On failure neither `dest` nor `<dest>.part` is left behind.
+/// resets the count. A failed download keeps `<dest>.part` and `<dest>.part.json` when the
+/// server supports resuming; the next call for the same URL and unchanged file continues it.
 pub fn download_file(url: &str, dest: &Path, opts: &DownloadOptions) -> Result<()> {
     fetch(url, dest, opts, TUNING)
 }
@@ -382,24 +418,81 @@ fn fetch(url: &str, dest: &Path, opts: &DownloadOptions, tuning: Tuning) -> Resu
     log::info!("Downloading: {}", url);
     log::debug!("Destination: {}", dest.display());
 
+    if let Some(dir) = dest.parent() {
+        resume::purge_stale(dir);
+    }
     let part = part_path(dest);
-    let guard = CleanupGuard::new(&part);
     let file = OpenOptions::new()
         .create(true)
+        .truncate(false)
+        .read(true)
         .write(true)
-        .truncate(true)
         .open(&part)
         .with_context(|| format!("Failed to create file: {}", part.display()))?;
+    if let Err(e) = file.try_lock() {
+        anyhow::bail!(
+            "{} is being downloaded by another wenget process ({e})",
+            dest.display()
+        );
+    }
+    let (state, prev) = resume::State::open(&part, url);
+    let part_len = file.metadata()?.len();
     let pb = new_progress_bar();
-    let mut stream = Stream::new(url, &file, &pb);
+    let result = transfer(url, &file, opts, tuning, &pb, &state, prev, part_len);
+
+    let len_now = file.metadata().map_or(0, |m| m.len());
+    drop(file); // releases the lock; Windows cannot rename an open file
+    let bytes = match result {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            pb.abandon();
+            if state.has_progress(len_now) {
+                eprintln!(
+                    "{} Partial download kept; run the same command again to resume",
+                    "↻".yellow()
+                );
+            } else {
+                state.remove();
+                let _ = std::fs::remove_file(&part);
+            }
+            return Err(e);
+        }
+    };
+    std::fs::rename(&part, dest)
+        .with_context(|| format!("Failed to move download to {}", dest.display()))?;
+    state.remove();
+    pb.finish_and_clear();
+    log::info!("Downloaded {} bytes", bytes);
+    Ok(())
+}
+
+/// Probe, then fill the locked `.part` file (segmented or single stream), resuming `prev`
+#[allow(clippy::too_many_arguments)]
+fn transfer(
+    url: &str,
+    file: &File,
+    opts: &DownloadOptions,
+    tuning: Tuning,
+    pb: &ProgressBar,
+    state: &State,
+    prev: Option<Sidecar>,
+    part_len: u64,
+) -> Result<u64> {
+    let mut stream = Stream::new(url, file, pb, state);
     let bytes = match segmented::probe(url, opts.connections, tuning.min_segmented) {
         segmented::Probe::Segmented(plan) => {
             let plan = segmented::Plan {
                 chunk_size: tuning.chunk_size,
                 ..plan
             };
-            show_total(&pb, plan.total);
-            match segmented::download(url, &file, &plan, opts.connections, &pb) {
+            let done = prev
+                .filter(|p| {
+                    p.validator.as_ref() == Some(&plan.validator) && p.total == Some(plan.total)
+                })
+                .map(|p| p.done_mask(part_len, plan.total, plan.chunk_size))
+                .unwrap_or_default();
+            start_segmented(url, &plan, pb, state, &done);
+            match segmented::download(url, file, &plan, opts.connections, pb, &done, state) {
                 Ok(()) => plan.total,
                 Err(AttemptError::Fallback) => {
                     log::info!("Segmented download not possible; using one stream");
@@ -409,17 +502,66 @@ fn fetch(url: &str, dest: &Path, opts: &DownloadOptions, tuning: Tuning) -> Resu
                 Err(e) => return Err(e.into_error()),
             }
         }
-        segmented::Probe::Single(resp) => stream.run(resp)?,
+        segmented::Probe::Single(resp) => {
+            let have = prev.as_ref().map_or(0, |p| p.contiguous_prefix(part_len));
+            match prev {
+                Some(prev) if have > 0 => {
+                    // The probe body starts at 0; resume with a range request instead
+                    drop(resp);
+                    announce_resume(pb, have);
+                    stream.resume_from(prev, have)?;
+                    stream.run(None)?
+                }
+                _ => {
+                    stream.truncate()?;
+                    stream.run(resp)?
+                }
+            }
+        }
     };
-
     file.sync_all().ok();
-    drop(file);
-    std::fs::rename(&part, dest)
-        .with_context(|| format!("Failed to move download to {}", dest.display()))?;
-    drop(guard);
-    pb.finish_and_clear();
-    log::info!("Downloaded {} bytes", bytes);
-    Ok(())
+    Ok(bytes)
+}
+
+/// Record the segmented plan and show the bytes a previous run already fetched
+fn start_segmented(
+    url: &str,
+    plan: &segmented::Plan,
+    pb: &ProgressBar,
+    state: &State,
+    done: &[bool],
+) {
+    let done_chunks: Vec<usize> = done
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &d)| d.then_some(i))
+        .collect();
+    let have: u64 = done_chunks
+        .iter()
+        .map(|&i| (plan.chunk_size).min(plan.total - i as u64 * plan.chunk_size))
+        .sum();
+    show_total(pb, plan.total);
+    if have > 0 {
+        announce_resume(pb, have);
+    }
+    pb.set_position(have);
+    state.save(Sidecar {
+        url: url.to_string(),
+        validator: Some(plan.validator.clone()),
+        total: Some(plan.total),
+        chunk_size: plan.chunk_size,
+        done_chunks,
+    });
+}
+
+fn announce_resume(pb: &ProgressBar, have: u64) {
+    pb.suspend(|| {
+        eprintln!(
+            "{} Resuming previous download at {:.1} MB",
+            "↻".yellow(),
+            have as f64 / 1_048_576.0
+        )
+    });
 }
 
 #[cfg(test)]
@@ -563,7 +705,8 @@ mod tests {
         srv.fault(Fault::Status(404));
         let (_t, dest, res) = fetch_with(&srv, 4);
         assert!(res.unwrap_err().to_string().contains("404"));
-        assert!(!dest.exists() && !part_path(&dest).exists());
+        // Chunks finished before the 404 may be kept for resuming; the target never appears
+        assert!(!dest.exists());
     }
 
     #[test]
@@ -649,5 +792,103 @@ mod tests {
         let (_t, dest, res) = fetch(&srv);
         res.unwrap();
         assert_eq!(std::fs::read(&dest).unwrap(), data);
+    }
+
+    fn fetch_into(srv: &Server, dest: &Path, connections: u8) -> Result<()> {
+        super::fetch(&srv.url, dest, &DownloadOptions { connections }, SMALL)
+    }
+
+    fn sidecar_path(dest: &Path) -> PathBuf {
+        let mut p = part_path(dest).into_os_string();
+        p.push(".json");
+        PathBuf::from(p)
+    }
+
+    #[test]
+    fn test_single_stream_resumes_next_run() {
+        let data = payload(100_000);
+        let srv = Server::start(data.clone(), true);
+        srv.fault(Fault::Drop(30_000));
+        for _ in 0..3 {
+            srv.fault(Fault::Drop(0));
+        }
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("file.bin");
+        assert!(fetch_into(&srv, &dest, 1).is_err());
+        assert_eq!(std::fs::metadata(part_path(&dest)).unwrap().len(), 30_000);
+        assert!(sidecar_path(&dest).exists());
+
+        let before = srv.ranges_seen().len();
+        fetch_into(&srv, &dest, 1).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), data);
+        assert_eq!(srv.ranges_seen()[before].as_deref(), Some("bytes=30000-"));
+        assert!(!part_path(&dest).exists() && !sidecar_path(&dest).exists());
+    }
+
+    /// Leave a `.part` whose first two 4096-byte chunks are done, as a killed run would
+    fn seed_segmented(dest: &Path, data: &[u8], validator: &str) {
+        let mut part = vec![0u8; data.len()];
+        part[..8192].copy_from_slice(&data[..8192]);
+        std::fs::write(part_path(dest), part).unwrap();
+        let sidecar = Sidecar {
+            url: String::new(),
+            validator: Some(validator.into()),
+            total: Some(data.len() as u64),
+            chunk_size: 4096,
+            done_chunks: vec![1, 0],
+        };
+        std::fs::write(sidecar_path(dest), serde_json::to_vec(&sidecar).unwrap()).unwrap();
+    }
+
+    fn seeded_url(srv: &Server, dest: &Path) {
+        let path = sidecar_path(dest);
+        let mut s: Sidecar = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        s.url = srv.url.clone();
+        std::fs::write(path, serde_json::to_vec(&s).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_segmented_resumes_next_run() {
+        let data = payload(50_000);
+        let srv = Server::start(data.clone(), true);
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("file.bin");
+        seed_segmented(&dest, &data, "\"v1\"");
+        seeded_url(&srv, &dest);
+        fetch_into(&srv, &dest, 4).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), data);
+        let seen = srv.ranges_seen();
+        assert!(!seen.iter().any(|r| r.as_deref() == Some("bytes=0-4095")));
+        assert!(!seen.iter().any(|r| r.as_deref() == Some("bytes=4096-8191")));
+        assert_eq!(seen.len(), 1 + 50_000_usize.div_ceil(4096) - 2);
+    }
+
+    #[test]
+    fn test_changed_validator_discards_previous_run() {
+        let data = payload(50_000);
+        let srv = Server::start(data.clone(), true);
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("file.bin");
+        // Stale bytes under an old validator must not survive
+        seed_segmented(&dest, &vec![0xAA; 50_000], "\"old\"");
+        seeded_url(&srv, &dest);
+        fetch_into(&srv, &dest, 4).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), data);
+        assert!(srv
+            .ranges_seen()
+            .iter()
+            .any(|r| r.as_deref() == Some("bytes=0-4095")));
+    }
+
+    #[test]
+    fn test_locked_part_is_refused() {
+        let srv = Server::start(payload(100), true);
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("file.bin");
+        let held = File::create(part_path(&dest)).unwrap();
+        held.lock().unwrap();
+        let err = fetch_into(&srv, &dest, 1).unwrap_err();
+        assert!(err.to_string().contains("another wenget"), "{err}");
+        assert!(srv.ranges_seen().is_empty());
     }
 }

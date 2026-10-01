@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-01
 
+- feat(downloader): interrupted downloads resume across runs. A failed or Ctrl-C'd download keeps
+  `<file>.part` and a `<file>.part.json` record (URL, validator, size, completed segments);
+  running the same command again continues where it stopped when the remote file is unchanged.
+  The `.part` file is locked so two wenget processes cannot write it at once, and leftovers older
+  than 7 days are deleted. Self-update still starts over (its scratch directory is removed).
 - feat(downloader): segmented multi-connection downloads. Files of 16 MiB or more on servers that
   honour `Range` are fetched as 8 MiB segments over `download_connections` parallel connections
   (new `config.toml` key, 1-16, default 4; `1` disables it). Servers without range support,

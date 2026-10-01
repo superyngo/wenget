@@ -93,6 +93,18 @@ install inside `{root}/apps/.staging/` before moving any existing **App director
 removed; any interrupted `*.old-*` residue is cleaned up by `wenget repair` (`InstalledStore::sweep_residue`).
 _Avoid_: In-place install, dirty write.
 
+**Partial download**:
+A download in progress or interrupted: `<file>.part` plus its `<file>.part.json` resume record
+(URL, `ETag`/`Last-Modified` validator, total size, completed segments) next to the target file
+(`src/downloader/resume.rs`). Rerunning the same command for the same URL and unchanged remote
+file continues it; files untouched for 7 days are deleted when a download starts.
+_Avoid_: Temp file, cache file.
+
+**Segmented download**:
+Fetching one file as fixed-size byte ranges over several parallel connections
+(`src/downloader/segmented.rs`), sized by the `download_connections` preference.
+_Avoid_: Parallel download (reserved for downloading several packages at once).
+
 **Installed key**:
 `{repo_name}` or `{repo_name}::{variant}` — the identity of an **Installed package**, produced by
 `generate_installed_key`. Reconstructed from **Package record** content on load, never parsed
