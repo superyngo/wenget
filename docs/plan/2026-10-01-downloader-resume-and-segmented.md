@@ -1,6 +1,6 @@
 # 下載器：重試續傳 + 切片多連線 + 跨次續傳
 
-狀態：**進行中**（2026-10-01 核准）。評估：`docs/tmp/claude-scratch/2026-10-01-downloader-optimization-eval.md`。
+狀態：**已完成**（2026-10-01；commits 3c844fe、b415ac3、6535ca1）。評估：`docs/tmp/claude-scratch/2026-10-01-downloader-optimization-eval.md`。
 
 ## 目標
 
@@ -96,3 +96,17 @@ ETag、在第 K 個 byte 斷線、忽略 Range、中途換 ETag）：
 
 `CHANGELOG.md`（`## [Unreleased]` → `### 2026-10-01`）、`README.md` 的設定說明、
 `docs/reference/glossary.md`（如有新名詞）、`docs/plan/README.md` 的索引、BACKLOG SI-12。
+
+## 驗證結果（2026-10-01，release build，sandbox）
+
+測試檔：hadolint v2.15.1 `hadolint-macos-arm64`（102,616,248 bytes），直接 URL 安裝。
+
+| 連線數 | 完整下載耗時 | 約略速度 |
+|---|---|---|
+| 4 | 132 s、99 s、74 s、86 s | 0.7–1.3 MiB/s |
+| 1 | 310 s、734 s、736 s、718 s | 0.13–0.31 MiB/s |
+
+- 切片模式 Ctrl-C（45 s，完成 4/13 塊）後重跑 → `Resuming previous download at 32.0 MB`，54 s 完成。
+- 單流模式 Ctrl-C（60 s，21 MB）後重跑 → `Resuming previous download at 21.0 MB`，271 s 完成。
+- 每次結果的 SHA-256 都等於 GitHub 公布的 asset digest；完成後 `cache/downloads/` 沒有殘留檔。
+- 備註：非互動 shell 腳本裡的背景程序會忽略 SIGINT，所以第一次批次測試的 `kill -INT` 沒有作用；那幾次就當成完整的 1 連線計時使用。

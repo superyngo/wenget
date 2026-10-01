@@ -8,14 +8,13 @@ The living backlog is [BACKLOG.md](BACKLOG.md) — undated, never frozen while w
 
 ## In progress
 
-| Date | Document | Status |
-|---|---|---|
-| 2026-10-01 | [2026-10-01-downloader-resume-and-segmented.md](2026-10-01-downloader-resume-and-segmented.md) | Phases 1-3 landed; verification pending |
+None.
 
 ## Landed
 
 | Date | Document | Status |
 |---|---|---|
+| 2026-10-01 | [2026-10-01-downloader-resume-and-segmented.md](2026-10-01-downloader-resume-and-segmented.md) | Shipped (2026-10-01) |
 | 2026-09-23 | [2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md) | Shipped (2026-09-23) |
 | 2026-09-03 | [2026-09-03-per-package-records.md](2026-09-03-per-package-records.md) | Shipped (2026-09-03) |
 | 2026-04-10 | [2026-04-10-update-default-binary-asset-matching.md](2026-04-10-update-default-binary-asset-matching.md) | Shipped (2026-04-10) |
