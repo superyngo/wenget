@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-10-01
 
+- docs: audit every doc against the code after the downloader work
+  (`docs/audit/2026-10-01-documentation-audit.md`). The README examples now use packages in the
+  default bucket, multi-package installs are described as continuing past a failed package, and
+  resumable and segmented downloads are listed under Features and How It Works. Also fixed: the
+  stale `FallbackType` note in the filtering rules, the archived changelog range, and the
+  downloader plan's `Status:` line. Opened backlog DL-1 (an invalid `download_connections` resets
+  every preference).
 - feat(downloader): interrupted downloads resume across runs. A failed or Ctrl-C'd download keeps
   `<file>.part` and a `<file>.part.json` record (URL, validator, size, completed segments);
   running the same command again continues where it stopped when the remote file is unchanged.

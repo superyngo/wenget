@@ -9,6 +9,7 @@ last checked against the tree — not when it was opened.
 
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
+| DL-1 | 2026-10-01 | 2026-10-01 | P3 | An out-of-range `download_connections` (not 1-16) fails `Preferences::validate`, so every preference falls back to its default (also `preferred_platform`, `custom_bin_path`) with only a warning. | `core::config::validated_or_default`; `Preferences::validate` | S | A bad `download_connections` alone is clamped or ignored with a warning; the other keys still apply; test covers it |
 
 ## Pending verification
 

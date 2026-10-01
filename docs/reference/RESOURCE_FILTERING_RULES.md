@@ -124,7 +124,7 @@
 
 需否確認見 `FallbackType::requires_confirmation`。最終依分數由高至低排序。
 
-> 註：`FallbackType` 列舉中的 `MuslOnGnu`、`GnuOnMusl` 與 `WindowsCompilerVariant` 目前未由 `fallback_identifiers` 產生（追蹤於 `docs/plan/BACKLOG.md`）。
+> 註：`FallbackType` 只有 `Arch32On64` 與 `X64OnArm` 兩個變體；libc／編譯器變體不走 fallback，一律在 Phase 1 精確匹配。
 
 ### 2.3 使用者覆寫（`Platform::match_override`，`-p/--platform` 旗標或 `preferred_platform` 設定）
 

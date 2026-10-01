@@ -13,11 +13,12 @@ wenget simplifies the installation and management of command-line tools and appl
 - **🚀 One-line Installation**: Remote installation scripts for quick setup
 - **🔄 Auto-update**: Always checks for latest releases from GitHub Releases
 - **📦 Bucket System**: Organize packages and scripts using bucket manifests
-- **📜 Script Support**: Install and manage PowerShell, Bash, and Python scripts from buckets
+- **📜 Script Support**: Install and manage PowerShell, Batch, Bash, and Python scripts from buckets
 - **🌐 Cross-platform**: Windows, macOS, Linux (multiple architectures)
 - **📁 Organized Storage**: Packages stored under `~/.wenget/apps/` with shims/symlinks in `~/.local/bin/`
 - **🔒 Checksum Verification**: SHA-256 validation against the manifest `checksum` or published release checksums; mismatches and failed lookups abort (`--skip-checksum` overrides a failed lookup)
 - **⚡ Stage-and-Swap Installs**: Atomic extractions prevent partial or broken installations
+- **⏬ Resumable Downloads**: Large files download over parallel connections, and interrupted downloads resume instead of restarting, even on the next run
 - **🔍 Smart Search**: Fuzzy, ranked search across all configured buckets — prefixes, typos, abbreviations (`rgp` → ripgrep), and description keywords
 - **🎯 Platform Detection**: Automatically selects the correct binary for your system
 - **🔧 Smart Command Naming**: Automatically removes platform suffixes from executable names
@@ -203,7 +204,8 @@ wenget bucket create -d https://github.com/user/repo,https://gist.github.com/use
 │   └── <package>/        # Each installed package
 │       └── .wenget/
 │           └── package.json  # This package's record (version, source, commands)
-├── cache/                 # Download cache
+├── cache/
+│   └── downloads/         # Download cache (keeps `<file>.part` of interrupted downloads)
 ├── manifest-cache.json    # Cached package list from buckets
 ├── config.toml           # User preferences (platform, paths, etc.)
 ├── buckets.json          # Bucket configuration
@@ -290,10 +292,11 @@ download_connections = 8
 
 Files of 16 MiB or more on servers that support range requests (GitHub releases do) are
 downloaded as 8 MiB segments over this many connections. Set `1` to always use a single
-connection. Interrupted transfers resume from where they stopped instead of restarting, also
-across runs: a failed or interrupted download keeps `<file>.part` (plus a `.part.json` record) in
-`~/.wenget/cache/downloads/`, and running the same command again continues it. Leftovers older
-than 7 days are removed automatically.
+connection. A connection that drops or stalls for 30 seconds is retried, and interrupted transfers
+resume from where they stopped instead of restarting, also across runs: a failed or interrupted
+download keeps `<file>.part` (plus a `.part.json` record) in `~/.wenget/cache/downloads/`, and
+running the same command again continues it. Leftovers older than 7 days are removed
+automatically.
 
 ### Environment Variables
 
@@ -460,11 +463,11 @@ wenget supports the following platforms:
 1. **Platform Detection**: wenget automatically detects your OS and architecture
 2. **Package Resolution**: Searches buckets for the requested package
 3. **Binary Selection**: Identifies the appropriate binary from GitHub Releases
-4. **Download & Checksum**: Downloads the asset and verifies its SHA-256 against the manifest `checksum`, or else against checksums published next to the release asset (`.sha256`, `checksums.txt`, `SHA256SUMS`). A mismatch always aborts; a lookup that fails on the network aborts unless `--skip-checksum` is given; an asset with no published checksum installs unverified.
+4. **Download & Checksum**: Downloads the asset (in parallel segments for large files, resuming interrupted transfers; see [Download Connections](#available-settings)) and verifies its SHA-256 against the manifest `checksum`, or else against checksums published next to the release asset (`.sha256`, `checksums.txt`, `SHA256SUMS`). A mismatch always aborts; a lookup that fails on the network aborts unless `--skip-checksum` is given; an asset with no published checksum installs unverified.
 5. **Stage & Swap**: Extracts the archive into `.staging/` before atomically swapping into `~/.wenget/apps/<package>/`, ensuring interrupted runs never leave corrupted installs
 6. **Launcher Creation**: Creates shims (Windows) or symlinks (Unix) in `~/.local/bin/` (or configured bin directory) for immediate command access
 
-If any package in a multi-package install fails, wenget aborts and exits with a non-zero exit code (`1`).
+If a package in a multi-package install fails, wenget reports it, continues with the remaining packages, and exits with a non-zero exit code (`1`) once the batch finishes.
 
 ## GitHub API Rate Limits
 
@@ -511,17 +514,14 @@ The official wenget bucket is updated regularly, so most users won't need to wor
 # Modern alternatives to classic Unix tools
 wenget add ripgrep fd bat
 
-# Git TUI
-wenget add gitui lazygit
+# Fuzzy finder and JSON processor
+wenget add fzf jq
 
 # System monitoring
-wenget add bottom
+wenget add bottom btop
 
-# Shell prompt
-wenget add starship
-
-# Directory navigation
-wenget add zoxide
+# Terminal file manager
+wenget add yazi
 ```
 
 ### Manage Packages
@@ -532,13 +532,13 @@ wenget search rust
 
 # Refresh package metadata and install
 wenget bucket refresh
-wenget add tokei
+wenget add jq
 
 # List what's installed
 wenget list
 
 # Remove a package
-wenget del tokei
+wenget del jq
 ```
 
 ## Important Disclaimer

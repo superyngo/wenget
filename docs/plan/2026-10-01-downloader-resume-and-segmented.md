@@ -1,6 +1,7 @@
 # 下載器：重試續傳 + 切片多連線 + 跨次續傳
+Status: Shipped (2026-10-01)
 
-狀態：**已完成**（2026-10-01；commits 3c844fe、b415ac3、6535ca1）。評估：`docs/tmp/claude-scratch/2026-10-01-downloader-optimization-eval.md`。
+Commits `3c844fe`、`b415ac3`、`6535ca1`；實測結果見文末〈驗證結果〉。
 
 ## 目標
 
