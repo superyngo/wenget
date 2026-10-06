@@ -111,7 +111,7 @@ https://github.com/dynatrace-oss/ai-config-manager
 https://github.com/pardnchiu/Agenvoy
 https://github.com/DeusData/codebase-memory-mcp
 https://github.com/google-antigravity/antigravity-cli
-
+https://github.com/amontlabs/lcu
 
 
 # === Archived ===
