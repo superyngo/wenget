@@ -650,49 +650,40 @@ del /f /q "%~f0"
     Ok(())
 }
 
+/// Shell script that waits, removes `target` (a directory when `whole_root`), then itself
+#[cfg(any(unix, test))]
+fn unix_uninstall_script(target: &Path, whole_root: bool) -> String {
+    let quoted = crate::installer::script::sh_single_quote(&target.to_string_lossy());
+    let rm = if whole_root { "rm -rf --" } else { "rm -f --" };
+    format!("#!/bin/sh\nsleep 2\n{rm} {quoted}\nrm -f -- \"$0\"\n")
+}
+
 /// Delete executable on Unix
 #[cfg(not(windows))]
 fn delete_executable_unix(exe_path: &Path, exe_in_wenget: bool, wenget_root: &Path) -> Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
     use std::process::Command;
 
-    // Create a shell script to delete the executable after exit
-    let temp_dir = env::temp_dir();
-    let script_path = temp_dir.join("wenget_uninstall.sh");
-
-    let exe_path_str = exe_path.to_string_lossy();
-    let script_content = if exe_in_wenget {
-        // If executable is inside .wenget, delete the entire directory
-        let wenget_root_str = wenget_root.to_string_lossy();
-        format!(
-            r#"#!/bin/sh
-sleep 2
-rm -rf "{}"
-rm -f "$0"
-"#,
-            wenget_root_str
-        )
+    let (target, whole_root) = if exe_in_wenget {
+        (wenget_root, true)
     } else {
-        // Otherwise just delete the executable
-        format!(
-            r#"#!/bin/sh
-sleep 2
-rm -f "{}"
-rm -f "$0"
-"#,
-            exe_path_str
-        )
+        (exe_path, false)
     };
+    let script_content = unix_uninstall_script(target, whole_root);
 
-    fs::write(&script_path, script_content).context("Failed to create uninstall script")?;
-
-    // Make script executable
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&script_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&script_path, perms)?;
-    }
+    // `create_new` refuses a pre-planted file or symlink at this shared-temp path
+    let script_path = env::temp_dir().join(format!("wenget_uninstall-{}.sh", std::process::id()));
+    let mut script = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o700)
+        .open(&script_path)
+        .with_context(|| format!("Failed to create {}", script_path.display()))?;
+    script
+        .write_all(script_content.as_bytes())
+        .context("Failed to write uninstall script")?;
+    drop(script);
 
     // Launch the script in background
     Command::new("sh")
@@ -803,6 +794,18 @@ fn group_delete_candidates(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_unix_uninstall_script_quotes_path() {
+        let script = unix_uninstall_script(Path::new("/o'p/$x \"y\""), true);
+        assert!(
+            script.contains("rm -rf -- '/o'\\''p/$x \"y\"'\n"),
+            "{script}"
+        );
+        assert!(
+            unix_uninstall_script(Path::new("/b/wenget"), false).contains("rm -f -- '/b/wenget'")
+        );
+    }
+
     use super::*;
     use crate::core::manifest::{InstalledPackage, PackageSource, CURRENT_SCHEMA_VERSION};
 

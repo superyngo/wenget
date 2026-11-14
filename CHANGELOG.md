@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-11-14
+
+- fix(checksum): a checksum probe answered 403/429/5xx is a lookup failure (aborts unless `--skip-checksum`), no longer "No checksum published"; only 404/410 mean not published.
+- fix(repair): `repair` restores `apps/X.old-<ts>` to `X` when the install is missing (interrupted swap) instead of deleting the only copy.
+- fix(prompt): `confirm` treats closed stdin (EOF) as "no", so `repair </dev/null` no longer deletes.
+- fix(downloader): a segmented resume record without its `.part` data is discarded instead of reporting a finished download.
+- fix(del self): the Unix uninstall script is created exclusively (0700, per-process name) and quotes paths with single quotes.
+
 ## [4.1.0] - 2026-10-01
 
 ### 2026-10-01

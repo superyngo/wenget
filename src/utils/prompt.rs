@@ -24,7 +24,10 @@ pub fn confirm(message: &str) -> Result<bool> {
     io::stdout().flush()?;
 
     let mut response = String::new();
-    io::stdin().read_line(&mut response)?;
+    // Zero bytes read means stdin is closed: no answer, so not a "yes"
+    if io::stdin().read_line(&mut response)? == 0 {
+        return Ok(false);
+    }
     let response = response.trim().to_lowercase();
 
     Ok(response.is_empty() || response == "y" || response == "yes")

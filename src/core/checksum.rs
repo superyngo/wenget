@@ -54,9 +54,15 @@ fn probe(client: &reqwest::blocking::Client, url: &str) -> Probe {
             Ok(text) => Probe::Found(text),
             Err(_) => Probe::NetworkError,
         },
-        Ok(_) => Probe::NotFound,
-        Err(_) => Probe::NetworkError,
+        Ok(resp) if is_not_published(resp.status()) => Probe::NotFound,
+        // 403/429/5xx etc.: "not published" cannot be concluded
+        Ok(_) | Err(_) => Probe::NetworkError,
     }
+}
+
+/// Only 404/410 mean the checksum file does not exist
+fn is_not_published(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 404 | 410)
 }
 
 /// Probe the conventional checksum filenames next to `asset_url` for a hash
@@ -304,6 +310,20 @@ mod tests {
         let content = format!("{}  app.tar.gz\n", hash512);
         assert_eq!(extract_hash(&content, "app.tar.gz", false), None);
         assert_eq!(extract_hash(&content, "app.tar.gz", true), None);
+    }
+
+    #[test]
+    fn test_only_404_and_410_mean_not_published() {
+        for (code, expected) in [
+            (404, true),
+            (410, true),
+            (403, false),
+            (429, false),
+            (503, false),
+        ] {
+            let status = reqwest::StatusCode::from_u16(code).unwrap();
+            assert_eq!(is_not_published(status), expected, "{code}");
+        }
     }
 
     #[test]

@@ -418,6 +418,24 @@ impl InstalledStore {
                     continue;
                 }
                 let path = entry.path();
+                // A kill between the two swap renames leaves only the retired
+                // directory; it is then the sole copy, so put it back.
+                if let Some((base, _)) = name.rsplit_once(".old-") {
+                    let original = apps_dir.join(base);
+                    if !base.is_empty() && !original.exists() {
+                        match fs::rename(&path, &original) {
+                            Ok(()) => {
+                                eprintln!(
+                                    "Restored {} from {}",
+                                    original.display(),
+                                    path.display()
+                                );
+                                continue;
+                            }
+                            Err(e) => log::warn!("Could not restore {}: {}", path.display(), e),
+                        }
+                    }
+                }
                 match fs::remove_dir_all(&path) {
                     Ok(()) => removed.push(path),
                     Err(e) => log::warn!("Could not remove {}: {}", path.display(), e),
@@ -880,5 +898,23 @@ mod tests {
         assert!(s.paths().app_dir("keep").exists());
         assert!(tmp.path().join("apps").join("untracked").exists());
         assert!(!tmp.path().join("apps").join("keep.old-123").exists());
+    }
+
+    #[test]
+    fn test_sweep_restores_sole_retired_install() {
+        let tmp = TempDir::new().unwrap();
+        let s = store(&tmp);
+        s.save_package("tool", &pkg("tool", None)).unwrap();
+        let apps = tmp.path().join("apps");
+        // Crash between the swap's two renames: only the retired dir remains
+        std::fs::rename(apps.join("tool"), apps.join("tool.old-123")).unwrap();
+
+        let swept = s.sweep_residue().unwrap();
+        assert!(swept.is_empty(), "{swept:?}");
+        assert!(!apps.join("tool.old-123").exists());
+        assert_eq!(
+            s.load().unwrap().get_package("tool").unwrap().version,
+            "1.0.0"
+        );
     }
 }

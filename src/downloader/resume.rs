@@ -49,6 +49,11 @@ impl Sidecar {
     pub fn done_mask(&self, part_len: u64, total: u64, chunk_size: u64) -> Vec<bool> {
         let chunks = total.div_ceil(chunk_size) as usize;
         if self.chunk_size == chunk_size {
+            // Chunks are written in place into a file sized to `total`; a shorter
+            // `.part` means the data is gone (deleted or never synced)
+            if part_len != total {
+                return vec![false; chunks];
+            }
             (0..chunks).map(|i| self.done_chunks.contains(&i)).collect()
         } else {
             // From a sequential stream: chunks wholly inside the written prefix
@@ -190,6 +195,11 @@ mod tests {
         assert_eq!(
             sidecar(30, &[0, 3]).done_mask(100, 100, 30),
             [true, false, false, true]
+        );
+        // Sidecar without its data: nothing is trusted
+        assert_eq!(
+            sidecar(30, &[0, 3]).done_mask(0, 100, 30),
+            [false, false, false, false]
         );
         // Sequential prefix of 65 bytes covers chunks 0 and 1 of size 30
         assert_eq!(
