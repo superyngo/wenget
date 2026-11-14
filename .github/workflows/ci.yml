@@ -16,6 +16,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit
+
   fmt:
     name: rustfmt
     runs-on: ubuntu-latest

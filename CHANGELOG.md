@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-11-14
 
+- chore(deps): `cargo update` plus `zip` 9 clears all 14 RustSec vulnerabilities; CI gains a `cargo audit` job and Dependabot (cargo, actions).
+- ci(release): pin `cross` to v0.2.5 and the third-party release/winget actions to commit SHAs (`action-gh-release` v1 → v2.6.2).
+
 - fix(checksum): a checksum probe answered 403/429/5xx is a lookup failure (aborts unless `--skip-checksum`), no longer "No checksum published"; only 404/410 mean not published.
 - fix(repair): `repair` restores `apps/X.old-<ts>` to `X` when the install is missing (interrupted swap) instead of deleting the only copy.
 - fix(prompt): `confirm` treats closed stdin (EOF) as "no", so `repair </dev/null` no longer deletes.

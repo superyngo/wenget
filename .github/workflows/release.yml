@@ -117,7 +117,7 @@ jobs:
 
       - name: Install cross (for musl targets)
         if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl' || matrix.target == 'i686-unknown-linux-musl' || matrix.target == 'armv7-unknown-linux-musleabihf'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev f8151ae777290430cf2108efacf3976d9528500b # v0.2.5
 
       - name: Install 32-bit libraries (Linux i686 only)
         if: matrix.target == 'i686-unknown-linux-gnu'
@@ -310,7 +310,7 @@ jobs:
           echo "Tag message retrieved successfully"
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.tag_message.outputs.tag_name }}
           files: release_files/*
