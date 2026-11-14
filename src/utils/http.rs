@@ -57,6 +57,13 @@ impl HttpClient {
         })
     }
 
+    /// The token, only for GitHub hosts or loopback fixtures, so a redirected
+    /// `WENGET_GITHUB_API` or a bucket source URL cannot receive it
+    fn token_for(&self, url: &str) -> Option<&str> {
+        let token = self.token.as_deref()?;
+        token_allowed(url).then_some(token)
+    }
+
     /// Send a GET request and return the response as text
     pub fn get_text(&self, url: &str) -> Result<String> {
         log::debug!("GET {}", url);
@@ -64,7 +71,7 @@ impl HttpClient {
         let mut request = self.client.get(url).timeout(self.timeout);
 
         // Add authorization header if token is available
-        if let Some(ref token) = self.token {
+        if let Some(token) = self.token_for(url) {
             request = request.header("Authorization", format!("Bearer {}", token));
         }
 
@@ -94,7 +101,7 @@ impl HttpClient {
             .header("Accept", "application/json");
 
         // Add authorization header if token is available
-        if let Some(ref token) = self.token {
+        if let Some(token) = self.token_for(url) {
             request = request.header("Authorization", format!("Bearer {}", token));
         }
 
@@ -112,6 +119,23 @@ impl HttpClient {
 
         Ok(data)
     }
+}
+
+/// Whether `url` may carry the GitHub token
+fn token_allowed(url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return false;
+    };
+    let Some(host) = parsed.host_str() else {
+        return false;
+    };
+    let host = host.trim_start_matches('[').trim_end_matches(']');
+    matches!(
+        host,
+        "api.github.com" | "github.com" | "raw.githubusercontent.com" | "localhost"
+    ) || host
+        .parse::<std::net::IpAddr>()
+        .is_ok_and(|ip| ip.is_loopback())
 }
 
 /// Build the error for a non-success response, naming an exhausted GitHub rate limit
@@ -168,6 +192,16 @@ impl Default for HttpClient {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_token_only_for_github_and_loopback() {
+        assert!(token_allowed("https://api.github.com/repos/a/b"));
+        assert!(token_allowed("http://127.0.0.1:9/x"));
+        assert!(token_allowed("http://[::1]:9/x"));
+        assert!(!token_allowed("https://evil.example/x"));
+        assert!(!token_allowed("https://api.github.com.evil.example/x"));
+        assert!(!token_allowed("not a url"));
+    }
+
     use super::*;
 
     #[test]

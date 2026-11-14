@@ -220,6 +220,16 @@ impl GitHubProvider {
         // Extract platforms using BinarySelector (now returns Vec<BinaryAsset> per platform)
         let platform_map = BinarySelector::extract_platforms(&binary_assets);
 
+        // GitHub's own per-asset digest, keyed by URL; only sha256 is verifiable
+        let digests: HashMap<&str, &str> = assets
+            .iter()
+            .filter_map(|a| {
+                let d = a.digest.as_deref()?;
+                d.starts_with("sha256:")
+                    .then_some((a.browser_download_url.as_str(), d))
+            })
+            .collect();
+
         // Convert to Vec<PlatformBinary> map
         platform_map
             .into_iter()
@@ -227,9 +237,9 @@ impl GitHubProvider {
                 let binaries: Vec<PlatformBinary> = assets_vec
                     .into_iter()
                     .map(|asset| PlatformBinary {
+                        checksum: digests.get(asset.url.as_str()).map(|d| d.to_string()),
                         url: asset.url,
                         size: asset.size,
-                        checksum: None,
                         asset_name: asset.name, // NEW: Store original asset filename
                     })
                     .collect();
@@ -265,6 +275,9 @@ pub struct GitHubAsset {
     pub browser_download_url: String,
     /// File size in bytes
     pub size: u64,
+    /// Release API digest (`sha256:<hex>`), when GitHub reports one
+    #[serde(default)]
+    pub digest: Option<String>,
 }
 
 /// GitHub repository information
@@ -293,6 +306,33 @@ pub struct GitHubLicense {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_github_digest_becomes_checksum() {
+        let asset = |name: &str, digest: Option<&str>| GitHubAsset {
+            name: name.to_string(),
+            browser_download_url: format!("https://github.com/o/r/releases/download/v1/{name}"),
+            size: 1,
+            digest: digest.map(str::to_string),
+        };
+        let map = GitHubProvider::extract_platform_binaries(&[
+            asset("tool-x86_64-unknown-linux-gnu.tar.gz", Some("sha256:abc")),
+            asset("tool-aarch64-apple-darwin.tar.gz", Some("sha512:zzz")),
+        ]);
+        let all: Vec<_> = map.values().flatten().collect();
+        let sum = |n: &str| {
+            all.iter()
+                .find(|b| b.asset_name == n)
+                .unwrap()
+                .checksum
+                .clone()
+        };
+        assert_eq!(
+            sum("tool-x86_64-unknown-linux-gnu.tar.gz").as_deref(),
+            Some("sha256:abc")
+        );
+        assert_eq!(sum("tool-aarch64-apple-darwin.tar.gz"), None);
+    }
+
     use super::*;
 
     #[test]
