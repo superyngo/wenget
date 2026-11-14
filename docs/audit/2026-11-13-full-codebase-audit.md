@@ -1,10 +1,17 @@
 # Full Codebase Audit — 2026-11-13
-Status: In progress
+Status: Resolved (2026-11-14)
 
 Six-dimension sweep of v4.1.0 (`3194a74`, clean tree). Findings already closed in
 [`../plan/BACKLOG.md`](../plan/BACKLOG.md) are not repeated. Evidence is file + symbol.
 **PROVEN** means reproduced on the real debug binary under `WENGET_ROOT=/tmp/wg-audit-*`;
 **REASONED** means read from the code only.
+
+## Resolution (2026-11-14)
+
+Fixed: D-1, S-1 to S-6, R-1 to R-4, A-1, M-1 (see `CHANGELOG.md`). A-1 was resolved by
+classifying zst and other unextractable formats as unsupported rather than adding zstd extraction.
+P-1 is largely removed by S-2. Opened in the backlog: A-2 → LK-1, T-1/T-2/T-3 → TS-1, M-2 → AD-1.
+The modules listed under Coverage limits are still unreviewed.
 
 ## Executive summary
 

@@ -8,7 +8,7 @@ Current behavior lives in [`../reference/`](../reference/README.md).
 
 | Date | Document | Status |
 |---|---|---|
-| 2026-11-13 | [2026-11-13-full-codebase-audit.md](2026-11-13-full-codebase-audit.md) — six-dimension sweep of v4.1.0 (1 High, 6 Medium; partial coverage) | In progress |
+| 2026-11-13 | [2026-11-13-full-codebase-audit.md](2026-11-13-full-codebase-audit.md) — six-dimension sweep of v4.1.0 (1 High, 6 Medium; partial coverage) | Resolved (2026-11-14) |
 
 Findings still awaiting real-machine verification or newly opened are tracked in
 [`../plan/BACKLOG.md`](../plan/BACKLOG.md).

@@ -2,6 +2,7 @@
 name = "wenget"
 version = "4.1.0"
 edition = "2021"
+rust-version = "1.93"
 authors = ["wen"]
 description = "A cross-platform package manager for GitHub binaries"
 license = "MIT"

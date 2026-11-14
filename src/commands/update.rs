@@ -907,14 +907,14 @@ fn download_and_extract_self(
     let paths = WenPaths::new()?;
     let temp_dir = paths.cache_dir().join("self-upgrade");
     fs::create_dir_all(&temp_dir)?;
-    // Removes the scratch directory on every exit path, including errors below
-    let temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
-
     let download_path = temp_dir.join(filename);
     let opts = crate::core::Config::new()
         .map(|c| crate::downloader::DownloadOptions::from_preferences(c.preferences()))
         .unwrap_or_default();
+    // A failed download keeps its `.part` so rerunning resumes it
     download_file(&binary.url, &download_path, &opts)?;
+    // From here the scratch directory is removed on every exit path
+    let temp_guard = crate::downloader::CleanupGuard::new(&temp_dir);
 
     crate::core::checksum::verify_download(
         &binary.url,

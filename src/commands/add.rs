@@ -544,6 +544,14 @@ fn install_from_urls(
 
         // Handle query parameters in URL
         let filename = filename.split('?').next().unwrap_or(filename);
+        if filename.is_empty() {
+            println!("  {} URL has no file name", "✗".red());
+            report.fail(url.to_string());
+            continue;
+        }
+        // Keep the name inside the downloads dir (`\..\` on Windows, a bare `..`)
+        let filename = crate::core::paths::sanitize_path_component(filename);
+        let filename = filename.as_str();
         let download_path = temp_dir.join(filename);
 
         let opts = downloader::DownloadOptions::from_preferences(config.preferences());

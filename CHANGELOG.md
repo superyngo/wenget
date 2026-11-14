@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-11-14
 
+- fix(add): a direct-URL file name is sanitized and an empty one rejected, so it cannot leave the downloads dir.
+- fix(update self): a failed self-update download keeps its `.part` so rerunning resumes it.
+- chore: declare `rust-version = "1.93"` (highest dependency requirement, `sevenz-rust2`).
+- docs(audit): 2026-11-13 audit resolved; LK-1, TS-1, AD-1 opened in the backlog.
+
 - fix(platform): `.zst`, `.tar.zst`, plain `.tar`, single-file `.gz`/`.xz`/`.bz2` and similar assets wenget cannot extract are classified unsupported instead of being offered as "uncompressed binaries"; the extractor matches formats case-insensitively and reports unsupported ones clearly.
 
 - feat(checksum): use GitHub's per-asset `sha256:` digest from the releases API as the expected checksum, avoiding the checksum-file probes.

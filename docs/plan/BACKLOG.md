@@ -10,6 +10,9 @@ last checked against the tree — not when it was opened.
 | ID | Opened | Verified | Pri | Finding | Evidence | Effort | Acceptance |
 |---|---|---|---|---|---|---|---|
 | DL-1 | 2026-10-01 | 2026-10-01 | P3 | An out-of-range `download_connections` (not 1-16) fails `Preferences::validate`, so every preference falls back to its default (also `preferred_platform`, `custom_bin_path`) with only a warning. | `core::config::validated_or_default`; `Preferences::validate` | S | A bad `download_connections` alone is clamped or ignored with a warning; the other keys still apply; test covers it |
+| LK-1 | 2026-11-14 | 2026-11-14 | P3 | No cross-process lock on the wenget root: concurrent `add`/`update`/`repair` race on `apps/`, `bin/`, the cache, and `sweep_residue` can remove a running install's staging dir. | `core::store::InstalledStore::sweep_residue`; `installer::staging::StagedInstall` | M | Mutating commands take an advisory lock under the root; a second process waits or fails clearly; test covers two holders |
+| TS-1 | 2026-11-14 | 2026-11-14 | P3 | Thin tests relative to size and risk: URL install loop, self-update replacement, `info`, `migrate`. Coverage is unmeasured. | `commands::add`, `commands::update::download_and_extract_self`, `commands::info`, `core::migrate` | M | Each has offline tests for its main path and one failure path; CI reports `cargo llvm-cov` |
+| AD-1 | 2026-11-14 | 2026-11-14 | P3 | The direct-URL install loop nests deeply and cleans up by hand instead of `CleanupGuard` like the other download sites. | `commands::add` URL loop | S | Loop split into a helper; the downloaded file is removed on every exit path |
 
 ## Pending verification
 
