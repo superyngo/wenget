@@ -294,7 +294,7 @@ impl FileExtension {
             FileExtension::TarGz
         } else if lower.ends_with(".tar.xz") {
             FileExtension::TarXz
-        } else if lower.ends_with(".tar.bz2") {
+        } else if lower.ends_with(".tar.bz2") || lower.ends_with(".tbz") {
             FileExtension::TarBz2
         } else if lower.ends_with(".7z") {
             FileExtension::SevenZ
@@ -335,6 +335,16 @@ impl FileExtension {
             ".pkg",
             ".msi",
             ".appimage",
+            // Compressed or archive formats wenget cannot extract
+            ".zst",
+            ".tzst",
+            ".tar",
+            ".gz",
+            ".xz",
+            ".bz2",
+            ".lz",
+            ".lzma",
+            ".rar",
         ];
         if excluded_extensions.iter().any(|ext| lower.ends_with(ext)) {
             return false;
@@ -1118,6 +1128,26 @@ impl BinarySelector {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_unextractable_compressed_assets_are_unsupported() {
+        for name in [
+            "tool-aarch64-apple-darwin.tar.zst",
+            "tool-aarch64-apple-darwin.zst",
+            "tool-x86_64-unknown-linux-musl.tar",
+            "tool-x86_64-unknown-linux-musl.gz",
+        ] {
+            assert_eq!(
+                FileExtension::from_filename(name),
+                FileExtension::Unsupported,
+                "{name}"
+            );
+        }
+        assert_eq!(
+            FileExtension::from_filename("tool-linux-x86_64.TBZ"),
+            FileExtension::TarBz2
+        );
+    }
+
     use super::*;
 
     #[test]

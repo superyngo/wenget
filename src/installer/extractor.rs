@@ -26,18 +26,20 @@ pub fn extract_archive(archive_path: &Path, dest_dir: &Path) -> Result<Vec<Strin
         .and_then(|s| s.to_str())
         .context("Invalid file name")?;
 
-    let extracted_files = if is_standalone_executable(filename) {
+    // Formats are matched case-insensitively, as asset selection does
+    let lower = filename.to_lowercase();
+    let extracted_files = if is_standalone_executable(&lower) {
         // Handle standalone executable
         extract_standalone_executable(archive_path, dest_dir)?
-    } else if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
+    } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") {
         extract_tar_gz(archive_path, dest_dir)?
-    } else if filename.ends_with(".tar.xz") {
+    } else if lower.ends_with(".tar.xz") {
         extract_tar_xz(archive_path, dest_dir)?
-    } else if filename.ends_with(".tar.bz2") || filename.ends_with(".tbz") {
+    } else if lower.ends_with(".tar.bz2") || lower.ends_with(".tbz") {
         extract_tar_bz2(archive_path, dest_dir)?
-    } else if filename.ends_with(".zip") {
+    } else if lower.ends_with(".zip") {
         extract_zip(archive_path, dest_dir)?
-    } else if filename.ends_with(".7z") {
+    } else if lower.ends_with(".7z") {
         extract_7z(archive_path, dest_dir)?
     } else {
         anyhow::bail!("Unsupported archive format: {}", filename);
@@ -57,12 +59,13 @@ fn is_standalone_executable(filename: &str) -> bool {
 
     // Unix/Linux/macOS binaries often have no extension or are AppImage
     if cfg!(unix) {
-        if filename.ends_with(".AppImage") {
+        if filename.ends_with(".appimage") {
             return true;
         }
         // Check if it has no common archive extension
         let archive_extensions = [
-            ".zip", ".tar", ".gz", ".xz", ".bz2", ".7z", ".rar", ".tbz", ".tgz",
+            ".zip", ".tar", ".gz", ".xz", ".bz2", ".7z", ".rar", ".tbz", ".tgz", ".zst", ".tzst",
+            ".lz", ".lzma",
         ];
         if !archive_extensions.iter().any(|ext| filename.contains(ext)) {
             // Could be a standalone binary
@@ -809,6 +812,20 @@ pub fn normalize_command_name(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_unsupported_compressed_formats_fail_clearly() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        for name in ["t-darwin-arm64.tar.zst", "t-darwin-arm64.zst", "T.TAR.ZST"] {
+            let f = tmp.path().join(name);
+            std::fs::write(&f, b"x").unwrap();
+            let err = extract_archive(&f, &tmp.path().join("out")).unwrap_err();
+            assert!(
+                err.to_string().contains("Unsupported archive format"),
+                "{name}: {err}"
+            );
+        }
+    }
+
     use super::*;
 
     /// Build a .7z holding one file entry named `entry_name`.

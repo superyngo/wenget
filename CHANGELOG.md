@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-11-14
 
+- fix(platform): `.zst`, `.tar.zst`, plain `.tar`, single-file `.gz`/`.xz`/`.bz2` and similar assets wenget cannot extract are classified unsupported instead of being offered as "uncompressed binaries"; the extractor matches formats case-insensitively and reports unsupported ones clearly.
+
 - feat(checksum): use GitHub's per-asset `sha256:` digest from the releases API as the expected checksum, avoiding the checksum-file probes.
 - fix(http): the `GITHUB_TOKEN` is sent only to GitHub hosts and loopback, not to a redirected `WENGET_GITHUB_API` or bucket source URL.
 
