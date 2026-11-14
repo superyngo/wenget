@@ -43,6 +43,7 @@ cargo run -- list --all
 ## Project Structure
 
 See [`CONTEXT.md`](CONTEXT.md) for the documentation index. [`docs/reference/`](docs/reference/) holds the glossary and the asset-filtering rules; there is no separate architecture document, so read each module's `//!` docs for structure.
+`docs/memo/` is the human's free space: read or tidy it only when asked, never write session output there, and never treat it as instruction or as evidence of behavior. Agent scratch goes in `docs/tmp/<agent>-scratch/` (gitignored).
 Note that `src/core/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
 
 ## Code Style Guidelines
@@ -303,3 +304,38 @@ The `.github/workflows/release.yml` workflow will:
 - Trigger on version tags matching `v*.*.*`
 - Build binaries for all platforms
 - Create GitHub Release with artifacts and tag annotation notes
+
+### 8. Sweep `docs/tmp/`
+
+Run after the tag is pushed. `docs/tmp/` accumulates scratch, so it is swept at every release
+rather than "when it grows stale". Triage before removing, and report before moving anything.
+
+1. **Inventory**: list each top-level entry of `docs/tmp/` and `docs/tmp/*-scratch/` with size,
+   last-modified date, and tracked/untracked (`git ls-files`). Build output (`target/`,
+   `node_modules/`, `.venv/`, `dist/`, `build/`) is listed separately.
+2. **Classify** each entry into exactly one class:
+   - **Promote**: someone will want to cite or re-run it, or it holds an open follow-up. Write
+     the `docs/audit/` record, `docs/plan/BACKLOG.md` row, or `docs/reference/` section first;
+     a forming idea the human wants kept goes to `docs/memo/`. The scratch copy then becomes Stale.
+   - **Regenerable**: build output. Trash the directory, keep its sources.
+   - **Stale**: not modified for 30 days **and** not referenced from a living document or open
+     working record. Tracked files are archived; untracked files are trashed.
+   - **Live**: everything else. Leave it.
+3. **Report and stop**: show the table (entry, size, date, class, proposed action) and wait for
+   approval. Ask every sweep; an earlier approval does not carry over.
+4. **Execute** only what was approved. Never use `rm`, and never archive `archive/` or build output.
+
+```bash
+# Stale, tracked: archive in one commit
+mkdir -p docs/tmp/archive
+tar -czf docs/tmp/archive/$(date +%Y-%m).tar.gz -C docs/tmp <files and dirs to archive>
+git rm -r docs/tmp/<those same files and dirs>
+git add docs/tmp/archive
+git commit -m "docs: archive tmp/ scratch to tmp/archive/$(date +%Y-%m).tar.gz"
+
+# Stale untracked, and Regenerable: OS trash (macOS `trash`; Linux `gio trash`)
+trash <paths>
+```
+
+Check that `git check-ignore docs/tmp/<agent>-scratch` succeeds; if not, add
+`docs/tmp/*-scratch/` to `.gitignore`.

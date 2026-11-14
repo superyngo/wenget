@@ -13,7 +13,8 @@ lives under `docs/`.
 | [`docs/plan/BACKLOG.md`](docs/plan/BACKLOG.md) | The one living tracker of open work, pending verification, external blockers, and watched items | No — live state | Never frozen while anything is open |
 | [`docs/debug/`](docs/debug/README.md) | Handoff notes from investigations, with repro scripts | No — historical | Frozen once resolved; only `Status:` changes |
 | [`docs/audit/`](docs/audit/README.md) | Point-in-time sweeps for bugs, dead code, inconsistency, plus assessment / verification runs | No — historical | Frozen once findings are addressed; only `Status:` changes |
-| `docs/tmp/` | Scratch; `<agent>-scratch/` is gitignored | No | Archived to `docs/tmp/archive/YYYY-MM.tar.gz` when stale |
+| [`docs/memo/`](docs/memo/README.md) | The human's notes: ideas still forming, loose thinking, background | No — not evidence of behavior | Free-form; edited by people, by agents only on request |
+| `docs/tmp/` | Scratch; `<agent>-scratch/` is gitignored | No | Swept at each release: promoted, archived to `docs/tmp/archive/YYYY-MM.tar.gz`, or trashed (see `AGENTS.md` release step 8) |
 
 ## Reading order
 

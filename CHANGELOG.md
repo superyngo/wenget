@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 2026-11-14
 
+- docs: add `docs/memo/` (the human's free space, not canonical, agent-edited only on request) and a release-time `docs/tmp/` sweep (`AGENTS.md` release step 8: triage, report, approve, archive or trash); `CONTEXT.md` lists both.
+
 - fix(add): a direct-URL file name is sanitized and an empty one rejected, so it cannot leave the downloads dir.
 - fix(update self): a failed self-update download keeps its `.part` so rerunning resumes it.
 - chore: declare `rust-version = "1.93"` (highest dependency requirement, `sevenz-rust2`).
