@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-11-14
+
 ### 2026-11-14
 
 - docs: add `docs/memo/` (the human's free space, not canonical, agent-edited only on request) and a release-time `docs/tmp/` sweep (`AGENTS.md` release step 8: triage, report, approve, archive or trash); `CONTEXT.md` lists both.
@@ -365,6 +367,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripts.
 - fix(search): truncating descriptions no longer panics on multi-byte (CJK/emoji) text.
 
-[Unreleased]: https://github.com/superyngo/wenget/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/superyngo/wenget/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/superyngo/wenget/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/superyngo/wenget/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/superyngo/wenget/compare/v3.9.0...v4.0.0
