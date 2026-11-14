@@ -21,7 +21,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "blo
 # JSON processing
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
+toml = "1.2"
 
 # Archive handling
 zip = { version = "9", default-features = false, features = ["deflate", "bzip2", "zstd"] }
