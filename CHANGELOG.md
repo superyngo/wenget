@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-11-18
+
+- fix(update): a bucket that fails to fetch keeps its last good packages in the manifest cache
+  (the cache is marked expired so the next command retries); `wenget update` exits non-zero and
+  names packages it could not check instead of printing "All packages are up to date"; metadata
+  GETs (`HttpClient::get_text`/`get_json`) retry a 5xx or non-rate-limit 429 twice (1 s, 2 s).
+  Direct-URL installs (version `local`) with no update source are still skipped silently (DL-2).
+- debug(update): a transient HTTP 503 from one `raw.githubusercontent.com` edge made the bucket
+  fetch fail; the rebuilt manifest cache dropped the bucket, `update` skipped every bucket package
+  and still printed "All packages are up to date" (exit 0). The first-suspected segmented-download
+  hang was refuted (the `.part` is preallocated to full size). Tracked as BACKLOG DL-2
+  ([debug/2026-11-18-windows-update-hang.md](docs/debug/2026-11-18-windows-update-hang.md)).
+
 ## [4.2.0] - 2026-11-14
 
 ### 2026-11-14

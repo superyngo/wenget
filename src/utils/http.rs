@@ -64,24 +64,42 @@ impl HttpClient {
         token_allowed(url).then_some(token)
     }
 
+    /// GET `url`, retrying a 5xx or a non-rate-limit 429 up to [`MAX_STATUS_RETRIES`] times
+    ///
+    /// CDN edges (e.g. `raw.githubusercontent.com`) occasionally answer 503 for a moment; one
+    /// such answer must not fail a bucket refresh or an update check.
+    fn get_ok(&self, url: &str, accept: Option<&str>) -> Result<reqwest::blocking::Response> {
+        let mut attempt = 0;
+        loop {
+            let mut request = self.client.get(url).timeout(self.timeout);
+            if let Some(accept) = accept {
+                request = request.header("Accept", accept);
+            }
+            // Add authorization header if token is available
+            if let Some(token) = self.token_for(url) {
+                request = request.header("Authorization", format!("Bearer {}", token));
+            }
+
+            let response = request
+                .send()
+                .with_context(|| format!("Failed to send GET request to {}", url))?;
+            if response.status().is_success() {
+                return Ok(response);
+            }
+            let err = status_error(&response, url);
+            if attempt >= MAX_STATUS_RETRIES || !is_transient(&response) {
+                return Err(err);
+            }
+            attempt += 1;
+            log::warn!("{err}; retrying ({attempt}/{MAX_STATUS_RETRIES})");
+            std::thread::sleep(Duration::from_millis(RETRY_BASE_MS << (attempt - 1)));
+        }
+    }
+
     /// Send a GET request and return the response as text
     pub fn get_text(&self, url: &str) -> Result<String> {
         log::debug!("GET {}", url);
-
-        let mut request = self.client.get(url).timeout(self.timeout);
-
-        // Add authorization header if token is available
-        if let Some(token) = self.token_for(url) {
-            request = request.header("Authorization", format!("Bearer {}", token));
-        }
-
-        let response = request
-            .send()
-            .with_context(|| format!("Failed to send GET request to {}", url))?;
-
-        if !response.status().is_success() {
-            return Err(status_error(&response, url));
-        }
+        let response = self.get_ok(url, None)?;
 
         let text = response
             .text()
@@ -93,25 +111,7 @@ impl HttpClient {
     /// Send a GET request and parse JSON response
     pub fn get_json<T: DeserializeOwned>(&self, url: &str) -> Result<T> {
         log::debug!("GET {} (JSON)", url);
-
-        let mut request = self
-            .client
-            .get(url)
-            .timeout(self.timeout)
-            .header("Accept", "application/json");
-
-        // Add authorization header if token is available
-        if let Some(token) = self.token_for(url) {
-            request = request.header("Authorization", format!("Bearer {}", token));
-        }
-
-        let response = request
-            .send()
-            .with_context(|| format!("Failed to send GET request to {}", url))?;
-
-        if !response.status().is_success() {
-            return Err(status_error(&response, url));
-        }
+        let response = self.get_ok(url, Some("application/json"))?;
 
         let data = response
             .json::<T>()
@@ -136,6 +136,22 @@ fn token_allowed(url: &str) -> bool {
     ) || host
         .parse::<std::net::IpAddr>()
         .is_ok_and(|ip| ip.is_loopback())
+}
+
+/// Retries after a transient status (5xx, or 429 with requests remaining)
+const MAX_STATUS_RETRIES: u32 = 2;
+
+/// First retry delay, doubled per retry (1 s, 2 s)
+const RETRY_BASE_MS: u64 = if cfg!(test) { 5 } else { 1000 };
+
+/// Whether a failed status is worth retrying; an exhausted rate limit is not
+fn is_transient(response: &reqwest::blocking::Response) -> bool {
+    let status = response.status();
+    let exhausted = response
+        .headers()
+        .get("x-ratelimit-remaining")
+        .is_some_and(|v| v.as_bytes() == b"0");
+    status.is_server_error() || (status == reqwest::StatusCode::TOO_MANY_REQUESTS && !exhausted)
 }
 
 /// Build the error for a non-success response, naming an exhausted GitHub rate limit
@@ -213,6 +229,48 @@ mod tests {
         assert!(client.get_text(&url).is_err());
         assert!(start.elapsed() < Duration::from_secs(5));
         drop(listener);
+    }
+
+    /// Serve one canned HTTP response per entry, in order, on a loopback port
+    fn serve(responses: Vec<&'static str>) -> String {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for body in responses {
+                let (mut conn, _) = listener.accept().unwrap();
+                let mut buf = [0u8; 4096];
+                let _ = conn.read(&mut buf);
+                let _ = conn.write_all(body.as_bytes());
+            }
+        });
+        url
+    }
+
+    const R503: &str =
+        "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    const R200: &str = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok";
+    const R404: &str = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+
+    #[test]
+    fn get_text_retries_transient_503() {
+        let url = serve(vec![R503, R503, R200]);
+        assert_eq!(HttpClient::new().unwrap().get_text(&url).unwrap(), "ok");
+    }
+
+    #[test]
+    fn get_text_gives_up_after_retries() {
+        let url = serve(vec![R503, R503, R503]);
+        let err = HttpClient::new().unwrap().get_text(&url).unwrap_err();
+        assert!(err.to_string().contains("503"), "{err}");
+    }
+
+    #[test]
+    fn get_text_does_not_retry_404() {
+        // A retry would block on accept() of a server that serves one response
+        let url = serve(vec![R404]);
+        let err = HttpClient::new().unwrap().get_text(&url).unwrap_err();
+        assert!(err.to_string().contains("404"), "{err}");
     }
 
     #[test]

@@ -195,11 +195,18 @@ impl Default for ManifestCache {
     }
 }
 
+/// Build a cache from per-bucket fetch results
+///
+/// A bucket whose fetch failed keeps its packages, scripts and source entry from `previous`
+/// (the last good copy) instead of vanishing, and the new cache is marked expired so the next
+/// run retries the fetch.
 pub fn build_cache_from_results(
     buckets_with_results: Vec<(Bucket, Result<SourceManifest>)>,
+    previous: Option<&ManifestCache>,
 ) -> ManifestCache {
     let mut cache = ManifestCache::new();
     cache.last_updated = Utc::now();
+    let mut any_failed = false;
 
     for (bucket, result) in buckets_with_results {
         let source_key = format!("bucket:{}", bucket.name);
@@ -243,11 +250,38 @@ pub fn build_cache_from_results(
             }
             Err(e) => {
                 log::warn!("Failed to fetch bucket '{}': {}", bucket.name, e);
+                any_failed = true;
+                if let Some(prev) = previous {
+                    carry_over_bucket(&mut cache, prev, &bucket.name, &source_key);
+                }
             }
         }
     }
 
+    if any_failed {
+        cache.last_updated = Utc::now() - chrono::Duration::seconds(cache.ttl_seconds);
+    }
     cache
+}
+
+/// Copy one bucket's entries from `prev` into `cache`
+fn carry_over_bucket(cache: &mut ManifestCache, prev: &ManifestCache, name: &str, key: &str) {
+    let source = PackageSource::Bucket {
+        name: name.to_string(),
+    };
+    for (repo, cp) in &prev.packages {
+        if cp.source == source {
+            cache.packages.insert(repo.clone(), cp.clone());
+        }
+    }
+    for (script, cs) in &prev.scripts {
+        if cs.source == source {
+            cache.scripts.insert(script.clone(), cs.clone());
+        }
+    }
+    if let Some(info) = prev.sources.get(key) {
+        cache.sources.insert(key.to_string(), info.clone());
+    }
 }
 
 #[cfg(test)]
@@ -299,5 +333,61 @@ mod tests {
         // Expired cache should be invalid
         cache.last_updated = Utc::now() - chrono::Duration::days(2);
         assert!(!cache.is_valid());
+    }
+
+    fn bucket(name: &str) -> Bucket {
+        Bucket {
+            name: name.to_string(),
+            url: format!("https://example.com/{name}.json"),
+            enabled: true,
+            priority: 0,
+        }
+    }
+
+    fn manifest(names: &[&str]) -> SourceManifest {
+        serde_json::from_value(serde_json::json!({
+            "packages": names.iter().map(|n| serde_json::json!({
+                "name": n, "description": "", "repo": format!("https://github.com/t/{n}"),
+                "platforms": {}
+            })).collect::<Vec<_>>()
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn failed_bucket_keeps_previous_packages_and_expires_cache() {
+        let good = build_cache_from_results(
+            vec![
+                (bucket("a"), Ok(manifest(&["x"]))),
+                (bucket("b"), Ok(manifest(&["y"]))),
+            ],
+            None,
+        );
+        assert!(good.is_valid());
+
+        let next = build_cache_from_results(
+            vec![
+                (bucket("a"), Err(anyhow::anyhow!("HTTP 503"))),
+                (bucket("b"), Ok(manifest(&["y", "z"]))),
+            ],
+            Some(&good),
+        );
+        let names = next.packages_by_name();
+        assert!(
+            names.contains_key("x"),
+            "failed bucket a keeps its last good copy"
+        );
+        assert!(names.contains_key("z"));
+        assert!(next.sources.contains_key("bucket:a"));
+        assert!(
+            !next.is_valid(),
+            "a partial rebuild must be retried next run"
+        );
+    }
+
+    #[test]
+    fn failed_bucket_without_previous_is_empty() {
+        let next = build_cache_from_results(vec![(bucket("a"), Err(anyhow::anyhow!("503")))], None);
+        assert!(next.packages.is_empty());
     }
 }

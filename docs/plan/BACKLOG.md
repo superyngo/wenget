@@ -18,6 +18,7 @@ last checked against the tree — not when it was opened.
 
 | Item | Closed by | Verifies when | Fallback |
 |---|---|---|---|
+| DL-2 bucket fetch failure swallowed as "All packages are up to date" (sandbox real-binary repro: 503 bucket → before `exit=0` "All packages are up to date", after `exit=1` "Could not check 1 package(s) for updates: foo"; cache kept its package) | fix(update) commit | `wenget update` on ezpad with this build checks every bucket package and upgrades `oh-my-pi` past 18.12.6 | Reopen DL-2 with the ezpad output |
 
 ## Awaiting external
 

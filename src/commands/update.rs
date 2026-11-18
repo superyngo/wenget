@@ -144,7 +144,19 @@ fn resolve_all_targets(
     yes: bool,
 ) -> Result<Option<Vec<String>>> {
     // List upgradeable packages (also syncs latest package info into the cache)
-    let upgradeable = find_upgradeable(installed, github, cache, yes)?;
+    let (upgradeable, unchecked) = find_upgradeable(installed, github, cache, yes)?;
+
+    if !unchecked.is_empty() {
+        let msg = format!(
+            "Could not check {} package(s) for updates: {}",
+            unchecked.len(),
+            unchecked.join(", ")
+        );
+        if upgradeable.is_empty() {
+            anyhow::bail!("{msg}");
+        }
+        eprintln!("{} {}", "Warning:".yellow(), msg);
+    }
 
     if upgradeable.is_empty() {
         println!("{}", "All packages are up to date".green());
@@ -384,6 +396,7 @@ fn prepare_upgrade_jobs(
     cache: &crate::core::cache::ManifestCache,
     pb: &indicatif::ProgressBar,
     upgradeable: &mut Vec<(String, String, String)>,
+    unchecked: &mut Vec<String>,
 ) -> (Vec<FetchJob>, HashMap<String, JobMeta>) {
     let cache_by_name = cache.packages_by_name();
     let mut jobs: Vec<FetchJob> = Vec::new();
@@ -409,6 +422,7 @@ fn prepare_upgrade_jobs(
                         repo_name,
                         bucket_name
                     );
+                    unchecked.push(repo_name.clone());
                     pb.inc(1);
                     continue;
                 }
@@ -489,6 +503,7 @@ fn handle_fetch_failure(
     cache: &crate::core::cache::ManifestCache,
     yes: bool,
     upgradeable: &mut Vec<(String, String, String)>,
+    unchecked: &mut Vec<String>,
     e: &anyhow::Error,
 ) -> Result<()> {
     // API failed - try to use cache version as fallback
@@ -546,6 +561,7 @@ fn handle_fetch_failure(
                 "Warning:".yellow(),
                 repo_name
             );
+            unchecked.push(repo_name.to_string());
         }
     } else {
         eprintln!(
@@ -553,6 +569,11 @@ fn handle_fetch_failure(
             "Warning:".yellow(),
             repo_name
         );
+        // Version "local" is a direct-URL or local-file install with no update source, so
+        // failing to check it is expected and must not fail the whole update
+        if inst_version != "local" {
+            unchecked.push(repo_name.to_string());
+        }
     }
 
     Ok(())
@@ -565,6 +586,7 @@ fn apply_fetch_results(
     cache: &mut crate::core::cache::ManifestCache,
     yes: bool,
     upgradeable: &mut Vec<(String, String, String)>,
+    unchecked: &mut Vec<String>,
 ) -> Result<()> {
     for (repo_name, result) in results {
         let (source, inst_version) = match job_meta.get(&repo_name) {
@@ -591,7 +613,15 @@ fn apply_fetch_results(
                 }
             }
             Err(e) => {
-                handle_fetch_failure(&repo_name, &inst_version, cache, yes, upgradeable, &e)?;
+                handle_fetch_failure(
+                    &repo_name,
+                    &inst_version,
+                    cache,
+                    yes,
+                    upgradeable,
+                    unchecked,
+                    &e,
+                )?;
             }
         }
     }
@@ -599,14 +629,18 @@ fn apply_fetch_results(
     Ok(())
 }
 
+/// `(name, installed version, latest version)`
+type Upgrade = (String, String, String);
+
 /// Find upgradeable packages by checking their sources
 fn find_upgradeable(
     installed: &crate::core::InstalledSet,
     github: &GitHubProvider,
     cache: &mut crate::core::cache::ManifestCache,
     yes: bool,
-) -> Result<Vec<(String, String, String)>> {
+) -> Result<(Vec<Upgrade>, Vec<String>)> {
     let mut upgradeable = Vec::new();
+    let mut unchecked = Vec::new();
 
     let grouped = installed.group_by_repo();
     let total = grouped.len();
@@ -622,19 +656,27 @@ fn find_upgradeable(
 
     // Phase 1 (sequential): resolve each repo's URL, handle local-only sources (scripts)
     // that need no API call, and collect the rest into `jobs` for parallel fetching.
-    let (jobs, job_meta) = prepare_upgrade_jobs(grouped, cache, &pb, &mut upgradeable);
+    let (jobs, job_meta) =
+        prepare_upgrade_jobs(grouped, cache, &pb, &mut upgradeable, &mut unchecked);
 
     // Phase 2 (parallel): fetch latest package info from GitHub for all collected jobs.
     let results = parallel_fetch_packages(github, jobs, Some(&pb));
 
     // Phase 3 (sequential): apply results — mutate the cache and resolve any prompts on the
     // main thread, where it is safe to do so.
-    apply_fetch_results(results, &job_meta, cache, yes, &mut upgradeable)?;
+    apply_fetch_results(
+        results,
+        &job_meta,
+        cache,
+        yes,
+        &mut upgradeable,
+        &mut unchecked,
+    )?;
 
     pb.finish();
     println!();
 
-    Ok(upgradeable)
+    Ok((upgradeable, unchecked))
 }
 
 /// Sync the latest package info for the given installed keys into the cache.

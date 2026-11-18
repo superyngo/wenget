@@ -198,7 +198,8 @@ impl Config {
             handles.into_iter().map(|h| h.join().unwrap()).collect()
         });
 
-        let cache = build_cache_from_results(results);
+        let previous = self.load_cache().ok();
+        let cache = build_cache_from_results(results, previous.as_ref());
         self.save_cache(&cache)?;
         Ok(cache)
     }

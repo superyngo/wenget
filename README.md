@@ -298,6 +298,11 @@ download keeps `<file>.part` (plus a `.part.json` record) in `~/.wenget/cache/do
 running the same command again continues it. Leftovers older than 7 days are removed
 automatically.
 
+Bucket manifests and update checks retry a 5xx (or a 429 that is not an exhausted rate limit)
+twice. If a bucket still cannot be fetched, the cache keeps that bucket's last good packages and
+is retried on the next command, and `wenget update` exits with an error naming any package it
+could not check instead of reporting "All packages are up to date".
+
 ### Environment Variables
 
 - `WENGET_ROOT` - Override wenget root and bin directories (e.g., `env WENGET_ROOT=/tmp/test wenget ...`). Sets both application data and binary links under the specified directory; useful for testing and sandboxing without touching `~/.wenget/`.
