@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-11-18
+
 ### 2026-11-18
 
 - fix(update): a bucket that fails to fetch keeps its last good packages in the manifest cache
@@ -380,7 +382,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripts.
 - fix(search): truncating descriptions no longer panics on multi-byte (CJK/emoji) text.
 
-[Unreleased]: https://github.com/superyngo/wenget/compare/v4.2.0...HEAD
+[4.2.1]: https://github.com/superyngo/wenget/compare/v4.2.0...v4.2.1
+[Unreleased]: https://github.com/superyngo/wenget/compare/v4.2.1...HEAD
 [4.2.0]: https://github.com/superyngo/wenget/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/superyngo/wenget/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/superyngo/wenget/compare/v3.9.0...v4.0.0
