@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-11-19
+
+- docs: align with repo-docs rules — `Profile: dev` in `CONTEXT.md`; the 2026-11-18 debug
+  record's `Status: In progress` moved to line 2 with its explanation as a paragraph below; the
+  resolved 2026-11-13 audit moved from "In progress" to "Landed" in `docs/audit/README.md`; the
+  debug index entry shows its status.
+
 ## [4.2.1] - 2026-11-18
 
 ### 2026-11-18

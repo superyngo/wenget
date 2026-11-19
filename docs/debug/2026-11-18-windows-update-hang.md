@@ -1,6 +1,7 @@
 # 2026-11-18 Windows `update` hangs / loses resume state mid-download
+Status: In progress
 
-Status: In progress — the original "hang" hypothesis below is **refuted**; see
+The original "hang" hypothesis below is **refuted**; see
 [Correction](#correction-same-day-re-test). The real defect is that a bucket fetch failure is
 swallowed and reported as "All packages are up to date".
 

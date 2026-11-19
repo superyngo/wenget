@@ -6,7 +6,7 @@ frozen once resolved, dated by when it was written, never rewritten. Current beh
 
 ## In progress
 
-- [2026-11-18 Windows `update`: bucket 503 swallowed as "All packages are up to date" (hang hypothesis refuted)](2026-11-18-windows-update-hang.md)
+- [2026-11-18-windows-update-hang.md](2026-11-18-windows-update-hang.md) — Windows `update`: bucket 503 swallowed as "All packages are up to date" (hang hypothesis refuted) — `In progress`
 
 ## Landed
 

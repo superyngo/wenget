@@ -6,9 +6,7 @@ Current behavior lives in [`../reference/`](../reference/README.md).
 
 ## In progress
 
-| Date | Document | Status |
-|---|---|---|
-| 2026-11-13 | [2026-11-13-full-codebase-audit.md](2026-11-13-full-codebase-audit.md) — six-dimension sweep of v4.1.0 (1 High, 6 Medium; partial coverage) | Resolved (2026-11-14) |
+None.
 
 Findings still awaiting real-machine verification or newly opened are tracked in
 [`../plan/BACKLOG.md`](../plan/BACKLOG.md).
@@ -17,6 +15,7 @@ Findings still awaiting real-machine verification or newly opened are tracked in
 
 | Date | Document | Status |
 |---|---|---|
+| 2026-11-13 | [2026-11-13-full-codebase-audit.md](2026-11-13-full-codebase-audit.md) — six-dimension sweep of v4.1.0 (1 High, 6 Medium; partial coverage) | Resolved (2026-11-14) |
 | 2026-10-01 | [2026-10-01-documentation-audit.md](2026-10-01-documentation-audit.md) — docs vs code after the downloader resume / segmented work (8 findings, 1 High; opened DL-1) | Resolved (2026-10-01) |
 | 2026-09-29 | [2026-09-29-prompt-audit.md](2026-09-29-prompt-audit.md) — agent instruction files for dated prompting, stale facts, and conflicts (5 findings: 1 High flag, 2 Medium) | Resolved (2026-09-29) |
 | 2026-09-24 | [2026-09-24-documentation-audit.md](2026-09-24-documentation-audit.md) — docs vs code after the backlog emptied (18 findings, 7 High) | Resolved (2026-09-24) |
