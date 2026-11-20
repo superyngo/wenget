@@ -107,6 +107,6 @@ Warning: Package herdr not found in bucket wenget cache, skipping update check
   Version-`local` direct-URL installs (no update source) are not counted.
 - `utils::http::HttpClient::get_ok` retries 5xx / non-exhausted 429 twice.
 - Sandbox repro on the real binary (`WENGET_ROOT=/tmp/wg-dl2`, local bucket server toggled to
-  503, script in `docs/tmp/claude-scratch/dl2/srv.py`): before `All packages are up to date`
+  503, script in `docs/debug/2026-11-18-windows-update-hang/srv.py`): before `All packages are up to date`
   exit 0; after two logged retries, `Error: Could not check 1 package(s) for updates: foo` exit 1,
   and `manifest-cache.json` still holds the bucket's package. Pending: ezpad run.

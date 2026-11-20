@@ -23,3 +23,6 @@ Findings still awaiting real-machine verification or newly opened are tracked in
 | 2026-09-23 | [2026-09-23-documentation-audit.md](2026-09-23-documentation-audit.md) | Resolved (2026-09-23) |
 | 2026-09-23 | [2026-09-23-search-evaluation.md](2026-09-23-search-evaluation.md) | Resolved (2026-09-23) |
 | 2026-09-03 | [2026-09-03-full-codebase-audit.md](2026-09-03-full-codebase-audit.md) — six-dimension sweep of v3.8.7 (2 Critical, 8 High) | Resolved (2026-09-24) |
+
+The 2026-11-13 audit's Range/ETag fixture is committed at
+[`2026-11-13-full-codebase-audit/range_server.py`](2026-11-13-full-codebase-audit/range_server.py).

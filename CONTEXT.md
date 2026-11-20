@@ -8,7 +8,7 @@ Profile: dev
 
 | Folder | Holds | Canonical? | Lifecycle |
 |---|---|---|---|
-| [`docs/reference/`](docs/reference/README.md) | Current behavior: glossary, resource-filtering rules, archived changelog series | Yes — the only source of truth | Kept in sync with the code |
+| [`docs/reference/`](docs/reference/README.md) | Current behavior: glossary, resource-filtering rules, architecture notes, archived changelog series | Yes — the only source of truth | Kept in sync with the code |
 | [`docs/adr/`](docs/adr/README.md) | Decisions that were expensive to reach and would be expensive to reverse | No — historical | Never edited; superseded by a new ADR |
 | [`docs/spec/`](docs/spec/README.md) | Design records written before implementation | No — historical | Frozen once approved; only `Status:` changes |
 | [`docs/plan/`](docs/plan/README.md) | Task-by-task implementation plans derived from a spec | No — historical | Frozen once shipped; only `Status:` changes |
@@ -22,8 +22,8 @@ Profile: dev
 
 1. [`docs/reference/glossary.md`](docs/reference/glossary.md) — the vocabulary every other file uses.
 2. [`docs/reference/README.md`](docs/reference/README.md) — index of the reference documents
-   (asset-filtering rules, archived changelogs). There is no architecture document; module
-   structure lives in each file's `//!` docs.
+   (asset-filtering rules, architecture notes, archived changelogs); module structure lives in
+   each file's `//!` docs.
 3. [`docs/adr/README.md`](docs/adr/README.md) — why the shape is what it is.
 4. `CHANGELOG.md` — what changed recently; older series in
    [`docs/reference/changelog/`](docs/reference/changelog/README.md).

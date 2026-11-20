@@ -3,7 +3,7 @@
 # Every run is sandboxed under WENGET_ROOT (bin dir included), so the real
 # ~/.wenget and ~/.local/bin are never touched.
 #
-# Usage: cargo build && bash docs/tmp/claude-scratch/audit-2026-09-23-repros.sh
+# Usage: cargo build && bash docs/audit/2026-09-23-implementation-simplicity-audit/repros.sh
 set -u
 BIN=${BIN:-./target/debug/wenget}
 TMP=$(mktemp -d /tmp/wenget-audit.XXXXXX)

@@ -18,7 +18,7 @@ last checked against the tree — not when it was opened.
 
 | Item | Closed by | Verifies when | Fallback |
 |---|---|---|---|
-| DL-2 bucket fetch failure swallowed as "All packages are up to date" (sandbox real-binary repro: 503 bucket → before `exit=0` "All packages are up to date", after `exit=1` "Could not check 1 package(s) for updates: foo"; cache kept its package) | fix(update) commit | `wenget update` on ezpad with this build checks every bucket package and upgrades `oh-my-pi` past 18.12.6 | Reopen DL-2 with the ezpad output |
+| DL-2 bucket fetch failure swallowed as "All packages are up to date" (sandbox real-binary repro: 503 bucket → before `exit=0` "All packages are up to date", after `exit=1` "Could not check 1 package(s) for updates: foo"; cache kept its package) | 35c8087 | `wenget update` on ezpad with this build checks every bucket package and upgrades `oh-my-pi` past 18.12.6 | Reopen DL-2 with the ezpad output |
 
 ## Awaiting external
 
@@ -60,7 +60,7 @@ last checked against the tree — not when it was opened.
 | Rate limit reported as "Not found" | Unfetchable GitHub URLs reporting "Not found" instead of rate limit error | eb19b8b |
 | GITHUB_TOKEN support | `add`, `update`, `info` support for `GITHUB_TOKEN` authentication | d787223 |
 | DEP-1 | Dependabot alerts #1–#10 (`tar`, `rustls-webpki`, `quinn-proto`, `rand`) plus `rustls` RUSTSEC-2026-0285 | bf4bfc5 |
-| DEP-2 | `sevenz-rust` abandoned with unpatched path traversal (RUSTSEC-2026-0245); `extract_7z` let rooted/drive-prefixed names through on Windows | commit "fix(deps): replace sevenz-rust with sevenz-rust2" |
+| DEP-2 | `sevenz-rust` abandoned with unpatched path traversal (RUSTSEC-2026-0245); `extract_7z` let rooted/drive-prefixed names through on Windows | 582aa40 |
 | A-4 | Vestigial `SourceProvider` trait | 3f56915 (verified 2026-09-23) |
 | M-4 | `AGENTS.md`/`CLAUDE.md` redundancy — `CLAUDE.md` is a 5-line pointer | before 2026-09-23 (verified 2026-09-23) |
 | Q-7 | `.to_str().unwrap()` in Windows self-update/uninstall | merged into S-8 (2026-09-23) |

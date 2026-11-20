@@ -215,5 +215,5 @@ No other measurable issue found in the code read; earlier P-/OP- items are close
 
 Reproductions used `target/debug/wenget` with `WENGET_ROOT` under `/tmp/wg-audit-dl` and
 `/tmp/wg-audit-zst`, and a local Range/ETag HTTP fixture at
-`docs/tmp/claude-scratch/range_server.py` (optional third argument sets the status returned
+`docs/audit/2026-11-13-full-codebase-audit/range_server.py` (optional third argument sets the status returned
 for checksum-file probes). No source file was changed.

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 2026-11-20
+
+- docs: repo-docs wave B — AGENTS.md behavior notes moved to `docs/reference/ARCHITECTURE.md`;
+  scratch-only repro fixtures committed beside their records (`docs/debug/2026-11-18-windows-update-hang/`,
+  `docs/audit/2026-11-13-full-codebase-audit/`) with path repair; BACKLOG `Closed by` cells carry
+  commit hashes.
+
 ### 2026-11-19
 
 - docs: align with repo-docs rules — `Profile: dev` in `CONTEXT.md`; the 2026-11-18 debug

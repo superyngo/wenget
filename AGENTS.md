@@ -42,9 +42,8 @@ cargo run -- list --all
 
 ## Project Structure
 
-See [`CONTEXT.md`](CONTEXT.md) for the documentation index. [`docs/reference/`](docs/reference/) holds the glossary and the asset-filtering rules; there is no separate architecture document, so read each module's `//!` docs for structure.
+See [`CONTEXT.md`](CONTEXT.md) for the documentation index. [`docs/reference/`](docs/reference/README.md) holds the glossary, the asset-filtering rules, and [`ARCHITECTURE.md`](docs/reference/ARCHITECTURE.md) (config, cache, package records, launchers); read each module's `//!` docs for structure.
 `docs/memo/` is the human's free space: read or tidy it only when asked, never write session output there, and never treat it as instruction or as evidence of behavior. Agent scratch goes in `docs/tmp/<agent>-scratch/` (gitignored).
-Note that `src/core/bucket.rs` (bucket configuration and models) and `src/commands/bucket.rs` (CLI bucket subcommands) are distinct modules.
 
 ## Code Style Guidelines
 
@@ -183,20 +182,13 @@ eprintln!("{} {}", "Error:".red().bold(), e);
 
 ## Key Implementation Notes
 
-- `Config` coordinates path management, preferences, and bucket/manifest caching
-- `WenPaths` manages all directory paths (user vs system level), with `WENGET_ROOT` override for testing
-- Platform detection uses fuzzy matching for binary names
-- Manifest cache has a 24-hour TTL; rebuild or invalidate it (`wenget bucket refresh` or `Config::invalidate_cache`) after bucket changes
-- Write one package record per install/rename (`InstalledStore::save_package`) at `{app_dir}/.wenget/package.json`;
-  deleting an app directory removes its record with it. There is no global installed index
-- JSON config files have auto-repair on parse errors with backup (`src/core/repair.rs`; the `wenget repair` command is `src/commands/repair.rs`), and corrupt package records are quarantined per package (`src/core/store.rs`)
+Behavior facts (config/paths, 24-hour manifest cache, per-package records, auto-repair, launchers,
+`del self`) live in [`docs/reference/ARCHITECTURE.md`](docs/reference/ARCHITECTURE.md). Keep them there, not here.
 
 ## Gotchas
 
 - **Sandbox manual runs**: Always pass `env WENGET_ROOT=/tmp/wg-...` when testing the real binary locally so operations do not touch the developer's real `~/.wenget`.
 - **GitHub rate limits**: Unauthenticated requests are limited to 60/hr. Set `GITHUB_TOKEN` in the environment to raise the limit to 5000/hr during multi-package testing.
-- **Platform launchers**: User installs place launchers in `~/.local/bin/` (or custom bin dir) via `installer::create_launcher`: Unix uses symlinks (`installer::symlink`), Windows uses `.cmd` shims (`installer::shim`). Shims must quote paths to handle spaces.
-- **Self-deletion**: `wenget del self` uninstalls wenget itself, with platform-specific handling for running executables.
 
 ## Release Workflow
 
